@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "KnowEvo 决策测试集条目模板（K4 §1，120 题四级题型）",
+  "type": "object",
+  "required": ["id", "type", "question", "answer", "rubric", "evidence_origin"],
+  "properties": {
+    "id": {"type": "string", "pattern": "^(F|M|V|X)-[0-9]{3}$"},
+    "type": {"enum": ["F", "M", "V", "X"],
+      "description": "F=事实型35 M=多跳型45 V=版本敏感型20 X=拒绝回答型20"},
+    "question": {"type": "string"},
+    "answer": {
+      "oneOf": [
+        {"type": "string"},
+        {"type": "object", "required": ["answer_old", "answer_new"],
+         "properties": {"answer_old": {"type": "string"}, "answer_new": {"type": "string"}},
+         "description": "V 题双金标（K4 §1.1）"}
+      ]},
+    "rubric": {
+      "type": "object", "required": ["key_facts", "weights"],
+      "properties": {
+        "key_facts": {"type": "array", "items": {"type": "string"},
+          "description": "必答点清单（judge 按表核对，自由发挥禁止）"},
+        "refusal_expected": {"type": "boolean"},
+        "evidence_required": {"type": "boolean"},
+        "reasoning_steps": {"type": "array", "items": {"type": "string"}},
+        "safety_boundary": {"type": "string"},
+        "weights": {"type": "object", "description": "五元组权重，key_facts 合计 0.6"}}
+    },
+    "evidence_origin": {
+      "type": "object", "required": ["blind_set_ratio"],
+      "properties": {
+        "doc_ids": {"type": "array", "items": {"type": "string"}},
+        "blind_set_ratio": {"type": "number",
+          "description": "证据来自评测盲区文档的比例；M/F 题须 ≥0.5（防过拟合隔离，K4 §1.2-4）"}}
+    },
+    "seed_of": {"type": "string", "description": "来源 SOP 决策问题编号（人工版 30 题清单）"},
+    "variant_note": {"type": "string", "description": "LLM 扩展变体说明（改实体/数值/问法）"},
+    "annotators": {"type": "array", "items": {"type": "string"}, "minItems": 2},
+    "krippendorff_batch": {"type": "string", "description": "交叉标注批次（α≥0.7 入库门）"},
+    "frozen_at": {"type": "string", "format": "date-time"}
+  }
+}
