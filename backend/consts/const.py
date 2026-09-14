@@ -800,3 +800,24 @@ STREAM_STATUS_EVENT = "event: stream_status\n"
 
 # External Memory Provider Configuration
 MEMORY_PROVIDER_PLUGINS_DIR = os.getenv("MEMORY_PROVIDER_PLUGINS_DIR", "")
+
+# Knowevo knowledge-model configuration (memo 10 section 3; env list frozen,
+# per-task inventions are forbidden - new variables require a new brief).
+# Three-tier model routing plan (model ids as registered in the platform).
+KW_LLM_SMALL_MODEL_ID = os.getenv("KW_LLM_SMALL_MODEL_ID", "")
+KW_LLM_MID_MODEL_ID = os.getenv("KW_LLM_MID_MODEL_ID", "")
+KW_LLM_LARGE_MODEL_ID = os.getenv("KW_LLM_LARGE_MODEL_ID", "")
+# GraphStore adapter selection (A1): pg_jsonb by default.
+KW_GRAPH_STORE_BACKEND = os.getenv("KW_GRAPH_STORE_BACKEND", "pg_jsonb")
+# L4 legacy default: maximum ontology classes.
+KW_ONTOLOGY_MAX_CLASSES = int(os.getenv("KW_ONTOLOGY_MAX_CLASSES", "120"))
+# Alignment thresholds (L3): tau1 strict / tau2 loose.
+KW_ALIGN_TAU1 = float(os.getenv("KW_ALIGN_TAU1", "0.80"))
+KW_ALIGN_TAU2 = float(os.getenv("KW_ALIGN_TAU2", "0.60"))
+# Proposal auto-accept confidence line (K1 section 3).
+KW_AUTO_ACCEPT_LINE = float(os.getenv("KW_AUTO_ACCEPT_LINE", "0.85"))
+# Multi-hop reasoning limits (K3).
+KW_MULTIHOP_MAX_DEPTH = int(os.getenv("KW_MULTIHOP_MAX_DEPTH", "3"))
+KW_MULTIHOP_BEAM = int(os.getenv("KW_MULTIHOP_BEAM", "3"))
+# Hard token budget probe per domain (K8).
+KW_TOKEN_BUDGET_PER_DOMAIN = int(os.getenv("KW_TOKEN_BUDGET_PER_DOMAIN", "3000000"))
