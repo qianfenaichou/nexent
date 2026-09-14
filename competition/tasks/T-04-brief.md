@@ -47,4 +47,5 @@ RUN_POSTGRES_INTEGRATION=1 uv run pytest test/backend/services/knowevo/test_onto
   - `--plan plan.yaml`：model_plan 进报告 + cost-ledger.md 落行（`| 51dd7d9e... | 本体 | ... | llm_calls=1 |`）
 - ruff：`ruff check backend/services/knowevo/ test/backend/services/knowevo/` → All checks passed
 - 上游回归（本会话补的 T-03 证据）：55/55 database 测试文件无失败（`uv sync --extra data-process --extra test` + `uv pip install -e "../sdk[dev]"` 后从仓库根跑；之前 15 error 为 smolagents 缺失、2 failed 为相对路径需从根跑——均已定位修复，记坑 #11/#12）
+- **2026-09-14 收尾复核（调度会话）**：分支 c4484ab 已合并 develop（ddbd5b4，--no-ff）；集成层复跑全绿——本机复跑需先 `export NEXENT_POSTGRES_PASSWORD=<deploy/env/.env 值>` 并设 `POSTGRES_HOST=localhost POSTGRES_PORT=5434 POSTGRES_USER=root POSTGRES_DB=nexent`（宿主映射 5434≠容器 5432，坑 #14），19 passed in 2.91s
 
