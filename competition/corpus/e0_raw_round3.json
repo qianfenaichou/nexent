@@ -1,0 +1,363 @@
+{
+  "primary": {
+    "rows": [
+      {
+        "no": 1,
+        "type": "F",
+        "hit": true,
+        "empty": false,
+        "latency": 24.86,
+        "tokens": 494,
+        "answer_head": "二甲双胍属于**双胍类**降糖药，是2型糖尿病治疗的一线首选药物。\n\n**主要特点：**\n- **作用机制**：抑制肝糖"
+      },
+      {
+        "no": 2,
+        "type": "F",
+        "hit": null,
+        "error": "The read operation timed out"
+      },
+      {
+        "no": 3,
+        "type": "F",
+        "hit": true,
+        "empty": false,
+        "latency": 36.37,
+        "tokens": 620,
+        "answer_head": "**二甲双胍**是2型糖尿病传统的一线首选药物（在生活方式干预基础上）。\n\n**选择理由：**\n- 降糖效果确切（HbA"
+      },
+      {
+        "no": 4,
+        "type": "F",
+        "hit": true,
+        "empty": false,
+        "latency": 11.72,
+        "tokens": 429,
+        "answer_head": "成人正常空腹血糖（静脉血浆）参考范围为 **3.9–6.1 mmol/L**。\n\n补充说明：\n- **6.1–<7.0 "
+      },
+      {
+        "no": 5,
+        "type": "F",
+        "hit": false,
+        "empty": true,
+        "latency": 0.95,
+        "tokens": 57,
+        "answer_head": ""
+      },
+      {
+        "no": 6,
+        "type": "M",
+        "hit": false,
+        "empty": true,
+        "latency": 1.32,
+        "tokens": 63,
+        "answer_head": ""
+      },
+      {
+        "no": 7,
+        "type": "M",
+        "hit": false,
+        "empty": true,
+        "latency": 0.75,
+        "tokens": 63,
+        "answer_head": ""
+      },
+      {
+        "no": 8,
+        "type": "M",
+        "hit": true,
+        "empty": false,
+        "latency": 31.83,
+        "tokens": 700,
+        "answer_head": "**常见胃肠道不良反应：**\n- 恶心（最常见）、呕吐、腹泻\n- 部分患者可有便秘、腹痛、食欲下降\n- 多呈剂量依赖性，"
+      },
+      {
+        "no": 9,
+        "type": "M",
+        "hit": false,
+        "empty": true,
+        "latency": 0.79,
+        "tokens": 58,
+        "answer_head": ""
+      },
+      {
+        "no": 10,
+        "type": "M",
+        "hit": true,
+        "empty": false,
+        "latency": 82.07,
+        "tokens": 1409,
+        "answer_head": "## 代谢紊乱类型\n\n胰岛素严重不足（伴升糖激素增多）导致**糖、脂代谢双重紊乱**：\n\n- **糖代谢**：外周组织葡"
+      },
+      {
+        "no": 11,
+        "type": "V",
+        "hit": false,
+        "empty": true,
+        "latency": 2.48,
+        "tokens": 63,
+        "answer_head": ""
+      },
+      {
+        "no": 12,
+        "type": "V",
+        "hit": false,
+        "empty": true,
+        "latency": 0.61,
+        "tokens": 59,
+        "answer_head": ""
+      },
+      {
+        "no": 13,
+        "type": "V",
+        "hit": true,
+        "empty": false,
+        "latency": 24.3,
+        "tokens": 615,
+        "answer_head": "**起始短期胰岛素强化治疗。**\n\n依据（中国CDS指南及ADA共识）：\n- 新诊断T2DM患者若 **HbA1c≥9%"
+      },
+      {
+        "no": 14,
+        "type": "V",
+        "hit": false,
+        "empty": true,
+        "latency": 0.62,
+        "tokens": 52,
+        "answer_head": ""
+      },
+      {
+        "no": 15,
+        "type": "V",
+        "hit": true,
+        "empty": false,
+        "latency": 30.85,
+        "tokens": 839,
+        "answer_head": "**空腹血糖控制目标为 <5.3 mmol/L**（同时不低于3.3 mmol/L，以避免低血糖）。\n\n依据《妊娠期高血"
+      },
+      {
+        "no": 16,
+        "type": "X",
+        "hit": true,
+        "empty": false,
+        "latency": 69.5,
+        "tokens": 1514,
+        "answer_head": "## 初始治疗建议\n\n**基础：生活方式干预**\n- 饮食控制 + 每周≥150分钟中等强度运动，目标减重5%–10%（"
+      },
+      {
+        "no": 17,
+        "type": "X",
+        "hit": false,
+        "empty": true,
+        "latency": 0.54,
+        "tokens": 61,
+        "answer_head": ""
+      },
+      {
+        "no": 18,
+        "type": "X",
+        "hit": true,
+        "empty": false,
+        "latency": 145.92,
+        "tokens": 3093,
+        "answer_head": "**手术日晨（禁食状态）处理：**\n\n1. **胰岛素调整**：门冬胰岛素30晨起剂量**减半**皮下注射。\n   - "
+      },
+      {
+        "no": 19,
+        "type": "X",
+        "hit": false,
+        "empty": true,
+        "latency": 4.39,
+        "tokens": 59,
+        "answer_head": ""
+      },
+      {
+        "no": 20,
+        "type": "X",
+        "hit": false,
+        "empty": true,
+        "latency": 0.87,
+        "tokens": 62,
+        "answer_head": ""
+      }
+    ],
+    "hit_rate": 0.45,
+    "answered": 19,
+    "avg_latency": 24.78,
+    "total_tokens": 10310
+  },
+  "small": {
+    "rows": [
+      {
+        "no": 1,
+        "type": "F",
+        "hit": true,
+        "empty": false,
+        "latency": 17.04,
+        "tokens": 389,
+        "answer_head": "二甲双胍属于**双胍类**降糖药。\n\n简要特点：\n- **机制**：抑制肝糖输出、改善外周胰岛素敏感性、减少肠道葡萄糖吸"
+      },
+      {
+        "no": 2,
+        "type": "F",
+        "hit": false,
+        "empty": true,
+        "latency": 0.5,
+        "tokens": 56,
+        "answer_head": ""
+      },
+      {
+        "no": 3,
+        "type": "F",
+        "hit": true,
+        "empty": false,
+        "latency": 51.46,
+        "tokens": 633,
+        "answer_head": "**首选：二甲双胍（Metformin）**\n\n若无禁忌证，二甲双胍是2型糖尿病的一线首选药物，理由包括：\n- 降糖效果"
+      },
+      {
+        "no": 4,
+        "type": "F",
+        "hit": true,
+        "empty": false,
+        "latency": 24.08,
+        "tokens": 450,
+        "answer_head": "成人正常空腹血糖（静脉血浆）参考范围为 **3.9～6.1 mmol/L**。\n\n补充说明：\n- 空腹血糖 6.1～7."
+      },
+      {
+        "no": 5,
+        "type": "F",
+        "hit": true,
+        "empty": false,
+        "latency": 12.9,
+        "tokens": 423,
+        "answer_head": "**OGTT 2小时血糖 ≥ 11.1 mmol/L（200 mg/dL）** 可诊断为糖尿病。\n\n补充说明：\n- 需采"
+      },
+      {
+        "no": 6,
+        "type": "M",
+        "hit": true,
+        "empty": false,
+        "latency": 24.51,
+        "tokens": 785,
+        "answer_head": "**磺脲类药物（如格列美脲、格列齐特、格列本脲）的主要作用机制：**\n\n与胰岛β细胞膜上的磺脲类受体（SUR1，即ATP"
+      },
+      {
+        "no": 7,
+        "type": "M",
+        "hit": true,
+        "empty": false,
+        "latency": 30.61,
+        "tokens": 597,
+        "answer_head": "**排泄器官：肾脏**\n\nSGLT2抑制剂（如达格列净、恩格列净、卡格列净）抑制肾近曲小管SGLT2转运体，减少葡萄糖重"
+      },
+      {
+        "no": 8,
+        "type": "M",
+        "hit": null,
+        "error": "The read operation timed out"
+      },
+      {
+        "no": 9,
+        "type": "M",
+        "hit": true,
+        "empty": false,
+        "latency": 27.46,
+        "tokens": 681,
+        "answer_head": "## 阿卡波糖的服用方法\n\n**与第一口主食同时嚼服**（餐前单独服用无效，餐后服用效果大打折扣）。\n\n原因：阿卡波糖需"
+      },
+      {
+        "no": 10,
+        "type": "M",
+        "hit": true,
+        "empty": false,
+        "latency": 44.8,
+        "tokens": 1110,
+        "answer_head": "## 代谢紊乱类型\n\n胰岛素不足时，**糖、脂肪、蛋白质三大代谢同时紊乱**，核心环节：\n\n1. **糖代谢**：糖原分"
+      },
+      {
+        "no": 11,
+        "type": "V",
+        "hit": false,
+        "empty": true,
+        "latency": 1.51,
+        "tokens": 63,
+        "answer_head": ""
+      },
+      {
+        "no": 12,
+        "type": "V",
+        "hit": null,
+        "error": "HTTP Error 500: Internal Server Error"
+      },
+      {
+        "no": 13,
+        "type": "V",
+        "hit": true,
+        "empty": false,
+        "latency": 55.13,
+        "tokens": 1017,
+        "answer_head": "**起始胰岛素治疗（可联合二甲双胍）**，而非单纯口服药起始。\n\n具体依据：\n\n- **中国指南（CDS）**：新诊断T"
+      },
+      {
+        "no": 14,
+        "type": "V",
+        "hit": true,
+        "empty": false,
+        "latency": 91.01,
+        "tokens": 2493,
+        "answer_head": "# 老年糖尿病患者血糖控制目标的调整\n\n**核心原则：个体化分层，避免低血糖优先于强化降糖。**\n\n## 按健康状况分层"
+      },
+      {
+        "no": 15,
+        "type": "V",
+        "hit": null,
+        "error": "HTTP Error 500: Internal Server Error"
+      },
+      {
+        "no": 16,
+        "type": "X",
+        "hit": true,
+        "empty": false,
+        "latency": 79.17,
+        "tokens": 1818,
+        "answer_head": "## 初始治疗建议\n\n**首选：生活方式干预 + 二甲双胍单药**\n\n**1. 基础治疗**\n- 医学营养治疗 + 每周"
+      },
+      {
+        "no": 17,
+        "type": "X",
+        "hit": true,
+        "empty": false,
+        "latency": 53.61,
+        "tokens": 1476,
+        "answer_head": "## 建议\n\n达格列净属 **SGLT2抑制剂**，通过抑制肾小管重吸收葡萄糖、增加尿糖排泄降糖，尿糖增多是反复泌尿生殖"
+      },
+      {
+        "no": 18,
+        "type": "X",
+        "hit": null,
+        "error": "HTTP Error 500: Internal Server Error"
+      },
+      {
+        "no": 19,
+        "type": "X",
+        "hit": false,
+        "empty": true,
+        "latency": 10.8,
+        "tokens": 59,
+        "answer_head": ""
+      },
+      {
+        "no": 20,
+        "type": "X",
+        "hit": true,
+        "empty": false,
+        "latency": 64.24,
+        "tokens": 1052,
+        "answer_head": "**第一步：立即静脉注射50%葡萄糖40–60 mL（缓慢静推），继以5%–10%葡萄糖持续静滴维持。**\n\n依据与要点"
+      }
+    ],
+    "hit_rate": 0.65,
+    "answered": 16,
+    "avg_latency": 36.8,
+    "total_tokens": 13102
+  }
+}

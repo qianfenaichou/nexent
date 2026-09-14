@@ -5,4 +5,5 @@
 |--------|------|------|------|-----------|------------|------|------|------|
 | (自动写入，人工只补备注) | | | | | | | | |
 
-| 51dd7d9e-a6e7-56f6-a150-190ba594b192 | 2026-09-14 17:19 | 本体 | {"mid": "qwen3-32b", "large": "deepseek-v3", "small": "qwen3-8b"} | 0 | 0 | 0 | 1.363 | build_ontology v0 echo-mode llm_calls=1 (dry_run=False) |
+| 51dd7d9e-a6e7-56f6-a150-190ba594b192 | 2026-09-14 17:19 | 本体 | {"mid": "qwen3-32b", "large": "deepseek-v3", "small": "qwen3-8b"} | 0 | 0 | 0 | 1.363 | build_ontology v0 echo-mode llm_calls=1 (dry_run=False) || ingest-20260914224108 | 2026-09-14 22:41 | 语料摄取 | {} | 0 | 0 | 0 | 1.327 | ingest_assets registered=0 skipped=39 uploaded=0 indexed=0 |
+| ingest-20260915011057 | 2026-09-15 01:10 | 语料摄取 | {} | 0 | 0 | 0 | 1.71 | ingest_assets registered=19 skipped=39 uploaded=0 indexed=0 |

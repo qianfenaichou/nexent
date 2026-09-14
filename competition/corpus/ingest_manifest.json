@@ -1,0 +1,246 @@
+{
+  "report": {
+    "run_id": "ingest-20260915011057",
+    "registry": "../competition/corpus/registry.csv",
+    "rows_total": 58,
+    "rows_valid": 58,
+    "registered": 19,
+    "skipped": 39,
+    "lineage_applied": 2,
+    "uploaded": 0,
+    "indexed": 0,
+    "ingest_errors": [],
+    "parse_report": [
+      {
+        "asset_no": "guide-2020",
+        "parse_quality": null
+      },
+      {
+        "asset_no": "guide-2024",
+        "parse_quality": null
+      },
+      {
+        "asset_no": "guide-nutri-2022",
+        "parse_quality": null
+      },
+      {
+        "asset_no": "guide-pc-2022",
+        "parse_quality": null
+      },
+      {
+        "asset_no": "guide-elderly-2024",
+        "parse_quality": null
+      },
+      {
+        "asset_no": "guide-elderly-2021",
+        "parse_quality": null
+      },
+      {
+        "asset_no": "cp-t1dm-2009",
+        "parse_quality": null
+      },
+      {
+        "asset_no": "cp-t2dm-county-2016",
+        "parse_quality": null
+      },
+      {
+        "asset_no": "cp-t1dm-county-2016",
+        "parse_quality": null
+      },
+      {
+        "asset_no": "cp-t2dm-highrisk-2016",
+        "parse_quality": null
+      },
+      {
+        "asset_no": "cp-t2dm-compl-2016",
+        "parse_quality": null
+      },
+      {
+        "asset_no": "cp-neuropathy-2016",
+        "parse_quality": null
+      },
+      {
+        "asset_no": "cp-foot-2016",
+        "parse_quality": null
+      },
+      {
+        "asset_no": "cp-hypoglycemia-2016",
+        "parse_quality": null
+      },
+      {
+        "asset_no": "std-glucometer-ws781",
+        "parse_quality": null
+      },
+      {
+        "asset_no": "std-glucose-monitor-2021",
+        "parse_quality": null
+      },
+      {
+        "asset_no": "edu-core-2020",
+        "parse_quality": null
+      },
+      {
+        "asset_no": "edu-insulin-2022",
+        "parse_quality": null
+      },
+      {
+        "asset_no": "edu-bgm-myths-2025",
+        "parse_quality": null
+      },
+      {
+        "asset_no": "edu-discern-2023",
+        "parse_quality": null
+      },
+      {
+        "asset_no": "edu-lifestyle-2023",
+        "parse_quality": null
+      },
+      {
+        "asset_no": "edu-who-factsheet",
+        "parse_quality": null
+      },
+      {
+        "asset_no": "drug-metf-tab",
+        "parse_quality": null
+      },
+      {
+        "asset_no": "drug-metf-er-gxz",
+        "parse_quality": null
+      },
+      {
+        "asset_no": "drug-metf-er-gn",
+        "parse_quality": null
+      },
+      {
+        "asset_no": "drug-gliclazide",
+        "parse_quality": null
+      },
+      {
+        "asset_no": "drug-glipizide",
+        "parse_quality": null
+      },
+      {
+        "asset_no": "drug-miglitol",
+        "parse_quality": null
+      },
+      {
+        "asset_no": "drug-saxa",
+        "parse_quality": null
+      },
+      {
+        "asset_no": "drug-vilda",
+        "parse_quality": null
+      },
+      {
+        "asset_no": "drug-empa",
+        "parse_quality": null
+      },
+      {
+        "asset_no": "drug-cana",
+        "parse_quality": null
+      },
+      {
+        "asset_no": "drug-lira",
+        "parse_quality": null
+      },
+      {
+        "asset_no": "drug-semaglu",
+        "parse_quality": null
+      },
+      {
+        "asset_no": "drug-dula",
+        "parse_quality": null
+      },
+      {
+        "asset_no": "drug-exena",
+        "parse_quality": null
+      },
+      {
+        "asset_no": "drug-glargine",
+        "parse_quality": null
+      },
+      {
+        "asset_no": "drug-detemir",
+        "parse_quality": null
+      },
+      {
+        "asset_no": "drug-repagli",
+        "parse_quality": null
+      },
+      {
+        "asset_no": "drug-nategli",
+        "parse_quality": null
+      }
+    ],
+    "wall_seconds": 1.71,
+    "dry_run": false
+  },
+  "registered": {
+    "registered": 19,
+    "skipped": 39,
+    "ids": {
+      "guide-2020": "ec300a7f-f6d7-42eb-b76e-50f4a7622b48",
+      "guide-2024": "6571e51a-62d0-4e78-9955-468da238b080",
+      "guide-nutri-2022": "22ad653a-0686-45b2-9323-987fefd71021",
+      "guide-pc-2022": "a233a364-8a82-4da2-82f0-69aa7334fdab",
+      "guide-pc-manual-2022": "e293a5aa-901f-4dea-973e-14470e27ba95",
+      "guide-elderly-2024": "644d5f82-d558-40f6-8242-26fc9f5d0910",
+      "guide-elderly-2021": "44201cdb-7328-4a54-9a58-9640c35ff027",
+      "guide-foot-2019-p1": "22aa5138-9618-4b1d-b714-2580d98fa60f",
+      "guide-foot-2019-p2": "3f7c4604-2f38-49b8-8a60-2f673ada5da4",
+      "guide-foot-2024": "86a20e22-c053-4f3c-a09e-c51588774188",
+      "guide-foot-path-2023": "e602b2a9-afc2-4a2b-9428-de85065293fd",
+      "cp-t2dm-2009": "4fa5d9c1-9727-478c-9690-ac7ee21e49fa",
+      "cp-t1dm-2009": "b47e4973-5783-49e2-bc3f-1e7465027fe7",
+      "cp-t2dm-county-2016": "868075ba-48f4-45f8-bff2-01231f16670e",
+      "cp-t1dm-county-2016": "150b02ce-7048-42c1-8ca3-3d11a71b77cc",
+      "cp-t2dm-highrisk-2016": "d269d439-3c53-4cd3-b2d8-06bcc644d6a5",
+      "cp-t2dm-compl-2016": "5378f36e-88ae-4c8c-b484-12840d989931",
+      "cp-neuropathy-2016": "cb0d61cf-ec26-4c8b-87b6-aca8ec70f5dd",
+      "cp-foot-2016": "3de59601-9cfd-4eb8-8074-9c1495cdbc72",
+      "cp-hypoglycemia-2016": "fdbeaf46-760d-4481-85cd-e85c8f120022",
+      "std-glucometer-ws781": "b31194bc-8d0b-4ac2-9be6-5225097cd67d",
+      "std-glucose-monitor-2021": "e332b998-4b59-46f3-ab2e-0301073c0c8a",
+      "edu-core-2020": "f47c4567-c2d3-421a-a99c-0d91de20b7b8",
+      "edu-insulin-2022": "cb059f35-b52a-4b88-b84d-b9274e6da26b",
+      "edu-bgm-myths-2025": "936778d6-222f-41e3-96cb-0ffa6cb99e13",
+      "edu-discern-2023": "54017c30-b49e-4a6c-b446-04ff31d3cbb8",
+      "edu-lifestyle-2023": "338224f5-4bf5-4a40-a3c3-035946d80203",
+      "edu-foot-2026": "287f3164-358d-4a15-94b1-6bf4c00ec3f6",
+      "edu-basic-dzjkb": "d85cbcff-76f2-41b0-9f45-1e43a6cc8462",
+      "edu-who-factsheet": "97d13116-9049-4886-95ac-1fa3ffe7d1e7",
+      "drug-metf-tab": "a6d2a24d-93e0-4e3f-9ffb-4415feaf5aeb",
+      "drug-metf-er-gxz": "cc890c2b-e8f2-434e-a4fb-3ffcc9f381d7",
+      "drug-metf-er-gn": "4f6e2be5-9d96-49c2-b86b-84f31b76a67e",
+      "drug-glimep": "7bf3e9da-af57-43c6-8ea1-c35e62e300a2",
+      "drug-gliclazide": "e5d0cb49-602c-4f50-9885-37b465dee64e",
+      "drug-glipizide": "796acad7-1f9f-45dd-8582-dc403fad3037",
+      "drug-pioglita": "f7e32055-37bd-4038-b860-eee3af70405a",
+      "drug-acarbose": "2e255516-e0f8-481e-9208-0f8aa968253e",
+      "drug-voglibose": "2149e046-6ddc-4dd0-8faf-4ef0b1aa43c4",
+      "drug-miglitol": "3f2438be-ddc8-4747-b190-a80b2e09401d",
+      "drug-sita": "bee6f843-3c4a-41e1-a67c-c5ba1d889521",
+      "drug-saxa": "022adc8d-bf7a-4008-a05d-86957a54a9e6",
+      "drug-lina": "e95d09bd-2363-4b84-b368-b017a07b9f22",
+      "drug-vilda": "e3d296c0-86bb-4f3b-9d51-e2227bf11907",
+      "drug-dapa-az": "f0de6a52-be9c-4faf-a551-7443b63503ea",
+      "drug-dapa-fld": "2e926ee5-cfbf-42e2-a3c5-ffec43ab8abb",
+      "drug-empa": "d194bbb8-657a-408e-886c-cbaddb9b1436",
+      "drug-cana": "b0f66994-37b7-450e-b27f-1cb2fe347d07",
+      "drug-lira": "467ce2ae-497d-4776-bd93-d510d7363af2",
+      "drug-semaglu": "303a95dc-16c0-45a1-a2ba-9d551d56af6b",
+      "drug-dula": "008ce479-b17a-4545-b754-28701376ed08",
+      "drug-exena": "fb23fe75-3b77-41ef-8e4c-58c3356b3913",
+      "drug-aspart30": "0df96b55-741e-435b-aef0-55890818f894",
+      "drug-glargine": "5d9990c9-3169-4f5b-87e9-f403c53811de",
+      "drug-degludec": "01ec3983-6448-4f52-8525-f3ef8b94bac5",
+      "drug-detemir": "199b8f22-6844-4f1d-8aba-7dff96346ebf",
+      "drug-repagli": "bd40d00e-805c-4166-aa91-2ad3dc1c4a27",
+      "drug-nategli": "da8a76eb-94f7-4e8f-8b47-2d5a806d55fe"
+    },
+    "errors": []
+  },
+  "lineage_applied": 2,
+  "uploads": [],
+  "run_at": "2026-09-15T01:10:57"
+}
