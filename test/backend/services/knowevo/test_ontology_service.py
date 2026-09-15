@@ -30,6 +30,7 @@ for _p in (str(_REPO_ROOT / "backend"), ):
         sys.path.insert(0, _p)
 
 import pytest
+
 from services.knowevo.ontology_service import (
     AUTO_ACCEPT_LINE,
     ONTOLOGY_SUMMARY_TOKEN_LIMIT,
@@ -461,11 +462,13 @@ class TestPostgresRound:
         trip the idempotency guard and make this test flaky - clean the
         fixture tenants' rows first (self-cleaning integration test).
         """
-        from services.knowevo.ontology_service import PgStore
         from database.knowevo_db import (
             OntologyChangeProposal as OCP,
+        )
+        from database.knowevo_db import (
             _get_db_session,
         )
+        from services.knowevo.ontology_service import PgStore
         with _get_db_session() as session:
             session.query(OCP).filter(
                 OCP.tenant_id.in_([TENANT_A, TENANT_B])).delete(
