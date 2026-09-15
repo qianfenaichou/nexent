@@ -1,0 +1,1307 @@
+<!doctype html>
+<html>
+
+<head>
+    <link rel="shortcut icon" href="https://www.dzjkb.org.cn/favicon.ico" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link href="/skin/static/css/common.css" rel="stylesheet">
+    <link rel="stylesheet" href="/skin/static/css/layui.css">
+    <script src="https://js.cdn.aliyun.dcloud.net.cn/dev/uni-app/uni.webview.1.5.2.js"></script>
+
+    <link rel="stylesheet" href="/skin/static/css/dl_common.css">
+
+    <meta http-equiv="Content-Security-Policy" content="default-src * 'self' 'unsafe-inline' 'unsafe-eval' data: gap: content: https://www.dzjkb.org.cn;
+    media-src * blob: 'self' http://* 'unsafe-inline' 'unsafe-eval';
+    style-src * 'self' 'unsafe-inline';
+    img-src * 'self' data: content:;
+    connect-src * blob:;">
+
+    <link rel="stylesheet" href="/skin/static/css/iconfont.css">
+    <title>糖尿病科普知识</title>
+    <meta name="keywords" content="作者：​伍小桃   单位：成都市温江区人民医院" />
+    <meta name="description" content="糖尿病科普知识" />
+    <script type="text/javascript" src="https://res.wx.qq.com/open/js/jweixin-1.6.0.js"></script>
+    <script src="/js/jquery-2.2.3.min.js"></script>
+    <script src="/js/qrcode.min.js"></script>
+   <style>
+.text_content p img{
+ margin-left:0!important;
+}
+</style>
+    <script>
+    //if(curhj.indexOf("h5")>0 && curhj.indexOf("true")>0)
+    //{
+        var url = encodeURIComponent(window.location.href.split('#')[0]);//分享成功之后再次分享，微信会再url附带额外参数造成二次分享签名错误，这里处理下避免config：invalid signature签名失效
+        $.ajax({
+            type: "get",
+            url: "https://www.dzjkb.org.cn/api/getshare/getticket?url=" + url,//替换网址，xxx根据自己jssdk文件位置修改
+            dataType: "json",
+            //jsonp: "callback",
+            //jsonpCallback: "success_jsonpCallback",
+            success: function (data) {
+                wx.config({
+                    debug: false, // 开启调试模式,调用的所有api的返回值会在客户端alert出来，若要查看传入的参数，可以在pc端打开，参数信息会通过log打出，仅在pc端时才会打印
+                    appId: data.appId,
+                    timestamp: data.timestamp,
+                    nonceStr: data.nonceStr,
+                    signature: data.signature,
+                    jsApiList: [
+                        "updateAppMessageShareData",
+                        "updateTimelineShareData",
+                        "onMenuShareTimeline", //分享给好友
+                        "onMenuShareAppMessage", //分享到朋友圈
+                        "onMenuShareQQ",  //分享到QQ
+                        "onMenuShareWeibo" //分享到微博
+                    ]
+                });
+            },
+            error: function (data) {
+                //alert(JSON.stringify(data));
+                //alert("连接失败！");
+            }
+        });
+        wx.ready(function () {
+            var imgurl = 'https://www.dzjkb.org.cn/images/logo.png';
+            var title = document.title;
+            var desc = $("meta[name=keywords]").attr("content") + " " + $("meta[name=description]").attr("content");
+            var link = window.location.href.split('#')[0];
+            wx.updateAppMessageShareData({
+                title: title, // 分享标题
+                desc: desc, // 分享描述
+                link: link, // 分享链接，该链接域名或路径必须与当前页面对应的公众号JS安全域名一致
+                imgUrl: imgurl, // 分享图标
+                success: function () {
+                    // 用户确认分享后执行的回调函数
+                    //alert('已分享');
+                },
+                cancel: function () {
+                    // 用户取消分享后执行的回调函数
+                    //alert('已取消');
+                },
+                fail: function (res) {
+                    //alert(JSON.stringify(res));
+                }
+            });
+            wx.updateTimelineShareData({
+                title: title, // 分享标题
+                desc: desc, // 分享描述
+                link: link, // 分享链接，该链接域名或路径必须与当前页面对应的公众号JS安全域名一致
+                imgUrl: imgurl, // 分享图标
+                success: function () {
+                    // 用户确认分享后执行的回调函数
+                    //alert('已分享');
+                },
+                cancel: function () {
+                    // 用户取消分享后执行的回调函数
+                    //alert('已取消');
+                },
+                fail: function (res) {
+                    //alert(JSON.stringify(res));
+                }
+            });
+            wx.onMenuShareTimeline({
+                title: title, // 分享标题
+                desc: desc, // 分享描述
+                link: link, // 分享链接
+                imgUrl: imgurl, // 分享图标
+                success: function () {
+                    // 用户确认分享后执行的回调函数
+                    alert('已分享');
+                },
+                cancel: function () {
+                    // 用户取消分享后执行的回调函数
+                    alert('已取消');
+                },
+                fail: function (res) {
+                    //alert(JSON.stringify(res));
+                }
+            });
+
+            wx.onMenuShareAppMessage({
+                title: title, // 分享标题
+                desc: desc, // 分享描述
+                link: link, // 分享链接
+                imgUrl: imgurl, // 分享图标
+                type: '', // 分享类型,music、video或link，不填默认为link
+                dataUrl: '', // 如果type是music或video，则要提供数据链接，默认为空
+                success: function () {
+                    // 用户确认分享后执行的回调函数
+                    alert('已分享');
+                },
+                cancel: function () {
+                    // 用户取消分享后执行的回调函数
+                    alert('已取消');
+                },
+                fail: function (res) {
+                    //alert(JSON.stringify(res));
+                }
+            });
+
+            wx.onMenuShareQQ({
+                title: title, // 分享标题
+                desc: desc, // 分享描述
+                link: link, // 分享链接
+                imgUrl: imgurl, // 分享图标
+                success: function () {
+                    // 用户确认分享后执行的回调函数
+                    alert('已分享');
+                },
+                cancel: function () {
+                    // 用户取消分享后执行的回调函数
+                    alert('已取消');
+                },
+                fail: function (res) {
+                   // alert(JSON.stringify(res));
+                }
+            });
+        });
+    //}
+    </script>
+<script>
+    var curhj="";
+    var title = document.title;
+    console.log(title);
+    document.addEventListener('UniAppJSBridgeReady', function () {
+        uni.postMessage({
+            data: {
+                title: title,
+                action: 'message',
+                flag: true
+            }
+        });
+        uni.getEnv(function (res) {
+            curhj=JSON.stringify(res);
+            console.log('当前环境：' + curhj);
+        });
+    });
+    function stringToHex(str) {
+  let hex = '';
+  for (let i = 0; i < str.length; i++) {
+    hex += str.charCodeAt(i).toString(16);
+  }
+  return hex;
+}
+</script>
+</head>
+
+<body>
+    <div class="logo" style="width:160px;">
+  <div class="logo1" id="logo">
+
+  <a href="//paper.dzjkb.org.cn">  <img style="width: 160px;height:100px;" src="/skin/static/img/logov3.png" alt=""></a>
+  </div>
+  <div class="logo2">
+   
+   <a href="">
+  <img src="/d/file/p/2024/03-12/228a8dd621ce6186e804fa7416be533b1.png" alt="" style="height:100px;"></a>
+    </li>
+
+  </div>
+</div>
+
+<header>
+  <div class="header">
+    <div class="navigation">
+ 
+    <div ><a href="/">网站首页</a></div>
+<div id="tabnav_btn_1" ><a href="/dazhongguancha/">大众观察</a></div><div id="tabnav_btn_2" ><a href="/jiankangshuzibao/">健康数字报</a></div><div id="tabnav_btn_3" ><a href="/dazhongkepu/">健康科普</a></div><div ><a href="/app/2023-03-03/3389.html">APP 小程序</a></div>
+
+      <!-- <div><a href="/">大众观察</a></div>
+      <div><a href="#">大众观察</a></div>
+      <div><a href="#">大众观察</a></div> -->
+    </div>
+<div class="search">
+        <form action='/e/search/index.php' method="post" name="search_news" id="search_news">
+          <input type="hidden" name="show" value="title,smalltext,newstext,writer" />
+          <div class="search_input">
+            <input style="background-color: rgba(255, 255, 255, 0);" name="keyboard" type="text" id="keyboard" value=""
+              placeholder="请输入关键词">
+              <button type="submit"><i class="icon iconfont icon-sousuoxiao"></i></button>
+          </div>
+        </form>
+      </div>
+  </div>
+</header>
+
+<div class="navbar">
+  <div class="phone_logo">
+    <div>
+      <img src="/skin/static/img/大众健康报logo .png" alt="">
+    </div>
+  </div>
+  <!-- 复选框的id属性值和label元素的for属性值相同的话 那么就可以通过label元素选中复选框 -->
+  <input type="checkbox" id="nav" /><label for="nav"></label>
+  <ul>
+    <li class="curr" id="tabnav_btn_0" onmouseover="tabit(this)"><a href="/">网站首页</a></li>
+          <li id="tabnav_btn_1" ><a href="/dazhongguancha/">大众观察</a></li><li id="tabnav_btn_2" ><a href="/jiankangshuzibao/">健康数字报</a></li><li id="tabnav_btn_3" ><a href="/dazhongkepu/">健康科普</a></li> </ul>
+  </ul>
+</div>
+<style>
+ @import url(/skin/static/css/header.css)
+
+</style>
+    <div class="daohanglan">
+        <div class="pos1">
+           <a href="/">大众健康网</a>&nbsp;>&nbsp;<a href="/dazhongkepu/">健康科普</a>        </div>
+        <div class="hot">
+            <span>热点排行</span>
+        </div>
+    </div>
+    <div class="t_content">
+        <div class="d_text">
+            <div class="d_content">
+                <div class="text_title">
+                    糖尿病科普知识                </div>
+                <div class="fxbox" style="padding: 10px 0 20px 40%;">
+               <div onclick="shareTo('wx')" class='si wx' style="cursor:pointer;">
+                    <img src="/skin/static/img/wx.png">
+                </div>
+                <div onclick="shareTo('sina')" class='si sina' style="cursor:pointer;">
+                    <img src="/skin/static/img/1.png">
+                </div>
+                <div onclick="shareTo('qzone')" class='si qzone' style="cursor:pointer;">
+                    <img src="/skin/static/img/2.png">
+                </div>
+                <div onclick="shareTo('qq')" class='si qq' style="cursor:pointer;">
+                    <img src="/skin/static/img/3.png">
+                </div>
+            </div>
+                <div class="text_time">
+                    <div>2025-07-31 00:00:00</div>
+                    <div>作者：​伍小桃</div>
+                    <div> 作者单位：成都市温江区人民医院 </div>
+                    <div id="djcs">  </div>
+<script>
+if("4"=="4" || "4"=="35"){
+ var bm=stringToHex(btoa("188284"));
+ document.write("<div> <a id='fbzs' href='https://paper.dzjkb.org.cn/tgzs/"+bm+".html' style='color:red;'>[发表证书]</a></div>");
+}
+</script>
+                </div>
+                <div class="text_content" id="text_content" style="line-height: 30px;">
+                    <p>糖尿病，这个被称为“甜蜜的杀手”的慢性疾病，正悄然影响着全球数亿人的健康。在中国，糖尿病的发病率逐年上升，已成为威胁公众健康的主要慢性病之一。然而，许多人对糖尿病的认识仍然停留在“血糖高”这一表面现象，甚至存在不少误解。今天，我们就来深入科普糖尿病的相关知识，帮助大家科学认识、预防和管理这种疾病。</p>
+<p>什么是糖尿病</p>
+<p>糖尿病是一种由于胰岛素分泌不足或胰岛素作用障碍，导致血糖长期高于正常水平的代谢性疾病。简单来说，胰岛素是人体内调节血糖的重要激素，当它的功能受损时，血糖就会升高，进而引发一系列健康问题。</p>
+<p>糖尿病主要分为三种类型：1型糖尿病：多见于儿童和青少年，由于自身免疫系统破坏胰岛β细胞，导致胰岛素分泌不足。2型糖尿病：最为常见，占糖尿病患者的90%以上，与遗传、肥胖、不良生活方式等因素密切相关。妊娠糖尿病：指孕妇在妊娠期间出现的血糖异常，通常在分娩后恢复正常，但未来患2型糖尿病的风险较高。</p>
+<p>糖尿病的典型症状</p>
+<p>糖尿病的早期症状可能并不明显，但随着病情发展，患者可能会出现“三多一少”的典型表现多饮：血糖升高导致血液渗透压增高，刺激大脑产生口渴感。多尿：高血糖使肾脏过滤更多的葡萄糖，导致尿量增加。多食：由于胰岛素不足，葡萄糖无法有效进入细胞供能，身体误以为“饥饿”，导致食欲增加。体重下降：尽管食量增加，但葡萄糖无法被充分利用，身体开始分解脂肪和蛋白质供能，导致体重减轻。</p>
+<p>此外，部分患者还可能出现疲劳、视力模糊、皮肤瘙痒、伤口愈合缓慢等症状。</p>
+<p>糖尿病的危害</p>
+<p>糖尿病本身并不可怕，可怕的是它带来的并发症。长期高血糖会损害全身多个器官，导致严重的健康问题。心血管疾病：糖尿病患者患冠心病、中风的风险显著增加。肾脏病变：高血糖会损伤肾小球，导致糖尿病肾病，严重时可能发展为肾衰竭。神经病变：糖尿病可引起周围神经病变，导致手脚麻木、疼痛，甚至影响消化和泌尿系统功能。眼部病变：糖尿病视网膜病变是导致失明的主要原因之一。足部问题：高血糖会损害足部神经和血管，增加感染和溃疡的风险，严重时可能需要截肢。</p>
+<p>糖尿病的诊断与监测</p>
+<p>糖尿病的诊断主要依靠血糖检测，常用的方法包括空腹血糖：空腹8小时以上测得的血糖值，≥7.0 mmol/L可诊断为糖尿病。餐后2小时血糖：餐后2小时测得的血糖值，≥11.1 mmol/L可诊断为糖尿病。糖化血红蛋白（HbA1c）：反映过去2~3个月的平均血糖水平，≥6.5%可诊断为糖尿病。</p>
+<p>对于高危人群（如肥胖、家族史、高血压等），建议定期进行血糖筛查，早发现、早干预。</p>
+<p>糖尿病的预防与管理</p>
+<p>虽然糖尿病无法根治，但通过科学的生活方式干预和规范治疗，可以有效控制血糖，预防并发症的发生。</p>
+<p>1.健康饮食。控制总热量：避免暴饮暴食，保持合理体重。低糖、低脂、高纤维：多吃蔬菜、全谷物、豆类，减少精制糖和饱和脂肪的摄入。定时定量：避免暴饮暴食，规律进餐有助于血糖稳定。</p>
+<p>2.适量运动。每周至少进行150分钟中等强度的有氧运动（如快走、游泳、骑自行车）。结合力量训练，增强肌肉对葡萄糖的利用能力。</p>
+<p>3.控制体重。肥胖是2型糖尿病的重要危险因素，减重5%~10%可显著改善血糖水平。</p>
+<p>4.戒烟限酒。吸烟和过量饮酒会加重胰岛素抵抗，增加糖尿病并发症的风险。</p>
+<p>5.定期监测。糖尿病患者应定期监测血糖、血压、血脂等指标，并在医生指导下调整治疗方案。</p>
+<p>6.药物治疗。对于无法通过生活方式控制血糖的患者，医生可能会采用降糖药物或胰岛素治疗。患者应严格遵医嘱用药，不可自行停药或调整剂量。</p>
+<p>糖尿病的常见误区</p>
+<p>“糖尿病是老年病”：近年来，糖尿病呈现年轻化趋势，不良生活方式是重要诱因。</p>
+<p>“血糖正常就不用管”：即使血糖暂时正常，高危人群仍需定期筛查，预防糖尿病发生。</p>
+<p>“糖尿病只要吃药就行”：药物治疗只是辅助，健康的生活方式才是根本。</p>
+<p>糖尿病虽然是一种慢性疾病，但并不可怕。只要我们科学认识、积极预防、规范管理，就能有效控制血糖，远离并发症的威胁。希望这篇文章能帮助大家更好地了解糖尿病，守护自己和家人的健康。</p>
+
+                </div>
+            </div>
+            <div class="fxbox">
+                <div>分享到：</div>
+                <div onclick="shareTo('wx')" class='si wx' style="cursor:pointer;">
+                    <img src="/skin/static/img/wx.png">
+                </div>
+                <div onclick="shareTo('sina')" class='si sina' style="cursor:pointer;">
+                    <img src="/skin/static/img/1.png">
+                </div>
+                <div onclick="shareTo('qzone')" class='si qzone' style="cursor:pointer;">
+                    <img src="/skin/static/img/2.png">
+                </div>
+                <div onclick="shareTo('qq')" class='si qq' style="cursor:pointer;">
+                    <img src="/skin/static/img/3.png">
+                </div>
+            </div>
+            <div class="pre_next">
+                <div class="pre_url truncate ...">
+
+                    <!--上一篇-->
+                                        <a href="/dazhongkepu/dazhongkepu/c902821665f0423a00d45d66b2fa469f.html">上一篇:一到换季就哮喘？孩子呼吸在求救</a>
+                                                        </div>
+                <div class="next_url truncate ...">
+                    <!--下一篇-->
+                                        下一篇:很抱歉没有了                </div>
+            </div>
+
+            <div class="banquan">
+                <div>版权声明：</div>
+                <div>
+                    1、大众健康报网页所涉及的任何资料（包括但不限于文字报导、图片、声音、录像、图表、广告、域名、软件、程序、版面设计、专栏目录与名称、内容分类标准）的版权均属大众健康报网和资料提供者所有。未经大众健康报网书面许可，任何人不得引用、复制、转载、摘编或以其他任何方式非法使用大众健康报网的上述内容。对于有上述行为者，大众健康报网将保留追究其法律责任的权利。
+                </div>
+                <div> 2、凡本网注明“来源：大众健康报”或带有大众健康报LOGO、水印的所有文字、图片和音频视频稿件，版权均属大众健康报网所有，任何媒体、网站或单位和个人未经本网书面授权不得转载、链接、转贴或以其他方式复制发表。</div>
+            </div>
+        </div>
+        <div class="dl_common">
+            <!--   -->
+            <div class="lunbotu">
+    <div class="wrap">
+      <ul class="list">
+   
+ 
+
+        <li class="item ">   
+     <a href="/rdph/2024-04-02/61348.html" ><img  src="/d/file/p/2024/04-02/4da09321d56d196d49396a6e8e5c4843.png"
+          alt="" /></a>
+      </li>
+
+          
+
+
+
+ 
+        
+
+        <li class="item ">   
+     <a href="/rdph/2024-03-12/57914.html" ><img  src="/d/file/p/2024/03-12/ff002d58721846deff3c80de3752d3cc.png"
+          alt="" /></a>
+      </li>
+
+          
+
+
+
+ 
+        
+
+        <li class="item ">   
+     <a href="/rdph/2024-01-09/40698.html" ><img  src="/d/file/p/2024/01-08/2bbc2a0abab154dabcefdcb74239e07d.jpg"
+          alt="" /></a>
+      </li>
+
+          
+
+
+
+ 
+        
+
+        <li class="item ">   
+     <a href="/rdph/2024-01-05/39580.html" ><img  src="/d/file/p/2024/01-05/22a740b571293459fc05a3b8f3a4f73c.png"
+          alt="" /></a>
+      </li>
+
+          
+
+
+
+ 
+        
+
+        <li class="item ">   
+     <a href="/rdph/2023-09-15/10517.html" ><img  src="/d/file/p/2023/09-15/c9a3197300de1b7a4ecd1eca861e9603.png"
+          alt="" /></a>
+      </li>
+
+          
+
+
+
+ 
+              </ul>
+      <button type="button" class="btn" id="goPre"></button>
+      <button type="button" class="btn" id="goNext"></button>
+    </div>
+    <div class="bar-bottom">
+      <ul class="bar-title">
+        
+  <li class="title title_hidden truncate ..." data-index="61348">  <a href="/rdph/2024-04-02/61348.html" target="_blank">四川举办春季医药卫生人才双选会</a></li>
+
+
+  
+
+
+  <li class="title title_hidden truncate ..." data-index="57914">  <a href="/rdph/2024-03-12/57914.html" target="_blank">徐斌带队前往成都市、眉山市、乐</a></li>
+
+
+  
+
+
+  <li class="title title_hidden truncate ..." data-index="40698">  <a href="/rdph/2024-01-09/40698.html" target="_blank">助力健康四川建设四川省卫生健康</a></li>
+
+
+  
+
+
+  <li class="title title_hidden truncate ..." data-index="39580">  <a href="/rdph/2024-01-05/39580.html" target="_blank">第15批援圣多美和普林西比医疗队</a></li>
+
+
+  
+
+
+  <li class="title title_hidden truncate ..." data-index="10517">  <a href="/rdph/2023-09-15/10517.html" target="_blank">缅怀“中国公卫之父”学习传承奉</a></li>
+
+
+  
+
+      </ul>
+      <ul class="pointlist">
+  
+ <li class="point " data-index="61348"></li>
+
+
+
+ <li class="point " data-index="57914"></li>
+
+
+
+ <li class="point " data-index="40698"></li>
+
+
+
+ <li class="point " data-index="39580"></li>
+
+
+
+ <li class="point " data-index="10517"></li>
+
+
+      </ul>
+    </div>
+  </div>
+  <div class="tj-reed">
+    <div class="box-area">
+        <div class="first-point">
+        </div>
+        <div class="tpye">
+            <div>
+                推荐阅读
+            </div>
+        </div>
+    </div>
+
+    <div class="tj-detail">
+
+ <div class="box-area1">
+            <div class="cline"></div>
+            <div class="pointY">
+            </div>
+            <div class="tj-content">
+                <div class="tj-time">2023-11-08 </div>
+                <div class="tj-title truncate">
+                   <a href="/dazhongkepu/59629.html" >医院卫生管理如何人性化发展</a> <br>
+                </div>
+            </div>
+        </div>
+
+ <div class="box-area1">
+            <div class="cline"></div>
+            <div class="pointY">
+            </div>
+            <div class="tj-content">
+                <div class="tj-time">2023-10-31 </div>
+                <div class="tj-title truncate">
+                   <a href="/dazhongkepu/21771.html" >温通刮痧好处多！</a> <br>
+                </div>
+            </div>
+        </div>
+
+ <div class="box-area1">
+            <div class="cline"></div>
+            <div class="pointY">
+            </div>
+            <div class="tj-content">
+                <div class="tj-time">2024-07-12 </div>
+                <div class="tj-title truncate">
+                   <a href="/dazhongkepu/93944.html" >体验针灸，感受身体的奇妙变化</a> <br>
+                </div>
+            </div>
+        </div>
+
+ <div class="box-area1">
+            <div class="cline"></div>
+            <div class="pointY">
+            </div>
+            <div class="tj-content">
+                <div class="tj-time">2025-06-05 </div>
+                <div class="tj-title truncate">
+                   <a href="/hlyf/2025-06-05/153492.html" >四川泰康医院消化内科主任赵晓晏：深耕消化领域42年，以技术创新筑牢消化道健康防线</a> <br>
+                </div>
+            </div>
+        </div>
+
+ <div class="box-area1">
+            <div class="cline"></div>
+            <div class="pointY">
+            </div>
+            <div class="tj-content">
+                <div class="tj-time">2024-08-06 </div>
+                <div class="tj-title truncate">
+                   <a href="/dazhongkepu/dazhongkepu/5c07a0ebacc0e8702660add384614ade.html" >百日咳，真的咳百日吗</a> <br>
+                </div>
+            </div>
+        </div>
+
+
+       
+
+    </div>
+  </div>
+  <div class="guanggao">
+    <img src="/skin/static/img/详情页.png" alt="">
+  </div>
+  <script>
+    var items = document.getElementsByClassName('item');
+    var goPreBtn = document.getElementById('goPre');
+    var goNextBtn = document.getElementById('goNext');
+    var points = document.getElementsByClassName('point');
+    var titles = document.getElementsByClassName('title');
+    var index = 1;
+
+    var clearActive = function () {
+      for (var i = 0; i < items.length; i++) {
+        items[i].className = 'item';
+      }
+      for (var i = 0; i < points.length; i++) {
+        points[i].className = 'point';
+      }
+      for (var i = 0; i < titles.length; i++) {
+        titles[i].className = 'title title_hidden truncate ...';
+      }
+    }
+
+    var goIndex = function () {
+      clearActive();
+      items[index - 1].className = 'item active';
+      points[index - 1].className = 'point active';
+      titles[index - 1].className = 'title title_hidden title_active truncate ...';
+    }
+    var goIndex1 = function () {
+      clearActive();
+      items[items.length - index].className = 'item active';
+      points[items.length - index].className = 'point active';
+      titles[items.length - index].className = 'title title_hidden title_active truncate ...';
+    }
+    var goNext = function () {
+      if (index < items.length) {
+        index++;
+      } else {
+        index = 1;
+      }
+      goIndex();
+    }
+
+    var goPre = function () {
+      if (index == 1) {
+        index = items.length;
+      } else {
+        index--;
+      }
+      goIndex();
+    }
+
+    goNextBtn.addEventListener('click', function () {
+      goNext();
+    })
+
+    goPreBtn.addEventListener('click', function () {
+      goPre();
+    })
+
+    for (var i = 0; i < points.length; i++) {
+points[i].setAttribute('data-index',points.length-i)
+      points[i].addEventListener('click', function () {
+        var pointIndex = this.getAttribute('data-index');
+       var wucha = points[points.length-1].getAttribute('data-index')
+        index = pointIndex-wucha+1;
+        goIndex1();
+      })
+    }
+    goNext();
+    goPre();
+    setInterval(function () {
+      goNext();
+    }, 6000)
+  </script>
+<style>
+ @import url(/skin/static/css/dl_common.css)
+.tj-content {
+    width: 100%;
+}
+.item a img{
+width: 100%;
+    height: 100%;
+}
+</style>
+        </div>
+    </div>
+    <div class="ohter_url">
+  <div class="ohter_url_title">
+    相关链接
+  </div>
+  <div class="url">
+    <a href="http://www.nhc.gov.cn/" >国家卫生健康委</a>
+  </div>
+  <div class="url">
+    <a href="http://wsjkw.sc.gov.cn/" >四川省卫生健康委</a>
+  </div>
+  <div class="url">
+    <a href="http://wsjkw.sc.gov.cn/" >各州市卫生健康委等</a>
+  </div>
+</div>
+
+<div class="footer">
+  <div class="footer-deatail">
+    <div class="footer-first">
+<a href="/about/2023-01-12/83.html" >关于我们</a> 
+丨
+<a href="/wzsm/2023-01-12/87.html" >网站声明</a> 
+丨
+<a href="/gsgg/2023-01-12/86.html" >特别声明</a> 
+丨
+<a href="/connect/2023-12-07/34485.html" >联系我们</a> 
+    </div>
+    <div class="horizontal-line"></div>
+
+
+    <div class="footer-first">
+      网站备案号:蜀ICP备20016862号-1
+    </div>
+
+  </div>
+ <!--
+  <div class="qrcode " style="">
+    <div style="width: 100px;height:100px"> 
+      <img src="/skin/static/img/二维码.png" alt="">
+    </div>
+    <div style="color: white;margin-top: 10px;">
+      健康报网手机版
+    </div>
+  </div> -->
+</div>
+<style>
+@import url(/skin/static/css/footer.css)
+</style>
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "https://hm.baidu.com/hm.js?660d6bd00daa0c2675439eebd31ef4dd";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+          
+
+          
+
+    <div id="weixin" style="width:100%;height:100%;top:0px;left:0px;z-index: 500;background-color: gray;position: fixed;opacity: 0.8;display:none;">
+        <div id="qrcode" style="left:15%;width: 310px;height: 310px;border: 5px solid white;top: 30%;position: fixed;z-index: 600;background-color: white;opacity: 1;"></div>
+    </div>
+</body>
+
+<script>
+    console.log(2)
+    function shareTo(types, textStr = '') {
+        var title, imageUrl, url
+        //获取文章标题
+        title = document.getElementsByClassName('text_title')[0].innerText;
+        console.log(title)
+        //获取网页中内容的第一张图片地址作为分享图
+        //imageUrl = document.images[0].src;
+        imageUrl = document.getElementById("text_content").getElementsByTagName("img")[0];
+        //当内容中没有图片时，设置分享图片为网站logo
+        if (typeof imageUrl == 'undefined') {
+            imageUrl = 'https://' + window.location.host + '/skin/static/img/大众健康报logo .png';
+        } else {
+            imageUrl = imageUrl.src;
+        }
+        //获取当前网页url
+        url = document.location.href;
+
+        //qq空间接口的传参
+        if (types == 'qzone') {
+            window.open('https://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=' + url +
+                '&sharesource=qzone&title=' + title + '&pics=' + imageUrl);
+        }
+        //新浪微博接口的传参
+        if (types == 'sina') {
+            window.open('http://service.weibo.com/share/share.php?url=' + url + '&sharesource=weibo&title=' + title +
+                '&pic=' + imageUrl + '&appkey=2706825840');
+        }
+        //qq好友接口的传参
+        if (types == 'qq') {
+            window.open('http://connect.qq.com/widget/shareqq/index.html?url=' + url + '&sharesource=qzone&title=' + title +
+                '&pics=' + imageUrl);
+        }
+        //生成二维码给微信扫描分享
+        if (types == 'wx') {
+            $('#qrcode').html("");
+            var w = $("#qrcode").width();
+            var h = $("#qrcode").height();
+            $("#qrcode").qrcode({
+                width: h, height: w, foreground: "black", background: "#ffffff", correctLevel: 1, text: url
+            });
+            var left=($("#weixin").width()-310)/2;
+            $("#qrcode").css("left",left+"px");
+            $('#weixin').css("display", "");
+        }
+    }
+    $(".wx").click(function(){shareTo("wx");})
+    $(".sina").click(function(){shareTo("sina");})
+    $(".qzone").click(function(){shareTo("qzone");})
+    $(".qq").click(function(){shareTo("qq");})
+    $("#qrcode").click(function () {
+        $('#weixin').css("display", "none");
+    })
+    $("#weixin").click(function () {
+        $('#weixin').css("display", "none");
+    })
+//var txzs=document.location.href;
+//$("#fbzs").attr("href","https://paper.dzjkb.org.cn/tgzs/"+txzs.substring(txzs.lastIndexOf("/")+1,txzs.lastIndexOf("."))+".html");
+var getcs=$.ajax({url:"https://www.dzjkb.org.cn/e/public/ViewClick/?classid=4&id=188284&addclick=1",async:false});
+$("#djcs").html("点击:"+getcs.responseText);
+$("video").css("cssText","width: 100%;height: auto;");
+
+</script>
+<style>
+    .fxbox {
+        margin-top: 10px;
+        align-items: center;
+        display: flex;
+    }
+
+        .fxbox div img {
+            width: 30px;
+            height: 30px;
+            margin-right: 5px;
+        }
+
+    .si {
+        width: 30px;
+        height: 30px;
+        margin-right: 5px;
+    }
+
+    .t_content {
+        width: 83.33333%;
+        margin: auto;
+        display: flex;
+        justify-content: space-between;
+        margin-top: 10px;
+    }
+
+    .text_content > p > img {
+        width: 100% !important;
+        height: auto !important;
+        text-indent: 0;
+        margin-left: -29px;
+    }
+
+    span > img {
+        width: 100% !important;
+        height: auto !important;
+        text-indent: 0;
+        margin-left: -29px;
+    }
+
+    img {
+        width: 100% !important;
+        text-indent: 0;
+    }
+
+    .d_text {
+        width: 52.486111vw;
+    }
+
+    .d_content {
+        border-top: 1px solid rgb(229, 227, 227);
+        border-bottom: 1px solid rgb(229, 227, 227);
+        padding: 5px;
+    }
+
+    .text_title {
+        font-size: 24px;
+        font-family: SourceHanSansCN-Medium;
+        margin-bottom: 20px;
+        margin-top: 10px;
+    }
+
+    .text_time {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        color: rgb(157, 157, 157);
+        margin-bottom: 15px;
+        font-family: PingFangSC-Regular;
+    }
+
+        .text_time div {
+            margin-right: 10px;
+        }
+
+    .text_content {
+        margin-bottom: 30px;
+        text-indent: 2em;
+        line-height: 30px;
+    }
+
+
+    .pre_next {
+        padding: 5px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 25px;
+        margin-bottom: 25px;
+        font-family: PingFangSC-Regular;
+    }
+
+    .pre_url {
+        width: 30%;
+    }
+
+    .next_url {
+        width: 30%;
+        text-align: right;
+    }
+
+    .banquan {
+        padding: 8px;
+        padding-top: 15px;
+        background-color: rgb(245, 245, 245);
+        padding-bottom: 25px;
+        font-family: PingFangSC-Regular;
+    }
+
+        .banquan div {
+            line-height: 30px;
+            color: #686868;
+            font-size: 12.7px;
+        }
+
+            .banquan div:nth-child(1) {
+                font-size: 16px;
+                color: rgb(0, 0, 0);
+            }
+
+    .pos1 {
+        color: rgb(149, 149, 149);
+    }
+
+        .pos1 a {
+            color: rgb(149, 149, 149);
+        }
+
+    .daohanglan {
+        width: 83.33333%;
+        display: flex;
+        margin: auto;
+        margin-top: 30px;
+        margin-bottom: 20px;
+        justify-content: space-between;
+    }
+
+    .hot {
+        width: 26.52777777777778vw;
+        color: white;
+        font-family: SourceHanSansCN-Regular;
+        font-size: 16px;
+    }
+
+        .hot span {
+            background-color: #1194B6;
+            padding: 10px;
+            padding-top: 7px;
+            padding-bottom: 7px;
+            border-radius: 20px;
+        }
+
+    @media screen and (max-width:800px) {
+        .dl_common {
+            display: none;
+        }
+
+        .d_text {
+            width: 100%;
+        }
+
+        .banquan {
+            width: 100%;
+        }
+
+        .pos {
+            margin-top: 10px;
+            margin-left: 100px
+        }
+
+        .t_content {
+            width: 85%;
+            margin: auto;
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+        }
+
+
+        .d_content {
+            border-top: 1px solid rgb(229, 227, 227);
+            border-bottom: 1px solid rgb(229, 227, 227);
+            padding: 5px;
+        }
+
+        .text_title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 30px;
+            margin-top: 10px;
+        }
+
+        .text_time {
+            display: flex;
+            align-items: center;
+            color: rgb(157, 157, 157);
+            margin-bottom: 15px;
+        }
+
+            .text_time div {
+                margin-right: 10px;
+            }
+
+        .text_content {
+            margin-bottom: 30px;
+        }
+
+        .pre_next {
+            padding: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 25px;
+            margin-bottom: 25px;
+        }
+
+        .pre_url {
+            width: 30%;
+        }
+
+        .next_url {
+            width: 30%;
+            text-align: right;
+        }
+
+        .banquan {
+            padding: 8px;
+            padding-top: 15px;
+            background-color: rgb(245, 245, 245);
+            padding-bottom: 25px;
+        }
+
+            .banquan p {
+                line-height: 30px;
+                color: rgb(132, 130, 130);
+            }
+
+                .banquan p:nth-child(1) {
+                    font-size: 18px;
+                    color: rgb(0, 0, 0);
+                }
+
+        .pos1 {
+            color: rgb(149, 149, 149);
+        }
+
+            .pos1 a {
+                color: rgb(149, 149, 149);
+            }
+
+        .daohanglan {
+            width: 85%;
+            display: flex;
+            margin: auto;
+            margin-top: 30px;
+            margin-bottom: 20px;
+            justify-content: space-between;
+        }
+
+        .hot {
+            width: 26.52777777777778vw;
+            color: white;
+            font-family: SourceHanSansCN-Regular;
+            font-size: 16px;
+        }
+
+            .hot span {
+                background-color: #1194B6;
+                padding: 10px;
+                padding-top: 7px;
+                padding-bottom: 7px;
+                border-radius: 20px;
+            }
+
+        .hot {
+            display: none;
+        }
+    }
+
+
+    html {
+        line-height: 1.15; /* 1 */
+        -webkit-text-size-adjust: 100%; /* 2 */
+    }
+
+    p {
+        display: block;
+        margin-block-start: 1em;
+        margin-block-end: 1em;
+        margin-inline-start: 0px;
+        margin-inline-end: 0px;
+    }
+
+    body {
+        margin: 0;
+    }
+
+
+    main {
+        display: block;
+    }
+
+
+    h1 {
+        font-size: 2em;
+        margin: 0.67em 0;
+    }
+
+    hr {
+        box-sizing: content-box; /* 1 */
+        height: 0; /* 1 */
+        overflow: visible; /* 2 */
+    }
+
+    /**
+    * 1. Correct the inheritance and scaling of font size in all browsers.
+    * 2. Correct the odd `em` font sizing in all browsers.
+    */
+
+    pre {
+        font-family: monospace, monospace; /* 1 */
+        font-size: 1em; /* 2 */
+    }
+
+    a {
+        background-color: transparent;
+    }
+
+
+    abbr[title] {
+        border-bottom: none; /* 1 */
+        text-decoration: underline; /* 2 */
+        text-decoration: underline dotted; /* 2 */
+    }
+
+    b,
+    strong {
+        font-weight: bolder;
+    }
+
+
+
+    code,
+    kbd,
+    samp {
+        font-family: monospace, monospace; /* 1 */
+        font-size: 1em; /* 2 */
+    }
+
+
+
+    small {
+        font-size: 80%;
+    }
+
+
+
+    sub,
+    sup {
+        font-size: 75%;
+        line-height: 0;
+        position: relative;
+        vertical-align: baseline;
+    }
+
+    sub {
+        bottom: -0.25em;
+    }
+
+    sup {
+        top: -0.5em;
+    }
+
+
+
+    img {
+        border-style: none;
+    }
+
+
+    button,
+    input,
+    optgroup,
+    select,
+    textarea {
+        font-family: inherit; /* 1 */
+        font-size: 100%; /* 1 */
+        line-height: 1.15; /* 1 */
+        margin: 0; /* 2 */
+    }
+
+
+    button,
+    input { /* 1 */
+        overflow: visible;
+    }
+
+
+
+    button,
+    select { /* 1 */
+        text-transform: none;
+    }
+
+
+    button,
+    [type="button"],
+    [type="reset"],
+    [type="submit"] {
+        -webkit-appearance: button;
+    }
+
+
+        button::-moz-focus-inner,
+        [type="button"]::-moz-focus-inner,
+        [type="reset"]::-moz-focus-inner,
+        [type="submit"]::-moz-focus-inner {
+            border-style: none;
+            padding: 0;
+        }
+
+
+        button:-moz-focusring,
+        [type="button"]:-moz-focusring,
+        [type="reset"]:-moz-focusring,
+        [type="submit"]:-moz-focusring {
+            outline: 1px dotted ButtonText;
+        }
+
+
+    fieldset {
+        padding: 0.35em 0.75em 0.625em;
+    }
+
+
+
+    legend {
+        box-sizing: border-box; /* 1 */
+        color: inherit; /* 2 */
+        display: table; /* 1 */
+        max-width: 100%; /* 1 */
+        padding: 0; /* 3 */
+        white-space: normal; /* 1 */
+    }
+
+
+    progress {
+        vertical-align: baseline;
+    }
+
+
+
+    textarea {
+        overflow: auto;
+    }
+
+
+    [type="checkbox"],
+    [type="radio"] {
+        box-sizing: border-box; /* 1 */
+        padding: 0; /* 2 */
+    }
+
+    [type="number"]::-webkit-inner-spin-button,
+    [type="number"]::-webkit-outer-spin-button {
+        height: auto;
+    }
+
+
+
+    [type="search"] {
+        -webkit-appearance: textfield; /* 1 */
+        outline-offset: -2px; /* 2 */
+    }
+
+
+        [type="search"]::-webkit-search-decoration {
+            -webkit-appearance: none;
+        }
+
+
+    ::-webkit-file-upload-button {
+        -webkit-appearance: button; /* 1 */
+        font: inherit; /* 2 */
+    }
+
+    details {
+        display: block;
+    }
+
+    summary {
+        display: list-item;
+    }
+
+    template {
+        display: none;
+    }
+
+
+    [hidden] {
+        display: none;
+    }
+</style>
+<script src="/js/jquery-3.4.0.min.js"></script>
+<script>
+function rp(){
+try{$(".pos").html($(".pos").html().replace(/>科普</g,">健康科普<"));}
+catch{}
+try{$(".pos1").html($(".pos1").html().replace(/>科普</g,">健康科普<"));}
+catch{}
+}
+setTimeout("rp();",50);
+console.log("<p>糖尿病，这个被称为“甜蜜的杀手”的慢性疾病，正悄然影响着全球数亿人的健康。在中国，糖尿病的发病率逐年上升，已成为威胁公众健康的主要慢性病之一。然而，许多人对糖尿病的认识仍然停留在“血糖高”这一表面现象，甚至存在不少误解。今天，我们就来深入科普糖尿病的相关知识，帮助大家科学认识、预防和管理这种疾病。</p>
+<p>什么是糖尿病</p>
+<p>糖尿病是一种由于胰岛素分泌不足或胰岛素作用障碍，导致血糖长期高于正常水平的代谢性疾病。简单来说，胰岛素是人体内调节血糖的重要激素，当它的功能受损时，血糖就会升高，进而引发一系列健康问题。</p>
+<p>糖尿病主要分为三种类型：1型糖尿病：多见于儿童和青少年，由于自身免疫系统破坏胰岛β细胞，导致胰岛素分泌不足。2型糖尿病：最为常见，占糖尿病患者的90%以上，与遗传、肥胖、不良生活方式等因素密切相关。妊娠糖尿病：指孕妇在妊娠期间出现的血糖异常，通常在分娩后恢复正常，但未来患2型糖尿病的风险较高。</p>
+<p>糖尿病的典型症状</p>
+<p>糖尿病的早期症状可能并不明显，但随着病情发展，患者可能会出现“三多一少”的典型表现多饮：血糖升高导致血液渗透压增高，刺激大脑产生口渴感。多尿：高血糖使肾脏过滤更多的葡萄糖，导致尿量增加。多食：由于胰岛素不足，葡萄糖无法有效进入细胞供能，身体误以为“饥饿”，导致食欲增加。体重下降：尽管食量增加，但葡萄糖无法被充分利用，身体开始分解脂肪和蛋白质供能，导致体重减轻。</p>
+<p>此外，部分患者还可能出现疲劳、视力模糊、皮肤瘙痒、伤口愈合缓慢等症状。</p>
+<p>糖尿病的危害</p>
+<p>糖尿病本身并不可怕，可怕的是它带来的并发症。长期高血糖会损害全身多个器官，导致严重的健康问题。心血管疾病：糖尿病患者患冠心病、中风的风险显著增加。肾脏病变：高血糖会损伤肾小球，导致糖尿病肾病，严重时可能发展为肾衰竭。神经病变：糖尿病可引起周围神经病变，导致手脚麻木、疼痛，甚至影响消化和泌尿系统功能。眼部病变：糖尿病视网膜病变是导致失明的主要原因之一。足部问题：高血糖会损害足部神经和血管，增加感染和溃疡的风险，严重时可能需要截肢。</p>
+<p>糖尿病的诊断与监测</p>
+<p>糖尿病的诊断主要依靠血糖检测，常用的方法包括空腹血糖：空腹8小时以上测得的血糖值，≥7.0 mmol/L可诊断为糖尿病。餐后2小时血糖：餐后2小时测得的血糖值，≥11.1 mmol/L可诊断为糖尿病。糖化血红蛋白（HbA1c）：反映过去2~3个月的平均血糖水平，≥6.5%可诊断为糖尿病。</p>
+<p>对于高危人群（如肥胖、家族史、高血压等），建议定期进行血糖筛查，早发现、早干预。</p>
+<p>糖尿病的预防与管理</p>
+<p>虽然糖尿病无法根治，但通过科学的生活方式干预和规范治疗，可以有效控制血糖，预防并发症的发生。</p>
+<p>1.健康饮食。控制总热量：避免暴饮暴食，保持合理体重。低糖、低脂、高纤维：多吃蔬菜、全谷物、豆类，减少精制糖和饱和脂肪的摄入。定时定量：避免暴饮暴食，规律进餐有助于血糖稳定。</p>
+<p>2.适量运动。每周至少进行150分钟中等强度的有氧运动（如快走、游泳、骑自行车）。结合力量训练，增强肌肉对葡萄糖的利用能力。</p>
+<p>3.控制体重。肥胖是2型糖尿病的重要危险因素，减重5%~10%可显著改善血糖水平。</p>
+<p>4.戒烟限酒。吸烟和过量饮酒会加重胰岛素抵抗，增加糖尿病并发症的风险。</p>
+<p>5.定期监测。糖尿病患者应定期监测血糖、血压、血脂等指标，并在医生指导下调整治疗方案。</p>
+<p>6.药物治疗。对于无法通过生活方式控制血糖的患者，医生可能会采用降糖药物或胰岛素治疗。患者应严格遵医嘱用药，不可自行停药或调整剂量。</p>
+<p>糖尿病的常见误区</p>
+<p>“糖尿病是老年病”：近年来，糖尿病呈现年轻化趋势，不良生活方式是重要诱因。</p>
+<p>“血糖正常就不用管”：即使血糖暂时正常，高危人群仍需定期筛查，预防糖尿病发生。</p>
+<p>“糖尿病只要吃药就行”：药物治疗只是辅助，健康的生活方式才是根本。</p>
+<p>糖尿病虽然是一种慢性疾病，但并不可怕。只要我们科学认识、积极预防、规范管理，就能有效控制血糖，远离并发症的威胁。希望这篇文章能帮助大家更好地了解糖尿病，守护自己和家人的健康。</p>
+");
+</script>
+</html>
