@@ -50,6 +50,7 @@ curl -s -X POST localhost:3000/api/vectordatabase/search/hybrid -H "..." -d '{"q
 - **hybrid 检索冒烟**：`curl -X POST localhost:3000/api/indices/search/hybrid -d '{"index_names":["kw-medical-b1"],"query":"二甲双胍适应证","top_k":3}'` → HTTP 200，命中 t2dm_guideline_2020.pdf "二甲双胍为 T2DM 药物治疗和药物联合中的基本用药"等带出处 chunk，query_time 449ms（另两组 438/451ms）
 - **T-01 遗留回收**：①向量模型注册——tokenrouter 两 Key 均无 embedding 权限（额度 ¥0），用户提供 SiliconFlow Key，注册 Pro/BAAI/bge-m3（1024 维）connectivity=true available，索引 kw-medical-b1 绑定成功（坑 #16：base_url 须填完整 /v1/embeddings 端点）；②E0 微基准双档出数落 e0-baseline.md
 - **语料原件**：competition/corpus/{guidelines 11 PDF, drug_labels 30, pathways 9 PDF, lab_standards 2, public_edu 8} 全部落盘（fetch 脚本 fetch_drug_labels.sh / fetch_third_batch.sh 可复现，均带已验证 URL）
+- **三批核查代理报告归档**（2026-09-15 补）：`competition/docs/verification-reports/{batch1-drug-labels, batch2-guidelines, batch3-pathways-lab-edu}.md` + README（含合并门 13 样本抽查记录：13/13 直连 200、content-type/字节数吻合、锚点 PDF 首页标题与 license_note 一致、58 行本地校验零问题）
 - **已知缺口（如实报告）**：① registry 58 份 < 60 下界 2 份——1 型糖尿病指南 2021 官方 PDF 付费墙内、DKA 临床路径官方体系不存在、HbA1c 检测技术指南 2022 无免费公开版、NHC 官网 412 反爬（详见三批核查报告不可用源清单），按"宁缺毋滥"未收录拿不到真实 URL 的文档；② E0 双档实为同模型不同 Key（glm-5.3-free），分档对比不构成模型能力差异证据（正式双档待 T-08）；③ blind 18 份未入任何构建流水线（设计如此，T-10 出题用）；④ hybrid 命中含少量 HTML 页面侧栏噪声 chunk（如"相关问答"），已在 parse_checkup 噪声统计中捕捉，清洗归 T-06
 
 ## 反幻觉条款（发任务时必附）
