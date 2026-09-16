@@ -1,5 +1,5 @@
 """
-Knowevo knowledge model database layer (12 tables).
+Knowevo knowledge model database layer (12 domain tables + 1 run ledger).
 
 Self-contained module following the upstream per-domain ``*_db.py`` pattern
 (see ``backend/database/a2a_agent_db.py``): models live in their own
@@ -320,7 +320,33 @@ class EvalRun(KnowevoTableBase):
     created_at = Column(TIMESTAMP(timezone=True), server_default=text("now()"))
 
 
-# Ordered registry so tests can iterate all 12 tables deterministically.
+class KgExtractRun(KnowevoTableBase):
+    """T-06 run bookkeeping: one row per extracted span (span-hash unique),
+    making the ingest_graph pipeline idempotent across crash/resume. This is
+    an internal run ledger, not a domain table - added by T-06 via migration
+    v2.5.5_kw_002 (the 12 domain tables above stay untouched)."""
+    __tablename__ = "kg_extract_run_t"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "span_hash",
+                         name="uq_kg_extract_run_tenant_span"),
+        {"schema": SCHEMA},
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), nullable=False, doc=_TENANT_ID_DOC)
+    run_id = Column(UUID(as_uuid=True), nullable=False,
+                    doc="One batch run may span many spans")
+    span_hash = Column(String(64), nullable=False,
+                       doc="sha256[:32] over doc_id:chunk_idx:modality:text")
+    channel = Column(String(12), nullable=False, server_default=text("'llm'"),
+                     doc="llm | table")
+    status = Column(String(16), nullable=False, server_default=text("'done'"))
+    tokens_spent = Column(Integer, server_default=text("0"))
+    created_at = Column(TIMESTAMP(timezone=True), server_default=text("now()"))
+
+
+# Ordered registry so tests can iterate all tables deterministically.
+# 13 entries: the 12 frozen domain tables + the T-06 run ledger.
 KNOWEVO_MODELS = [
     OntologyVersion,
     OntologyChangeProposal,
@@ -334,6 +360,7 @@ KNOWEVO_MODELS = [
     EvolutionRound,
     SkillTemplate,
     EvalRun,
+    KgExtractRun,
 ]
 
 
