@@ -63,10 +63,10 @@ psql -f deploy/sql/migrations/v2.5.5_kw_002_kg_extract_run.sql
 **Evidence**: 
 ```
 $ cd backend && uv run pytest ../test/backend/services/knowevo/test_kg_service.py -v
-60 passed, 3 skipped (3 = PG 集成，RUN_POSTGRES_INTEGRATION 门控，本会话无 PG 环境跳过)
+62 passed, 3 skipped (3 = PG 集成，RUN_POSTGRES_INTEGRATION 门控，本会话无 PG 环境跳过)
 
 $ cd backend && uv run pytest ../test/backend/services/knowevo/ -q        # 全量回归
-110 passed, 7 skipped (零既有测试破坏)
+112 passed, 7 skipped (零既有测试破坏)
 
 $ cd backend && uv run ruff check services/knowevo/ ../test/backend/services/knowevo/
 All checks passed!
@@ -78,6 +78,9 @@ $ cd backend && uv run python -m services.knowevo.pipeline.ingest_graph \
 2026-09-16 修复节点：初始 12 failed/48 passed → 5 处实现 bug 修正（extract 漏 await、
 _merge_edge 权威方向反、pending 未处理、ext_id/status 丢失、L0 阻断过强）+ τ1 语义与
 Mann-Whitney AUC 修正 → 60 passed/3 skipped。坑见 pitfalls #22/#23。
+2026-09-16 审查节点（code-review 两轴）：按 Spec 轴发现修复 ALIAS props 合并（K2 3.2）
+与 CONTRA 时效优先（doc_published_at）；Standards 轴补 graphiti 出处注释（§4.2.2）。
+新增 2 测试（props 合并 / 时效优先）→ 62 passed。坑见 pitfalls #24。
 ```
 
 ## 反幻觉条款（发任务时必附）

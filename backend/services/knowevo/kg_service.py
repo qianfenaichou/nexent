@@ -13,6 +13,8 @@ Interface contract frozen in knowevo/backend/services/knowevo/
 kg_service.py.md; algorithm source: memo 03-K2 (02-technical-plan 2.3/2.4)
 and the P0 fixes: external primary-key blocking (P0-1) and ontology
 subgraph retrieval replacing the 15k full-injection bomb (P0-4).
+Design inspired by: graphiti's bi-temporal merge model (supersede +
+invalid_at stamping), graphify's deterministic parsing (schema.py).
 """
 import json
 import logging
@@ -385,6 +387,28 @@ class PgStore:
                 session.flush()
             return True
 
+    async def merge_entity_props(self, tenant_id, stable_id, new_props):
+        """Supplemental-prop merge on alias merge: incoming keys win, but
+        never over a key the surviving entity already carries (the anchor's
+        provenance is the authority, not the alias's)."""
+        from database.knowevo_db import KgEntity, _get_db_session
+        with _get_db_session() as session:
+            row = session.query(KgEntity).filter(
+                KgEntity.tenant_id == tenant_id,
+                KgEntity.stable_id == stable_id,
+            ).first()
+            if row is None:
+                return False
+            props = dict(row.props or {})
+            for key, value in (new_props or {}).items():
+                if key == "embedding":
+                    continue  # vector stays with its own row
+                if key not in props:
+                    props[key] = value
+            row.props = props
+            session.flush()
+            return True
+
     async def deprecate_entity(self, tenant_id, stable_id, split_into):
         from sqlalchemy import func as sqla_func
 
@@ -514,6 +538,21 @@ class PgStore:
                 DocAsset.id == doc_id,
             ).first()
             return row.authority_level if row is not None else 3
+
+    async def doc_published_at(self, tenant_id, doc_id):
+        """Publication moment for time-sensitive conflict resolution
+        (doc_asset_t.created_at; unknown docs fall back to epoch so they
+        never win a recency tie)."""
+        from database.knowevo_db import DocAsset, _get_db_session
+        with _get_db_session() as session:
+            row = session.query(DocAsset).filter(
+                DocAsset.tenant_id == tenant_id,
+                DocAsset.id == doc_id,
+            ).first()
+            if row is not None and row.created_at is not None:
+                return row.created_at
+            from datetime import UTC, datetime
+            return datetime(1970, 1, 1, tzinfo=UTC)
 
     async def list_confirmed_examples(self, tenant_id, limit=2):
         """Dynamic few-shot pool: recent extracted evidence spans."""
@@ -1044,6 +1083,13 @@ class KGService:
             await self.store.append_ext_id(self.tenant_id, target_sid,
                                            key.get("value"),
                                            key.get("scheme"))
+        # Supplemental props ride along on the merge (K2 3.2 ALIAS rule);
+        # the survivor's existing values are never overwritten.
+        extra_props = {k: v for k, v in (entity.props or {}).items()
+                       if k not in ("embedding", "ext_ids")}
+        if extra_props and hasattr(self.store, "merge_entity_props"):
+            await self.store.merge_entity_props(self.tenant_id, target_sid,
+                                                extra_props)
         report.merged += 1
 
     async def _insert_new_entity(self, entity: Entity) -> str | None:
@@ -1100,38 +1146,51 @@ class KGService:
             "claim": edge.claim, "props": props,
         }))["id"]
         if existing:
-            new_authority = 3
-            if edge.evidence_id is not None:
-                ev_new = await self.store.get_evidence(
-                    self.tenant_id, edge.evidence_id)
-                if ev_new is not None:
-                    new_authority = await self.store.doc_authority_level(
-                        self.tenant_id, ev_new["doc_id"])
-            old_authority = 3
-            old_ev_id = (existing.get("props") or {}).get("evidence_id") \
-                or existing.get("evidence_id")
-            if old_ev_id:
-                ev_old = await self.store.get_evidence(
-                    self.tenant_id, uuid.UUID(str(old_ev_id)))
-                if ev_old is not None:
-                    old_authority = await self.store.doc_authority_level(
-                        self.tenant_id, ev_old["doc_id"])
-            if new_authority < old_authority:
-                # Newer/higher-authority source wins (lower number = higher
-                # authority, e.g. 1 = national guideline); the old fact
-                # keeps a version stamp, nothing is deleted.
+            new_authority, new_time = await self._edge_provenance(
+                edge.evidence_id)
+            old_authority, old_time = await self._edge_provenance(
+                (existing.get("props") or {}).get("evidence_id")
+                or existing.get("evidence_id"))
+            if (new_time, -new_authority) > (old_time, -old_authority):
+                # Later publication wins; on equal recency the higher
+                # authority wins (1 = national standard). The old fact
+                # keeps a version stamp - nothing is deleted.
                 await self.store.supersede_relation(self.tenant_id,
                                                     existing["id"])
                 report.superseded += 1
-            elif new_authority == old_authority:
-                # Same-source contradiction: never silently overwrite.
+            elif (new_time, -new_authority) == (old_time, -old_authority):
+                # Same recency and authority: never silently overwrite.
                 await self.store.mark_contested(self.tenant_id, edge_id)
                 report.contended += 1
             else:
-                # Lower-authority new claim loses: drop the fresh row.
+                # Older and/or lower-authority new claim loses: drop it.
                 await self.store.supersede_relation(self.tenant_id, edge_id)
                 report.superseded += 1
         return edge_id
+
+    async def _edge_provenance(self, evidence_id: Any) -> tuple[int, Any]:
+        """(authority_level, published_at) for one edge's source document.
+        Unknown documents get the weakest authority and the epoch, so they
+        never win a conflict against a known source."""
+        from datetime import UTC, datetime
+        epoch = datetime(1970, 1, 1, tzinfo=UTC)
+        if not evidence_id:
+            return 3, epoch
+        try:
+            ev = await self.store.get_evidence(
+                self.tenant_id, uuid.UUID(str(evidence_id)))
+        except (ValueError, AttributeError):
+            ev = await self.store.get_evidence(self.tenant_id, evidence_id)
+        if ev is None:
+            return 3, epoch
+        doc_id = ev["doc_id"]
+        authority = await self.store.doc_authority_level(
+            self.tenant_id, doc_id)
+        published = epoch
+        if hasattr(self.store, "doc_published_at"):
+            published = await self.store.doc_published_at(
+                self.tenant_id, doc_id) or epoch
+        return authority, published
 
     async def split_entity(self, entity_id: str, criteria: str
                            ) -> tuple[str, str]:
