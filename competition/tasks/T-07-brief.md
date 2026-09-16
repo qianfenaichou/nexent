@@ -5,7 +5,7 @@
 **独占文件**:
 - `backend/services/knowevo/graph_store.py`（**新建**，接口冻结于框架包同名 .md：GraphStore ABC + PgJsonbGraphStore）
 - `test/backend/services/knowevo/test_graph_store.py`（**新建**，现行视图过滤/历史视图可查/supersede 语义/reachable_decisions 命中率）
-- `backend/pipeline/gen_synthetic_graph.py`（**新建**，合成 2 万实体/3 万边，PoC 数据生成；对应备忘录 09 §3）
+- `backend/services/knowevo/pipeline/gen_synthetic_graph.py`（**新建**，合成 2 万实体/3 万边，PoC 数据生成；对应备忘录 09 §3，与 ingest_graph.py 同目录惯例）
 - T-07b 独占：`mcp_servers/knowevo_mcp/`（server.py + schemas.py + client.py + tests/）、`backend/tool_collection/mcp/kg_tools.py`（**新建**）
 - 委托登记：`backend/tool_collection/mcp/local_mcp_service.py`（**上游文件，禁改**，注册动作留 T-08 接线清单）
 
@@ -24,19 +24,19 @@
 **验收命令**:
 ```bash
 cd backend && uv run pytest ../test/backend/services/knowevo/test_graph_store.py -v
-cd backend && uv run python -m pipeline.gen_synthetic_graph --entities 20000 --edges 30000
+cd backend && uv run python -m services.knowevo.pipeline.gen_synthetic_graph --entities 20000 --edges 30000
 # T-07b（若续做）：
 cd mcp_servers/knowevo_mcp && uv run pytest tests -v
 ```
 
 **验收标准**（T-07a）:
-- [ ] `GraphStore` ABC 方法齐（upsert_entities/upsert_relations/neighbors/multi_hop/supersede/reachable_decisions/entity_lookup/stats），调用方 import 自 `graph_store` 模块、无直写 SQL
-- [ ] `neighbors` 现行视图过滤：`valid_view=True` 只返回有效边；`supersede` 后新视图不含旧边、历史视图（`valid_view=False`）可查回旧边
-- [ ] `upsert` 幂等：同 stable_id 二次 upsert 不产生重复行（合并 props 或跳过）
-- [ ] 租户隔离：跨租户查询零泄漏（FakeStore/PgStore 契约一致，坑 #23 双路兼容）
-- [ ] PoC：`gen_synthetic_graph` 能生成 2 万实体/3 万边；基准（P1 多跳 p95<1.5s、P2 批量 supersede p95<200ms）数字实测落 `competition/docs/`，未达标如实记录
-- [ ] ruff 全过；注释/docstring 英文；无新增环境变量（若需 `KW_GRAPH_STORE_BACKEND` 登记待接线）
-- [ ] 新踩坑记 `competition/docs/pitfalls.md`
+- [x] `GraphStore` ABC 方法齐（upsert_entities/upsert_relations/neighbors/multi_hop/supersede/reachable_decisions/entity_lookup/stats），调用方 import 自 `graph_store` 模块、无直写 SQL
+- [x] `neighbors` 现行视图过滤：`valid_view=True` 只返回有效边；`supersede` 后新视图不含旧边、历史视图（`valid_view=False`）可查回旧边
+- [x] `upsert` 幂等：同 stable_id 二次 upsert 不产生重复行（合并 props 或跳过）
+- [x] 租户隔离：跨租户查询零泄漏（FakeStore/PgStore 契约一致，坑 #23 双路兼容）
+- [x] PoC：`gen_synthetic_graph` 能生成 2 万实体/3 万边；基准（P1 多跳 p95<1.5s、P2 批量 supersede p95<200ms）数字实测落 `competition/docs/`，未达标如实记录
+- [x] ruff 全过；注释/docstring 英文；无新增环境变量（若需 `KW_GRAPH_STORE_BACKEND` 登记待接线）
+- [x] 新踩坑记 `competition/docs/pitfalls.md`
 
 **验收标准**（T-07b，若续做）:
 - [ ] `kg_search`/`kg_stats` Pydantic 输入输出与备忘录 10 §1 完全一致（query/hop≤2/top_k≤20/ontology_version；输出 EntityCard+EdgeCard+valid_view）
@@ -45,7 +45,27 @@ cd mcp_servers/knowevo_mcp && uv run pytest tests -v
 - [ ] `pytest mcp_servers/knowevo_mcp/tests` 绿：happy path + 护杆（hop=3 拒绝）+ 错误结构
 - [ ] THIRD_PARTY_NOTICE 登记 fastmcp/mcp
 
-**Evidence**: <GraphStore 测试输出 / PoC 基准数字落盘路径 / kg_search 工具调用日志——没有证据=没做完>
+**Evidence**:
+```
+$ cd backend && uv run pytest ../test/backend/services/knowevo/test_graph_store.py -v
+12 passed (6 contract + 6 real-PG integration, RUN_POSTGRES_INTEGRATION=1, PG 15.8 docker 5436)
+
+$ POSTGRES_* + RUN_POSTGRES_INTEGRATION=1 uv run pytest ../test/backend/services/knowevo/ -q
+131 passed in 2.84s   # 全 knowevo 含全部 PG 集成（T-06 之前 3 个集成测试从未真跑，本次抓到并修复 bug→pitfalls #25）
+
+$ cd backend && uv run python -m services.knowevo.pipeline.gen_synthetic_graph --entities 20000 --edges 30000
+seed=42 upsert_entities_s=79.4 upsert_relations_s=120.2 entities=20000 edges_total=30000 edges_valid=30000
+
+PoC 基准（详见 competition/docs/poc-graphstore.md）：
+P1 multi-hop p95=12.5ms (target <1500ms) ✅
+P2 batch supersede p95=22.7ms (target <200ms) ✅
+
+$ uv run ruff check services/knowevo/ ../test/backend/services/knowevo/
+All checks passed!
+
+2026-09-17 修复节点：GraphStore 真实 PG 首跑抓出 DetachedInstanceError（ORM 行带出 session，坑 #26）
++ T-06 LLM "new" 裁决误降级 pending_review（坑 #25）。坑 #22-26 入台账。
+```
 
 ## 反幻觉条款（发任务时必附）
 开工先读仓库根 AGENTS.md；框架包 `knowevo/backend/services/knowevo/graph_store.py.md` 与 `knowevo/mcp_servers/knowevo_mcp/SPEC.md` 是唯一事实（文件路径以讲义为准，与仓库冲突时停下报告）；T-06 的 KGService 方法签名禁改（只能调用 search v0 作种子）；不得发明环境变量；不得改 `local_mcp_service.py`（注册留 T-08）；PoC 基准用合成数据不得用真实语料（真实评估归 T-10）；不引入白名单外依赖。

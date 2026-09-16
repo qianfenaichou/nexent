@@ -890,6 +890,10 @@ class KGService:
         # L2: LLM adjudication (also the route when no embedding exists).
         if self.llm is not None:
             decision = await self._adjudicate_llm(entity, candidates)
+            if decision.action == "new":
+                # The adjudicator explicitly says these are different
+                # entities; that is a decision, not a low-confidence doubt.
+                return decision
             if decision.confidence >= ADJUDICATE_EXECUTE_LINE:
                 return decision
             return AlignDecision(
