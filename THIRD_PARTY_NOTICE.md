@@ -7,7 +7,8 @@
 
 | # | 引入任务 | 依赖名 | 版本 | 用途 | 许可证 | 引入方式(pip/npm/docker/manual) | 备注 |
 |---|---------|--------|------|------|--------|-------------------------------|------|
-| 1 | (待登记) | | | | | | |
+| 1 | T-07b | fastmcp | >=2.14.2,<3.0 | KnowEvo MCP 工具服务（kg_search/kg_stats 双注册表面） | Apache-2.0 | pip（上游 pyproject 已含，本任务启用） | 上游自带依赖；独立 FastMCP 服务 + Local MCP 内嵌注册，单一 schema 源 |
+| 2 | T-07b | mcp（官方 SDK） | >=1.24.0,<1.30 | MCP 协议层（本地与远端工具调用） | MIT | pip（上游 sdk/pyproject 已含） | 上游自带；FastMCP 依赖链，mcp list-tools 冒烟在 T-08 接线后跑 |
 
 ## 登记纪律
 
