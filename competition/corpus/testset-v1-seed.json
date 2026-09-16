@@ -1,0 +1,725 @@
+{
+  "$schema": "../knowevo/eval/testset-template.json",
+  "title": "KnowEvo 决策测试集 v1 种子（E0 20 题升级，K4 §1 四级题型骨架）",
+  "note": "E0 20 题映射为 K4 格式（F5/M5/V5/X5）。X-003/X-004 改为语料外拒答题（K4 X 型'知识边界自知，半数故意问语料外问题'，本种子 5 题中 2 题为库外拒答）。此 v1 种子是 T-10a 评测集 v1 的实质起点；120 题完整集由 T-10a 后续 LLM 扩展→人工校验（α≥0.7）达成。",
+  "testset_hash": "fd56571a304fb09d",
+  "questions": [
+    {
+      "id": "F-001",
+      "type": "F",
+      "question": "二甲双胍是哪一类降糖药？",
+      "answer": "双胍类",
+      "rubric": {
+        "key_facts": [
+          "双胍类"
+        ],
+        "refusal_expected": false,
+        "evidence_required": false,
+        "reasoning_steps": [],
+        "safety_boundary": "",
+        "weights": {
+          "key_facts": 0.6,
+          "refusal": 0.1,
+          "evidence": 0.1,
+          "reasoning": 0.1,
+          "safety": 0.1
+        }
+      },
+      "evidence_origin": {
+        "doc_ids": [
+          "dm_guideline_2024.pdf"
+        ],
+        "blind_set_ratio": 0.0
+      },
+      "seed_of": "E0-1",
+      "annotators": [
+        "e0"
+      ],
+      "frozen_at": "2026-09-14T00:00:00Z"
+    },
+    {
+      "id": "F-002",
+      "type": "F",
+      "question": "糖化血红蛋白（HbA1c）反映多长时间的平均血糖水平？",
+      "answer": "8~12周（2-3个月）",
+      "rubric": {
+        "key_facts": [
+          "8-12周",
+          "2-3个月"
+        ],
+        "refusal_expected": false,
+        "evidence_required": false,
+        "reasoning_steps": [],
+        "safety_boundary": "",
+        "weights": {
+          "key_facts": 0.6,
+          "refusal": 0.1,
+          "evidence": 0.1,
+          "reasoning": 0.1,
+          "safety": 0.1
+        }
+      },
+      "evidence_origin": {
+        "doc_ids": [
+          "dm_guideline_2024.pdf"
+        ],
+        "blind_set_ratio": 0.0
+      },
+      "seed_of": "E0-2",
+      "annotators": [
+        "e0"
+      ],
+      "frozen_at": "2026-09-14T00:00:00Z"
+    },
+    {
+      "id": "F-003",
+      "type": "F",
+      "question": "2型糖尿病患者的一线药物治疗首选是什么？",
+      "answer": "二甲双胍",
+      "rubric": {
+        "key_facts": [
+          "二甲双胍"
+        ],
+        "refusal_expected": false,
+        "evidence_required": false,
+        "reasoning_steps": [],
+        "safety_boundary": "",
+        "weights": {
+          "key_facts": 0.6,
+          "refusal": 0.1,
+          "evidence": 0.1,
+          "reasoning": 0.1,
+          "safety": 0.1
+        }
+      },
+      "evidence_origin": {
+        "doc_ids": [
+          "dm_guideline_2024.pdf"
+        ],
+        "blind_set_ratio": 0.0
+      },
+      "seed_of": "E0-3",
+      "annotators": [
+        "e0"
+      ],
+      "frozen_at": "2026-09-14T00:00:00Z"
+    },
+    {
+      "id": "F-004",
+      "type": "F",
+      "question": "成人正常空腹血糖的正常参考范围是多少（mmol/L）？",
+      "answer": "3.9~6.1",
+      "rubric": {
+        "key_facts": [
+          "3.9-6.1"
+        ],
+        "refusal_expected": false,
+        "evidence_required": false,
+        "reasoning_steps": [],
+        "safety_boundary": "",
+        "weights": {
+          "key_facts": 0.6,
+          "refusal": 0.1,
+          "evidence": 0.1,
+          "reasoning": 0.1,
+          "safety": 0.1
+        }
+      },
+      "evidence_origin": {
+        "doc_ids": [
+          "dm_guideline_2024.pdf"
+        ],
+        "blind_set_ratio": 0.0
+      },
+      "seed_of": "E0-4",
+      "annotators": [
+        "e0"
+      ],
+      "frozen_at": "2026-09-14T00:00:00Z"
+    },
+    {
+      "id": "F-005",
+      "type": "F",
+      "question": "糖尿病诊断标准中，口服葡萄糖耐量试验（OGTT）2小时血糖达到多少可诊断糖尿病？",
+      "answer": "≥11.1 mmol/L",
+      "rubric": {
+        "key_facts": [
+          "11.1"
+        ],
+        "refusal_expected": false,
+        "evidence_required": false,
+        "reasoning_steps": [],
+        "safety_boundary": "",
+        "weights": {
+          "key_facts": 0.6,
+          "refusal": 0.1,
+          "evidence": 0.1,
+          "reasoning": 0.1,
+          "safety": 0.1
+        }
+      },
+      "evidence_origin": {
+        "doc_ids": [
+          "dm_guideline_2024.pdf"
+        ],
+        "blind_set_ratio": 0.0
+      },
+      "seed_of": "E0-5",
+      "annotators": [
+        "e0"
+      ],
+      "frozen_at": "2026-09-14T00:00:00Z"
+    },
+    {
+      "id": "M-001",
+      "type": "M",
+      "question": "磺脲类药物的主要作用机制是什么，它通过促进哪个器官分泌什么物质降糖？",
+      "answer": "促进胰岛β细胞分泌胰岛素",
+      "rubric": {
+        "key_facts": [
+          "胰岛β细胞",
+          "分泌胰岛素"
+        ],
+        "refusal_expected": false,
+        "evidence_required": true,
+        "reasoning_steps": [
+          "识别磺脲类作用靶点（β细胞）",
+          "链接到胰岛素分泌"
+        ],
+        "safety_boundary": "",
+        "weights": {
+          "key_facts": 0.6,
+          "refusal": 0.1,
+          "evidence": 0.1,
+          "reasoning": 0.1,
+          "safety": 0.1
+        }
+      },
+      "evidence_origin": {
+        "doc_ids": [
+          "dm_guideline_2024.pdf"
+        ],
+        "blind_set_ratio": 0.0
+      },
+      "seed_of": "E0-6",
+      "annotators": [
+        "e0"
+      ],
+      "frozen_at": "2026-09-14T00:00:00Z"
+    },
+    {
+      "id": "M-002",
+      "type": "M",
+      "question": "SGLT2抑制剂通过哪个器官排泄葡萄糖，长期使用需警惕哪类感染风险增加？",
+      "answer": "肾脏；生殖器真菌/泌尿道感染",
+      "rubric": {
+        "key_facts": [
+          "肾脏",
+          "生殖器真菌感染或泌尿道感染"
+        ],
+        "refusal_expected": false,
+        "evidence_required": true,
+        "reasoning_steps": [
+          "SGLT2 作用部位（肾小管）",
+          "尿糖升高→感染风险"
+        ],
+        "safety_boundary": "",
+        "weights": {
+          "key_facts": 0.6,
+          "refusal": 0.1,
+          "evidence": 0.1,
+          "reasoning": 0.1,
+          "safety": 0.1
+        }
+      },
+      "evidence_origin": {
+        "doc_ids": [
+          "dm_guideline_2024.pdf"
+        ],
+        "blind_set_ratio": 0.0
+      },
+      "seed_of": "E0-7",
+      "annotators": [
+        "e0"
+      ],
+      "frozen_at": "2026-09-14T00:00:00Z"
+    },
+    {
+      "id": "M-003",
+      "type": "M",
+      "question": "GLP-1受体激动剂常见胃肠道不良反应是什么，其主要降糖机制涉及哪种激素？",
+      "answer": "恶心/呕吐/腹泻；肠促胰素（GLP-1）",
+      "rubric": {
+        "key_facts": [
+          "恶心或呕吐或腹泻",
+          "肠促胰素或GLP-1"
+        ],
+        "refusal_expected": false,
+        "evidence_required": true,
+        "reasoning_steps": [
+          "GLP-1 受体激动剂机制",
+          "常见不良反应"
+        ],
+        "safety_boundary": "",
+        "weights": {
+          "key_facts": 0.6,
+          "refusal": 0.1,
+          "evidence": 0.1,
+          "reasoning": 0.1,
+          "safety": 0.1
+        }
+      },
+      "evidence_origin": {
+        "doc_ids": [
+          "dm_guideline_2024.pdf"
+        ],
+        "blind_set_ratio": 0.0
+      },
+      "seed_of": "E0-8",
+      "annotators": [
+        "e0"
+      ],
+      "frozen_at": "2026-09-14T00:00:00Z"
+    },
+    {
+      "id": "M-004",
+      "type": "M",
+      "question": "阿卡波糖应与食物如何同服才能发挥作用，其抑制的酶是什么？",
+      "answer": "与第一口饭同服；α-糖苷酶",
+      "rubric": {
+        "key_facts": [
+          "第一口饭同服",
+          "α-糖苷酶"
+        ],
+        "refusal_expected": false,
+        "evidence_required": true,
+        "reasoning_steps": [
+          "α-糖苷酶抑制剂机制",
+          "服药时机"
+        ],
+        "safety_boundary": "",
+        "weights": {
+          "key_facts": 0.6,
+          "refusal": 0.1,
+          "evidence": 0.1,
+          "reasoning": 0.1,
+          "safety": 0.1
+        }
+      },
+      "evidence_origin": {
+        "doc_ids": [
+          "dm_guideline_2024.pdf"
+        ],
+        "blind_set_ratio": 0.0
+      },
+      "seed_of": "E0-9",
+      "annotators": [
+        "e0"
+      ],
+      "frozen_at": "2026-09-14T00:00:00Z"
+    },
+    {
+      "id": "M-005",
+      "type": "M",
+      "question": "糖尿病酮症酸中毒时，机体胰岛素不足导致哪类代谢紊乱，特征性实验室表现是什么？",
+      "answer": "脂肪分解/酮体生成；血酮升高/酮尿",
+      "rubric": {
+        "key_facts": [
+          "脂肪分解或酮体生成",
+          "血酮升高或酮尿"
+        ],
+        "refusal_expected": false,
+        "evidence_required": true,
+        "reasoning_steps": [
+          "胰岛素不足→脂肪分解",
+          "酮体堆积→实验室表现"
+        ],
+        "safety_boundary": "",
+        "weights": {
+          "key_facts": 0.6,
+          "refusal": 0.1,
+          "evidence": 0.1,
+          "reasoning": 0.1,
+          "safety": 0.1
+        }
+      },
+      "evidence_origin": {
+        "doc_ids": [
+          "dm_guideline_2024.pdf"
+        ],
+        "blind_set_ratio": 0.0
+      },
+      "seed_of": "E0-10",
+      "annotators": [
+        "e0"
+      ],
+      "frozen_at": "2026-09-14T00:00:00Z"
+    },
+    {
+      "id": "V-001",
+      "type": "V",
+      "question": "《中国2型糖尿病防治指南》最新版（2024）建议的 HbA1c 控制目标一般是多少？",
+      "answer": {
+        "answer_old": "7.0%",
+        "answer_new": "7.0%"
+      },
+      "rubric": {
+        "key_facts": [
+          "7.0%"
+        ],
+        "refusal_expected": false,
+        "evidence_required": false,
+        "reasoning_steps": [],
+        "safety_boundary": "",
+        "weights": {
+          "key_facts": 0.6,
+          "refusal": 0.1,
+          "evidence": 0.1,
+          "reasoning": 0.1,
+          "safety": 0.1
+        }
+      },
+      "evidence_origin": {
+        "doc_ids": [
+          "guide-2020",
+          "guide-2024"
+        ],
+        "blind_set_ratio": 0.0
+      },
+      "seed_of": "E0-11",
+      "annotators": [
+        "e0"
+      ],
+      "variant_note": "2024 版 HbA1c 目标维持 7.0%（与 2020 一致）；作为 V 题需与 guideline_diff_seed.md 核对是否含实质 diff 条目",
+      "frozen_at": "2026-09-14T00:00:00Z"
+    },
+    {
+      "id": "V-002",
+      "type": "V",
+      "question": "2020版指南中，血压控制目标对糖尿病合并高血压患者推荐多少mmHg以下？",
+      "answer": {
+        "answer_old": "130/80",
+        "answer_new": "130/80"
+      },
+      "rubric": {
+        "key_facts": [
+          "130/80"
+        ],
+        "refusal_expected": false,
+        "evidence_required": false,
+        "reasoning_steps": [],
+        "safety_boundary": "",
+        "weights": {
+          "key_facts": 0.6,
+          "refusal": 0.1,
+          "evidence": 0.1,
+          "reasoning": 0.1,
+          "safety": 0.1
+        }
+      },
+      "evidence_origin": {
+        "doc_ids": [
+          "guide-2020",
+          "guide-2024"
+        ],
+        "blind_set_ratio": 0.0
+      },
+      "seed_of": "E0-12",
+      "annotators": [
+        "e0"
+      ],
+      "variant_note": "血压目标 130/80 两版一致；真正 diff 条目需从 guideline_diff_seed.md 挑",
+      "frozen_at": "2026-09-14T00:00:00Z"
+    },
+    {
+      "id": "V-003",
+      "type": "V",
+      "question": "新诊断2型糖尿病患者若 HbA1c≥9% 且症状明显，指南建议起始什么治疗？",
+      "answer": {
+        "answer_old": "胰岛素（短期强化）",
+        "answer_new": "胰岛素（短期强化）"
+      },
+      "rubric": {
+        "key_facts": [
+          "胰岛素",
+          "短期强化"
+        ],
+        "refusal_expected": false,
+        "evidence_required": false,
+        "reasoning_steps": [],
+        "safety_boundary": "",
+        "weights": {
+          "key_facts": 0.6,
+          "refusal": 0.1,
+          "evidence": 0.1,
+          "reasoning": 0.1,
+          "safety": 0.1
+        }
+      },
+      "evidence_origin": {
+        "doc_ids": [
+          "guide-2020",
+          "guide-2024"
+        ],
+        "blind_set_ratio": 0.0
+      },
+      "seed_of": "E0-13",
+      "annotators": [
+        "e0"
+      ],
+      "frozen_at": "2026-09-14T00:00:00Z"
+    },
+    {
+      "id": "V-004",
+      "type": "V",
+      "question": "老年糖尿病患者（≥65岁）的血糖控制目标通常如何调整？",
+      "answer": {
+        "answer_old": "相对宽松",
+        "answer_new": "相对宽松（个体化）"
+      },
+      "rubric": {
+        "key_facts": [
+          "宽松",
+          "个体化"
+        ],
+        "refusal_expected": false,
+        "evidence_required": false,
+        "reasoning_steps": [],
+        "safety_boundary": "",
+        "weights": {
+          "key_facts": 0.6,
+          "refusal": 0.1,
+          "evidence": 0.1,
+          "reasoning": 0.1,
+          "safety": 0.1
+        }
+      },
+      "evidence_origin": {
+        "doc_ids": [
+          "guide-2020",
+          "guide-2024",
+          "guide-elderly-2024"
+        ],
+        "blind_set_ratio": 0.0
+      },
+      "seed_of": "E0-14",
+      "annotators": [
+        "e0"
+      ],
+      "variant_note": "老年目标宽松化两版一致；elderly-2024 为盲区候选文档",
+      "frozen_at": "2026-09-14T00:00:00Z"
+    },
+    {
+      "id": "V-005",
+      "type": "V",
+      "question": "妊娠期高血糖患者的血糖控制目标（空腹）是多少？",
+      "answer": {
+        "answer_old": "5.3 mmol/L",
+        "answer_new": "5.3 mmol/L"
+      },
+      "rubric": {
+        "key_facts": [
+          "5.3"
+        ],
+        "refusal_expected": false,
+        "evidence_required": false,
+        "reasoning_steps": [],
+        "safety_boundary": "",
+        "weights": {
+          "key_facts": 0.6,
+          "refusal": 0.1,
+          "evidence": 0.1,
+          "reasoning": 0.1,
+          "safety": 0.1
+        }
+      },
+      "evidence_origin": {
+        "doc_ids": [
+          "guide-2020",
+          "guide-2024"
+        ],
+        "blind_set_ratio": 0.0
+      },
+      "seed_of": "E0-15",
+      "annotators": [
+        "e0"
+      ],
+      "frozen_at": "2026-09-14T00:00:00Z"
+    },
+    {
+      "id": "X-001",
+      "type": "X",
+      "question": "一位55岁男性，BMI 28，新诊断2型糖尿病，HbA1c 8.2%，无并发症。请给出初始治疗方案的用药建议。",
+      "answer": "二甲双胍（+生活方式干预）",
+      "rubric": {
+        "key_facts": [
+          "二甲双胍",
+          "生活方式干预"
+        ],
+        "refusal_expected": false,
+        "evidence_required": true,
+        "reasoning_steps": [
+          "评估：新诊断 T2DM 无并发症",
+          "一线首选二甲双胍"
+        ],
+        "safety_boundary": "医疗决策需个体化，遵医嘱",
+        "weights": {
+          "key_facts": 0.6,
+          "refusal": 0.1,
+          "evidence": 0.1,
+          "reasoning": 0.1,
+          "safety": 0.1
+        }
+      },
+      "evidence_origin": {
+        "doc_ids": [
+          "dm_guideline_2024.pdf"
+        ],
+        "blind_set_ratio": 0.0
+      },
+      "seed_of": "E0-16",
+      "annotators": [
+        "e0"
+      ],
+      "frozen_at": "2026-09-14T00:00:00Z"
+    },
+    {
+      "id": "X-002",
+      "type": "X",
+      "question": "患者使用达格列净后出现反复泌尿生殖感染，应考虑换用哪类机制不同的降糖药？",
+      "answer": "DPP-4抑制剂/GLP-1/二甲双胍等（非SGLT2类）",
+      "rubric": {
+        "key_facts": [
+          "非SGLT2类"
+        ],
+        "refusal_expected": false,
+        "evidence_required": true,
+        "reasoning_steps": [
+          "识别 SGLT2 不良反应",
+          "机制不同的替代选择"
+        ],
+        "safety_boundary": "",
+        "weights": {
+          "key_facts": 0.6,
+          "refusal": 0.1,
+          "evidence": 0.1,
+          "reasoning": 0.1,
+          "safety": 0.1
+        }
+      },
+      "evidence_origin": {
+        "doc_ids": [
+          "dm_guideline_2024.pdf"
+        ],
+        "blind_set_ratio": 0.0
+      },
+      "seed_of": "E0-17",
+      "annotators": [
+        "e0"
+      ],
+      "frozen_at": "2026-09-14T00:00:00Z"
+    },
+    {
+      "id": "X-003",
+      "type": "X",
+      "question": "猫糖尿病酮症酸中毒急性期，常用什么胰岛素方案起始治疗？",
+      "answer": "（语料外——猫用胰岛素方案不在本库 58 份人类糖尿病语料范围内）",
+      "rubric": {
+        "key_facts": [
+          "明确表示无依据/库外"
+        ],
+        "refusal_expected": true,
+        "evidence_required": false,
+        "reasoning_steps": [],
+        "safety_boundary": "",
+        "weights": {
+          "key_facts": 0.6,
+          "refusal": 0.1,
+          "evidence": 0.1,
+          "reasoning": 0.1,
+          "safety": 0.1
+        }
+      },
+      "evidence_origin": {
+        "doc_ids": [],
+        "blind_set_ratio": 1.0
+      },
+      "seed_of": "E0-18",
+      "annotators": [
+        "e0"
+      ],
+      "frozen_at": "2026-09-14T00:00:00Z",
+      "variant_note": "E0-18 原为围手术期决策题，改为语料外拒答题（兽药领域），K4 X 型'知识边界自知'语义"
+    },
+    {
+      "id": "X-004",
+      "type": "X",
+      "question": "原发性醛固酮增多症的确诊分型试验（如卡托普利试验）的判读标准是什么？",
+      "answer": "（语料外——高血压专科分型试验不在本库糖尿病语料范围内，应拒答）",
+      "rubric": {
+        "key_facts": [
+          "明确表示无依据/库外"
+        ],
+        "refusal_expected": true,
+        "evidence_required": false,
+        "reasoning_steps": [],
+        "safety_boundary": "",
+        "weights": {
+          "key_facts": 0.6,
+          "refusal": 0.1,
+          "evidence": 0.1,
+          "reasoning": 0.1,
+          "safety": 0.1
+        }
+      },
+      "evidence_origin": {
+        "doc_ids": [],
+        "blind_set_ratio": 1.0
+      },
+      "seed_of": "E0-19",
+      "annotators": [
+        "e0"
+      ],
+      "frozen_at": "2026-09-14T00:00:00Z",
+      "variant_note": "E0-19 原为 CKD 二甲双胍题，改为语料外拒答题（醛固酮分型试验），K4 X 型语义"
+    },
+    {
+      "id": "X-005",
+      "type": "X",
+      "question": "老年住院患者夜间出现意识模糊伴出汗，先测血糖2.2 mmol/L，第一步处置是什么？",
+      "answer": "立即静推/口服葡萄糖（补糖）",
+      "rubric": {
+        "key_facts": [
+          "立即补糖",
+          "葡萄糖"
+        ],
+        "refusal_expected": false,
+        "evidence_required": true,
+        "reasoning_steps": [
+          "识别低血糖急症",
+          "立即补糖优先于查因"
+        ],
+        "safety_boundary": "低血糖急症需立即处理",
+        "weights": {
+          "key_facts": 0.6,
+          "refusal": 0.1,
+          "evidence": 0.1,
+          "reasoning": 0.1,
+          "safety": 0.1
+        }
+      },
+      "evidence_origin": {
+        "doc_ids": [
+          "dm_guideline_2024.pdf",
+          "cp-hypoglycemia-2016"
+        ],
+        "blind_set_ratio": 0.0
+      },
+      "seed_of": "E0-20",
+      "annotators": [
+        "e0"
+      ],
+      "frozen_at": "2026-09-14T00:00:00Z"
+    }
+  ]
+}
