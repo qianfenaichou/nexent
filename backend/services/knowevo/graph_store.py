@@ -356,8 +356,12 @@ class PgJsonbGraphStore(GraphStore):
 
     async def entity_lookup(self, tenant_id: str, query: str,
                             top_k: int = 5) -> list[EntityCard]:
-        """Lexical name lookup with alias fallback. The ES-synced index is
-        a T-08 wiring concern; this seam shape is final."""
+        """Lexical name lookup with alias fallback (PG GIN).
+
+        ES redundancy index (name+summary in Elasticsearch) is NOT wired
+        yet - T-08 owns the ES write path and the switch to the ES-first
+        lookup; until then this is the slow-but-complete PG path. The seam
+        shape (method + return type) is final, matching graph_store.py.md."""
         q = query.strip()
         if not q:
             return []
