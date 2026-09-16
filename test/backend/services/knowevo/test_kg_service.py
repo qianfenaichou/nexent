@@ -119,6 +119,7 @@ class FakeStore:
         self.pending: dict[str, dict] = {}    # key: (tenant, name)
         self.extract_runs: set[tuple[str, str]] = set()
         self.authority: dict = {}             # doc_id -> authority_level
+        self.published: dict = {}             # doc_id -> publication time
 
     # -- ontology
     async def load_ontology_snapshot(self, tenant_id):
@@ -192,6 +193,20 @@ class FakeStore:
         row["status"] = "split"
         row["split_into"] = list(split_into)
         return True
+
+    async def merge_entity_props(self, tenant_id, stable_id, new_props):
+        row = self.entities.get((tenant_id, stable_id))
+        if row is None:
+            return False
+        props = dict(row.get("props") or {})
+        for key, value in (new_props or {}).items():
+            if key not in props:
+                props[key] = value
+        row["props"] = props
+        return True
+
+    async def doc_published_at(self, tenant_id, doc_id):
+        return self.published.get(str(doc_id))
 
     # -- relations
     async def current_relation_by_triple(self, tenant_id, src, dst, rel_type):
@@ -849,6 +864,67 @@ class TestMergeDelta:
         assert any(a["alias"] == "格华止" for a in row["aliases"])
         # ext key kept on the surviving entity (future L0 hits)
         assert row["props"]["ext_ids"][0]["value"] == "A10BA02"
+
+    @pytest.mark.asyncio
+    async def test_alias_merge_rides_supplemental_props(self):
+        """K2 3.2 ALIAS rule: incoming props merge in, but never overwrite
+        the surviving entity's existing values."""
+        store = FakeStore()
+        svc = _svc(store=store)
+        await svc.merge_delta([ExtractionResult(
+            entities=[_entity("二甲双胍", "Drug",
+                              ext_id="A10BA02", ext_scheme="atc",
+                              props={"atc_code": "A10BA02"})])])
+        report = await svc.merge_delta([ExtractionResult(
+            entities=[_entity("格华止", "Drug",
+                              ext_id="A10BA02", ext_scheme="atc",
+                              props={"brand": "格华止",
+                                     "atc_code": "BOGUS"})])])
+        assert report.merged == 1
+        row = store.entities[(TENANT_A, "Drug:二甲双胍")]
+        assert row["props"]["brand"] == "格华止"       # new key rides along
+        assert row["props"]["atc_code"] == "A10BA02"  # survivor value wins
+
+    @pytest.mark.asyncio
+    async def test_contra_later_publication_wins_over_higher_authority(self):
+        """K2 3.2 CONTRA rule resolves time-first: a later publication
+        supersedes an earlier one even when the earlier doc carries higher
+        authority (recency is the primary key)."""
+        store = FakeStore()
+        import datetime as dt
+        doc_old, doc_new = uuid_mod.uuid4(), uuid_mod.uuid4()
+        # old doc: higher authority (1) but published earlier
+        store.authority[str(doc_old)] = 1
+        store.authority[str(doc_new)] = 3
+        store.published[str(doc_old)] = dt.datetime(2020, 1, 1,
+                                                    tzinfo=dt.UTC)
+        store.published[str(doc_new)] = dt.datetime(2024, 1, 1,
+                                                    tzinfo=dt.UTC)
+        svc = _svc(store=store)
+        ev_old = (await store.save_evidence(TENANT_A, {
+            "doc_id": doc_old, "span_text": "a", "entity_refs": [],
+            "edge_ids": [], "tag": "EXTRACTED", "modality": "text"}))["id"]
+        ev_new = (await store.save_evidence(TENANT_A, {
+            "doc_id": doc_new, "span_text": "b", "entity_refs": [],
+            "edge_ids": [], "tag": "EXTRACTED", "modality": "text"}))["id"]
+        older = ExtractionResult(
+            entities=[_entity("二甲双胍", "Drug"),
+                      _entity("2型糖尿病", "Disease")],
+            edges=[Relation(src="二甲双胍", dst="2型糖尿病",
+                            rel_type="indicated_for", claim="二线用药",
+                            evidence_id=ev_old)])
+        newer = ExtractionResult(
+            entities=[_entity("二甲双胍", "Drug"),
+                      _entity("2型糖尿病", "Disease")],
+            edges=[Relation(src="二甲双胍", dst="2型糖尿病",
+                            rel_type="indicated_for", claim="一线用药",
+                            evidence_id=ev_new)])
+        await svc.merge_delta([older])
+        report = await svc.merge_delta([newer])
+        assert report.superseded == 1
+        current = [e for e in store.edges if e.get("invalid_at") is None]
+        assert current[0]["claim"] == "一线用药"
+        assert store.edges[0]["invalid_at"] == "now"  # old keeps a stamp
 
     @pytest.mark.asyncio
     async def test_unmappable_entity_goes_to_pending(self):
