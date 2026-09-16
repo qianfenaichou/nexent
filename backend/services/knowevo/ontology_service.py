@@ -245,6 +245,85 @@ class PgStore:
                 for r in rows
             ]
 
+    # ── T-05 additions (appended only; T-04 methods above are frozen) ──
+
+    async def list_queue_rows(self, tenant_id, round_id=None, status="pending"):
+        """Review-queue rows for one tenant, newest first, with the
+        ranking features the workbench sorts on."""
+        from database.knowevo_db import OntologyChangeProposal, _get_db_session
+        with _get_db_session() as session:
+            q = session.query(OntologyChangeProposal).filter(
+                OntologyChangeProposal.tenant_id == tenant_id)
+            if status:
+                q = q.filter(OntologyChangeProposal.status == status)
+            if round_id is not None:
+                q = q.filter(OntologyChangeProposal.round_id == round_id)
+            rows = q.order_by(OntologyChangeProposal.created_at.desc()).all()
+            return [
+                {"id": str(r.id), "round_id": str(r.round_id), "target": r.target,
+                 "op": r.op, "payload": r.payload,
+                 "confidence": r.confidence, "impact": r.impact,
+                 "novelty": r.novelty, "status": r.status,
+                 "trigger_source": r.trigger_source}
+                for r in rows
+            ]
+
+    async def get_proposal_rows(self, tenant_id, ids):
+        """Queue rows by id under tenant isolation. Returns [] rows plus the
+        missing-id list so the caller can 404 precisely."""
+        from database.knowevo_db import OntologyChangeProposal, _get_db_session
+        with _get_db_session() as session:
+            rows = (
+                session.query(OntologyChangeProposal)
+                .filter(OntologyChangeProposal.tenant_id == tenant_id,
+                        OntologyChangeProposal.id.in_(ids))
+                .all()
+            )
+            found = {
+                str(r.id): {"id": str(r.id), "target": r.target, "op": r.op,
+                            "payload": r.payload, "status": r.status}
+                for r in rows
+            }
+        missing = [i for i in ids if i not in found]
+        return found, missing
+
+    async def set_proposal_status(self, tenant_id, ids, status,
+                                  reviewed_by=None, reject_reason=None,
+                                  new_parent=None):
+        """Batch status transition for reviewed proposals (pending ->
+        confirmed/rejected/reparented)."""
+        from database.knowevo_db import OntologyChangeProposal, _get_db_session
+        with _get_db_session() as session:
+            rows = (
+                session.query(OntologyChangeProposal)
+                .filter(OntologyChangeProposal.tenant_id == tenant_id,
+                        OntologyChangeProposal.id.in_(ids))
+                .all()
+            )
+            for r in rows:
+                r.status = status
+                r.reviewed_by = reviewed_by
+                r.reject_reason = reject_reason
+                if new_parent and r.op == "CLS_ADD":
+                    payload = dict(r.payload or {})
+                    payload["parent"] = new_parent
+                    r.payload = payload
+            return len(rows)
+
+    async def get_version_row(self, tenant_id, version):
+        from database.knowevo_db import OntologyVersion, _get_db_session
+        with _get_db_session() as session:
+            row = (
+                session.query(OntologyVersion)
+                .filter(OntologyVersion.tenant_id == tenant_id,
+                        OntologyVersion.version == version)
+                .first()
+            )
+            if row is None:
+                return None
+            return {"version": row.version, "metrics": row.metrics,
+                    "snapshot": row.snapshot, "applied_ops": row.applied_ops}
+
 
 def _proposal_target(p: Any) -> str:
     if isinstance(p, dict):
@@ -276,6 +355,18 @@ def _proposal_payload(p: Any) -> dict[str, Any]:
         "name", "aliases", "parent_stable_id", "evidence_spans",
         "confidence", "rationale", "status") if hasattr(p, k)}
     return d
+
+
+def _row_to_op(row: dict[str, Any]) -> dict[str, Any]:
+    """Queue row (from list_queue_rows / get_proposal_rows) -> commit op.
+    CLS_ADD/PROP_ADD/REL_ADD payloads already carry the fields _apply_ops
+    consumes; reparented rows have their payload['parent'] rewritten in
+    place by PgStore.set_proposal_status."""
+    payload = dict(row.get("payload") or {})
+    if row.get("op") == "CLS_ADD":
+        payload.setdefault("name", row.get("target", "").removeprefix("cls:"))
+    return {"op": row.get("op", "CLS_ADD"), "target": row.get("target", ""),
+            "payload": payload}
 
 
 # ---------------------------------------------------------------------------
@@ -542,6 +633,141 @@ class OntologyService:
         """K0 four metrics on a snapshot: cov/red/dep/align (hand-computed
         fixture in test_ontology_service.py locks the semantics)."""
         return _k0_metrics_from_snapshot(snapshot, seed_terms)
+
+    # ── T-05 confirm loop (appended; T-04 signatures above are frozen) ──
+
+    async def list_review_queue(self, tenant_id: str, page: int = 1,
+                                page_size: int = 40, round_id: str | None = None,
+                                status: str | None = "pending",
+                                ) -> dict[str, Any]:
+        """One session slice of the ranked review queue. Rows come back
+        score-ordered (rank formula re-computed from the stored features);
+        page_size is capped at MAX_PROPOSALS_PER_SESSION (K1 ss3)."""
+        page_size = min(page_size, MAX_PROPOSALS_PER_SESSION)
+        if not hasattr(self.store, "list_queue_rows"):
+            return {"items": [], "total": 0, "page": page,
+                    "page_size": page_size}
+        rows = await self.store.list_queue_rows(
+            tenant_id, round_id=round_id, status=status)
+        for r in rows:
+            conf = r.get("confidence") or 0.0
+            novelty = r.get("novelty") or 0.0
+            impact = (r.get("impact") or 0) / 10.0
+            spans = (r.get("payload") or {}).get("evidence_spans", [])
+            r["score"] = round(score_formula(conf, novelty, impact), 4)
+            r["ev_rich"] = build_ev_rich(spans)
+        rows.sort(key=lambda r: (r["score"], r["ev_rich"]), reverse=True)
+        total = len(rows)
+        start = (page - 1) * page_size
+        return {"items": rows[start:start + page_size], "total": total,
+                "page": page, "page_size": page_size}
+
+    async def review_proposals(self, tenant_id: str, ids: list[str],
+                               action: str, new_parent: str | None = None,
+                               reviewed_by: str | None = None,
+                               reject_reason: str | None = None,
+                               ) -> dict[str, Any]:
+        """Batch review (keyboard flow A/X/P -> confirm/reject/reparent).
+
+        confirm:  status pending -> confirmed (auto_accepted rows stay put)
+        reject:   status pending -> rejected with reason
+        reparent: rewrite the CLS_ADD payload's parent, then confirm; the
+                  V1 cycle check runs over the resulting parent map and a
+                  would-be cycle refuses the whole batch (atomic).
+        """
+        if action not in ("confirm", "reject", "reparent"):
+            raise ValueError("action must be confirm|reject|reparent")
+        found, missing = await self.store.get_proposal_rows(tenant_id, ids)
+        if missing:
+            raise ValueError(f"proposals not found: {', '.join(missing)}")
+        pending = {i: r for i, r in found.items()
+                   if r.get("status") == "pending"}
+        not_pending = [i for i in ids if i in found and i not in pending]
+        if not_pending:
+            raise ValueError(f"proposals not in pending state: "
+                             f"{', '.join(sorted(not_pending))}")
+
+        if action == "reparent":
+            parent_map = await self._parent_map_for(tenant_id)
+            for r in pending.values():
+                if r["op"] != "CLS_ADD":
+                    raise ValueError("reparent applies only to CLS_ADD proposals")
+                name = (r.get("payload") or {}).get("name", "")
+                parent_map[name] = new_parent
+            if not self.validate_cycle(parent_map):
+                raise PermissionError(
+                    "reparent would create a parent cycle (V1)")
+
+        status = {"confirm": "confirmed", "reject": "rejected",
+                  "reparent": "confirmed"}[action]
+        updated = await self.store.set_proposal_status(
+            tenant_id, list(pending), status,
+            reviewed_by=reviewed_by,
+            reject_reason=reject_reason if action == "reject" else None,
+            new_parent=new_parent if action == "reparent" else None)
+        return {"action": action, "updated": updated,
+                "new_parent": new_parent, "status": status}
+
+    async def _parent_map_for(self, tenant_id: str) -> dict[str, str | None]:
+        """name -> parent over active snapshot classes plus pending CLS_ADD
+        payloads (the world the reparent decision is made against)."""
+        snapshot = await self.store.load_active_snapshot(tenant_id)
+        parent_map: dict[str, str | None] = {
+            c.get("name"): c.get("parent")
+            for c in snapshot.get("classes", [])
+        }
+        if hasattr(self.store, "list_queue_rows"):
+            for r in await self.store.list_queue_rows(
+                    tenant_id, round_id=None, status="pending"):
+                if r.get("op") == "CLS_ADD":
+                    payload = r.get("payload") or {}
+                    if payload.get("name"):
+                        parent_map[payload["name"]] = payload.get("parent")
+        return parent_map
+
+    async def commit_from_queue(self, tenant_id: str,
+                                round_id: str | None = None,
+                                confirmed_ids: list[str] | None = None,
+                                base_version: str | None = None,
+                                ) -> dict[str, Any]:
+        """Fold confirmed proposals into ops and commit a new version.
+
+        Without confirmed_ids every confirmed row of the tenant (optionally
+        narrowed by round) is folded - the workbench's commit button after
+        a full session.
+        """
+        if hasattr(self.store, "list_queue_rows"):
+            rows = await self.store.list_queue_rows(
+                tenant_id, round_id=round_id, status="confirmed")
+        else:
+            rows = []
+        if confirmed_ids is not None:
+            wanted = set(confirmed_ids)
+            rows = [r for r in rows if r["id"] in wanted]
+        ops = [_row_to_op(r) for r in rows]
+        if not ops and confirmed_ids:
+            raise ValueError("none of the given proposals are confirmed")
+        # Deprecations would bump major; the confirm loop only produces
+        # additions, so commit_version's semver logic applies unchanged.
+        # base_version=None -> first commit lands on v1.0.0 (semver anchor).
+        row = await self.commit_version(
+            round_id, ops, base_version=base_version, tenant_id=tenant_id)
+        # The freshly published version shadows whatever was active before.
+        row = dict(row)
+        row["folded"] = len(ops)
+        return row
+
+    async def version_metrics(self, tenant_id: str, version: str
+                             ) -> dict[str, Any] | None:
+        """K0 metrics of a committed version row (None when unknown)."""
+        if not hasattr(self.store, "get_version_row"):
+            return None
+        row = await self.store.get_version_row(tenant_id, version)
+        if row is None:
+            return None
+        if row.get("metrics"):
+            return row["metrics"]
+        return _k0_metrics_from_snapshot(row.get("snapshot") or {})
 
     # ── Full round (build_ontology pipeline entry) ────────────────────
 
