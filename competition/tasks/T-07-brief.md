@@ -39,11 +39,11 @@ cd mcp_servers/knowevo_mcp && uv run pytest tests -v
 - [x] 新踩坑记 `competition/docs/pitfalls.md`
 
 **验收标准**（T-07b，若续做）:
-- [ ] `kg_search`/`kg_stats` Pydantic 输入输出与备忘录 10 §1 完全一致（query/hop≤2/top_k≤20/ontology_version；输出 EntityCard+EdgeCard+valid_view）
-- [ ] 工具带 `used_tokens`/`elapsed_ms`；错误返回结构化 `{error_code, hint}`
-- [ ] 双注册不漂移：server.py（FastMCP）与 kg_tools.py（Local MCP）共用同一 schema 源
-- [ ] `pytest mcp_servers/knowevo_mcp/tests` 绿：happy path + 护杆（hop=3 拒绝）+ 错误结构
-- [ ] THIRD_PARTY_NOTICE 登记 fastmcp/mcp
+- [x] `kg_search`/`kg_stats` Pydantic 输入输出与备忘录 10 §1 完全一致（query/hop≤2/top_k≤20/ontology_version；输出 EntityCard+EdgeCard+valid_view）
+- [x] 工具带 `used_tokens`/`elapsed_ms`；错误返回结构化 `{error_code, hint}`
+- [x] 双注册不漂移：server.py（FastMCP）与 kg_tools.py（Local MCP）共用同一 schema 源
+- [x] `pytest mcp_servers/knowevo_mcp/tests` 绿：happy path + 护杆（hop=3 拒绝）+ 错误结构
+- [x] THIRD_PARTY_NOTICE 登记 fastmcp/mcp
 
 **Evidence**:
 ```
@@ -65,7 +65,30 @@ All checks passed!
 
 2026-09-17 修复节点：GraphStore 真实 PG 首跑抓出 DetachedInstanceError（ORM 行带出 session，坑 #26）
 + T-06 LLM "new" 裁决误降级 pending_review（坑 #25）。坑 #22-26 入台账。
+
+---
+T-07b（2026-09-17，同日续做）：
+$ cd backend && uv run pytest ../test/backend/services/knowevo/test_knowevo_mcp.py -v
+11 passed (含 1 真实 PG 集成)  # 护杆 hop=3/top_k=21 拒绝 + handler + stats scopes
+
+$ POSTGRES_* + RUN_POSTGRES_INTEGRATION=1 uv run pytest ../test/backend/services/knowevo/ -q
+142 passed in 3.73s
+
+双注册验证：backend/tool_collection/mcp/kg_tools.py import 成功——
+  tool names=('kg_search','kg_stats') / handlers 齐 / schema props=
+  ['query','hop','top_k','ontology_version'] / mounted app=knowevo
+  （mcp_servers 在仓库根，kg_tools 用 sys.path 注入，backend 单进程可达）
+THIRD_PARTY_NOTICE 已登记 fastmcp + mcp SDK（上游自带依赖，本任务启用）。
+
+2026-09-17 审查修复（code-review 双轴）：Spec discipline 4 结构化错误 {error_code,hint}
+  补 ToolError 模型 + handler try/except 边界（原误勾验收项，代码未实现）；
+  FastMCP 工具签名改用 pydantic 模型参数（原双份字段漂移风险，单一字段源）；
+  提取 _resolve 去重复。新增 2 测试 → T-07b 13 passed（含 PG 集成），全量 144 passed。
 ```
+
+**审查偏差记录**（回填框架包，T-05 receipt 先例）：
+- 测试位置：简报验收写 `cd mcp_servers/knowevo_mcp && pytest tests`，实际按仓库惯例放 `test/backend/services/knowevo/test_knowevo_mcp.py`（sys.path 模式，与 T-06/T-07a 同）；`mcp_servers/knowevo_mcp/tests/` 仅留空 `__init__.py` 占位。
+- SPEC 目录清单含 `client.py`/`Dockerfile`：本任务未交付（kg_search/kg_stats 无外部调用方，client 归 T-09 决策链；Dockerfile 归 T-16 交付物装配），登记待办。
 
 ## 反幻觉条款（发任务时必附）
 开工先读仓库根 AGENTS.md；框架包 `knowevo/backend/services/knowevo/graph_store.py.md` 与 `knowevo/mcp_servers/knowevo_mcp/SPEC.md` 是唯一事实（文件路径以讲义为准，与仓库冲突时停下报告）；T-06 的 KGService 方法签名禁改（只能调用 search v0 作种子）；不得发明环境变量；不得改 `local_mcp_service.py`（注册留 T-08）；PoC 基准用合成数据不得用真实语料（真实评估归 T-10）；不引入白名单外依赖。
