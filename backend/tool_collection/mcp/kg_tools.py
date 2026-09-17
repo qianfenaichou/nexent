@@ -1,5 +1,6 @@
 """
-KnowEvo Local-MCP inner registration (T-07b) - kg_search + kg_stats.
+KnowEvo Local-MCP inner registration - kg_search + kg_stats (T-07b) and
+kg_multi_hop (T-09).
 
 This is the second registration surface of the same tool handlers: the
 standalone FastMCP server (mcp_servers/knowevo_mcp/server.py) serves them
@@ -7,9 +8,10 @@ in the deployed form, and this module exposes the SAME handlers for the
 Nexent Agent's local MCP pipeline (tool_collection/mcp/) - single schema
 source, dual registration, no drift (SPEC discipline 1).
 
-The actual mount into ``local_mcp_service.py`` is a T-08 wiring task (that
-file is upstream-owned and frozen); this module only defines the tool
-surface and the handler bindings so T-08 has a concrete seam to mount.
+The mount into ``local_mcp_service.py`` is a T-08 wiring task (that file is
+upstream-owned and frozen); because the mounted unit is the shared FastMCP
+app itself, tools added here reach the Agent on the next wiring run without
+a second mount call.
 """
 # The mcp_servers package lives at the repo root (outside the backend
 # package); make it importable from a backend-only process. Same pattern
@@ -25,6 +27,8 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from mcp_servers.knowevo_mcp.schemas import (
+    KGMultiHopInput,
+    KGMultiHopOutput,
     KGSearchInput,
     KGSearchOutput,
     KGStatsInput,
@@ -34,12 +38,13 @@ from mcp_servers.knowevo_mcp.server import (
     configure as knowevo_configure,
 )
 from mcp_servers.knowevo_mcp.server import (
+    kg_multi_hop_handler,
     kg_search_handler,
     kg_stats_handler,
 )
 
 SERVICE_NAME = "knowevo"
-KG_MCP_TOOL_NAMES = ("kg_search", "kg_stats")
+KG_MCP_TOOL_NAMES = ("kg_search", "kg_stats", "kg_multi_hop")
 
 # Reuse the standalone app as the mountable unit: the same FastMCP instance
 # can be mounted into local_mcp_service.py via ``local_mcp_service.mount``,
@@ -52,6 +57,7 @@ def tool_schemas() -> dict[str, dict]:
     return {
         "kg_search": KGSearchInput.model_json_schema(),
         "kg_stats": KGStatsInput.model_json_schema(),
+        "kg_multi_hop": KGMultiHopInput.model_json_schema(),
     }
 
 
@@ -60,6 +66,7 @@ def handlers() -> dict[str, object]:
     return {
         "kg_search": kg_search_handler,
         "kg_stats": kg_stats_handler,
+        "kg_multi_hop": kg_multi_hop_handler,
     }
 
 
@@ -75,6 +82,8 @@ def wire(tenant_id: str = "") -> FastMCP:
 __all__ = [
     "KG_MCP_TOOL_NAMES",
     "SERVICE_NAME",
+    "KGMultiHopInput",
+    "KGMultiHopOutput",
     "KGSearchInput",
     "KGSearchOutput",
     "KGStatsInput",

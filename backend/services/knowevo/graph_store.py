@@ -49,7 +49,16 @@ class EntityCard:
 
 @dataclass
 class EdgeCard:
-    """One graph edge in query output; evidence_id rides in props."""
+    """One graph edge in query output; evidence_id rides in props.
+
+    ``valid_at``/``invalid_at`` are the bi-temporal business-time window.
+    They are carried into query output because version-pinned traversal
+    (T-09, 02-tech-plan 3.2) must test each edge against a version cutoff
+    t_v; without the window on the card the predicate would have to issue
+    a second query per edge. Both default to None to stay backward
+    compatible with hand-built fixtures (the columns are NOT NULL
+    server-side, so real rows always carry valid_at).
+    """
     id: Any
     src: str
     dst: str
@@ -57,6 +66,8 @@ class EdgeCard:
     claim: str
     props: dict[str, Any] = field(default_factory=dict)
     contested: bool = False
+    valid_at: datetime | None = None
+    invalid_at: datetime | None = None
 
 
 @dataclass
@@ -104,12 +115,26 @@ class GraphStore(ABC):
                         entity_ids: list[str],
                         rel_types: list[str] | None = None,
                         hop: int = 1,
-                        valid_view: bool = True) -> Subgraph: ...
+                        valid_view: bool = True,
+                        as_of: datetime | None = None) -> Subgraph:
+        """Neighborhood of the given entities.
+
+        ``valid_view=True`` returns the current view; ``as_of`` (T-09)
+        evaluates that view at a knowledge-version cutoff t_v instead of
+        now(), which is what version-pinned traversal walks on. Adapters
+        that cannot honour a cutoff may ignore it, but the parameter is
+        part of the seam so callers can rely on it existing.
+        """
+        ...
 
     @abstractmethod
     async def multi_hop(self, tenant_id: str, seeds: list[str],
                         hop_plan: HopPlan,
-                        beam: int = 3, depth: int = 3) -> list[Path]: ...
+                        beam: int = 3, depth: int = 3,
+                        as_of: datetime | None = None) -> list[Path]:
+        """Beam walk from the seeds; ``as_of`` pins it to a knowledge
+        version (T-09), None means the current view."""
+        ...
 
     @abstractmethod
     async def supersede(self, tenant_id: str, edge_ids: list[uuid.UUID],
@@ -153,6 +178,8 @@ def _relation_to_card(row) -> EdgeCard:
         claim=row.claim,
         props=dict(row.props or {}),
         contested=bool(row.contested),
+        valid_at=getattr(row, "valid_at", None),
+        invalid_at=getattr(row, "invalid_at", None),
     )
 
 
@@ -224,13 +251,24 @@ class PgJsonbGraphStore(GraphStore):
     async def neighbors(self, tenant_id: str, entity_ids: list[str],
                         rel_types: list[str] | None = None,
                         hop: int = 1,
-                        valid_view: bool = True) -> Subgraph:
-        """Current (or historical) view of the 1..hop neighborhood. Each
-        hop expands from the previous hop's frontier, so callers can prune
-        between hops."""
+                        valid_view: bool = True,
+                        as_of: datetime | None = None) -> Subgraph:
+        """Neighborhood as of a knowledge version, or the current view.
+
+        ``as_of`` (T-09 version pinning) is an optional keyword extension:
+        when given, both the edge and entity predicates are evaluated at
+        that instant instead of now(), so the walk runs inside G_v - the
+        subgraph of facts valid under that knowledge version
+        (02-tech-plan 3.2). Passing ``as_of`` keeps ``valid_view=True``
+        semantics ("currently valid" becomes "valid at t_v"); it is not a
+        switch to the historical view. The ABC in this module intentionally
+        keeps the shorter signature: only PG needs the instant, and a
+        default of None preserves every existing caller.
+        """
         if not entity_ids:
             return Subgraph()
         seen: set[str] = set(entity_ids)
+        seen_edges: set[Any] = set()
         edges: list[EdgeCard] = []
         frontier: list[str] = list(entity_ids)
         for _ in range(max(1, hop)):
@@ -243,7 +281,7 @@ class PgJsonbGraphStore(GraphStore):
                 if rel_types:
                     q = q.filter(KgRelation.rel_type.in_(rel_types))
                 if valid_view:
-                    q = q.filter(valid_now(KgRelation))
+                    q = q.filter(valid_now(KgRelation, as_of=as_of))
                 else:
                     q = q.filter(KgRelation.invalid_at.isnot(None))
                 q = q.filter(
@@ -256,9 +294,13 @@ class PgJsonbGraphStore(GraphStore):
                 rows = [_relation_to_card(r) for r in q.all()]
             next_frontier: list[str] = []
             for card in rows:
-                # an edge is new to the subgraph when either endpoint is
-                # outside the already-seen set (revisit rows once);
-                if card.src not in seen or card.dst not in seen:
+                # Novelty is tracked per edge, not per endpoint: an edge
+                # whose two endpoints are both seeds (a-b when the caller
+                # seeded {a, b}) is incident to the frontier and belongs in
+                # the neighborhood. Judging it by "is an endpoint unseen"
+                # dropped exactly those edges - pitfall #32.
+                if card.id not in seen_edges:
+                    seen_edges.add(card.id)
                     edges.append(card)
                 for sid in (card.src, card.dst):
                     if sid not in seen:
@@ -272,15 +314,23 @@ class PgJsonbGraphStore(GraphStore):
             )
             if valid_view:
                 q = q.filter(KgEntity.status == "active")
+                if as_of is not None:
+                    q = q.filter(valid_now(KgEntity, as_of=as_of))
             entities = [_entity_to_card(r) for r in q.all()]
         return Subgraph(entities=entities, edges=edges)
 
     async def multi_hop(self, tenant_id: str, seeds: list[str],
                         hop_plan: HopPlan,
-                        beam: int = 3, depth: int = 3) -> list[Path]:
+                        beam: int = 3, depth: int = 3,
+                        as_of: datetime | None = None) -> list[Path]:
         """Greedy beam walk: at each depth expand the beam frontier one hop
         and keep the beam-most paths by length (no cycles). Ranking is
-        lexical in v0 - T-09 swaps in PPR/embedding scoring."""
+        lexical in v0 - T-09 layers PPR/embedding scoring on top.
+
+        ``as_of`` (T-09) pins every expansion step to a knowledge-version
+        cutoff, so the walk only ever traverses facts valid under that
+        version (02-tech-plan 3.2).
+        """
         if not seeds:
             return []
         depth = min(depth, 3)  # guardrail: 3 is the max hop (memo 10)
@@ -291,21 +341,25 @@ class PgJsonbGraphStore(GraphStore):
             sub = await self.neighbors(
                 tenant_id, tails,
                 rel_types=hop_plan.rel_types,
-                hop=1, valid_view=True)
+                hop=1, valid_view=True, as_of=as_of)
             by_entity: dict[str, list[EdgeCard]] = {}
             for e in sub.edges:
                 by_entity.setdefault(e.src, []).append(e)
                 by_entity.setdefault(e.dst, []).append(e)
             new_paths: list[Path] = []
+            expanded = False
             for p in paths:
                 tail = p.entities[-1]
                 candidates = by_entity.get(tail, [])
-                if not candidates:
-                    new_paths.append(p)
-                    continue
                 hop_edges = [e for e in candidates[:beam]
                              if (e.dst if e.src == tail else e.src)
                              not in p.entities]
+                if not hop_edges:
+                    # Dead end: the path survives unchanged so callers can
+                    # tell "stopped here" from "never started".
+                    new_paths.append(p)
+                    continue
+                expanded = True
                 for edge in hop_edges[:beam]:
                     nxt = edge.dst if edge.src == tail else edge.src
                     new_paths.append(Path(
@@ -315,8 +369,8 @@ class PgJsonbGraphStore(GraphStore):
                     ))
             paths = sorted(new_paths, key=lambda p: len(p.entities),
                            reverse=True)[:beam]
-            if not any(len(p.entities) > 1 for p in paths):
-                break  # no expansion happened anywhere
+            if not expanded:
+                break  # nothing anywhere could take another hop
         return paths
 
     async def supersede(self, tenant_id: str, edge_ids: list[uuid.UUID],
