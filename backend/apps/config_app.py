@@ -16,6 +16,7 @@ from apps.file_management_app import (
     file_management_config_router as file_manager_router,
 )
 from apps.image_app import router as proxy_router
+from apps.knowledge_graph_app import router as knowevo_router
 from apps.knowledge_summary_app import router as summary_router
 from apps.mock_user_management_app import router as mock_user_management_router
 from apps.model_managment_app import router as model_manager_router
@@ -129,6 +130,7 @@ app.include_router(datamate_router)
 app.include_router(voice_router)
 app.include_router(file_manager_router)
 app.include_router(proxy_router)
+app.include_router(knowevo_router)
 app.include_router(tool_config_router)
 app.include_router(dify_router)
 app.include_router(idata_router)
