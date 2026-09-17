@@ -1151,11 +1151,32 @@ class TestQuerySurface:
 
     @pytest.mark.asyncio
     async def test_future_owners_are_explicit_stubs(self):
+        # ingest_new_version stays T-11's; evolution_trace was T-09's and is
+        # now implemented (it returns a Timeline instead of raising).
         svc = _svc(store=FakeStore())
         with pytest.raises(NotImplementedError):
             await svc.ingest_new_version(None, None, [])
-        with pytest.raises(NotImplementedError):
-            await svc.evolution_trace(None, None)
+
+    @pytest.mark.asyncio
+    async def test_evolution_trace_is_implemented_for_entities(self):
+        svc = _svc(store=FakeStore())
+        trace = await svc.evolution_trace(entity_id="Drug:x")
+        assert trace.entity_id == "Drug:x"
+        assert isinstance(trace.events, list)
+
+    @pytest.mark.asyncio
+    async def test_evolution_trace_reports_truncation(self):
+        store = FakeStore()
+        store.edges = [
+            {"id": f"e{i}", "tenant": TENANT_A, "src": "Drug:x",
+             "dst": "Disease:y", "rel_type": "treats", "claim": f"c{i}",
+             "valid_at": None, "invalid_at": None, "contested": False,
+             "evidence_id": None}
+            for i in range(5)
+        ]
+        svc = _svc(store=store)
+        trace = await svc.evolution_trace(entity_id="Drug:x", limit=2)
+        assert len(trace.events) == 2 and trace.truncated is True
 
 
 # ---------------------------------------------------------------------------
