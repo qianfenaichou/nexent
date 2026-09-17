@@ -9,12 +9,22 @@ importing each other's unfinished files.
 
 Contract source: knowevo/backend/services/knowevo/kg_service.py.md
 (interface frozen) and memo 02-tech-plan §2.3 (K2 extraction/alignment).
+
+Two Pydantic models also live here (T-09): ``DecisionCardContract`` is the
+*wire-format* validator for the decision-card JSON that T-10b writes and
+T-12 renders, and ``CalibrationBucket`` is the ten-bucket calibration
+contract T-10b must satisfy. The runtime card stays a dataclass (cheap to
+build in a hot loop, easy to fake in tests); the Pydantic tree exists to
+validate the serialized contract at the boundary, which a dataclass cannot
+do - see knowevo_models.py.md, which puts JSONB payload models here.
 """
 from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
 from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 # ---------------------------------------------------------------------------
 # Spans and extraction output (K2 §1)
@@ -375,10 +385,17 @@ class ConflictAdjudication:
 @dataclass
 class EvidenceChain:
     """Assembled evidence for a question, with the contested flag the card
-    surfaces as 'knowledge inconsistency'."""
+    surfaces as 'knowledge inconsistency'.
+
+    ``probe_failed`` mirrors PathSet.probe_failed: the version-boundary
+    probe could not run, so "the cutoff excluded nothing" is unverified
+    rather than established. The card must say so - an empty ``failed``
+    list means two different things otherwise.
+    """
     items: list[EvidenceItem] = field(default_factory=list)
     contested: bool = False
     failed_paths: list[Any] = field(default_factory=list)
+    probe_failed: bool = False
 
     def has_evidence(self) -> bool:
         return bool(self.items)
@@ -501,12 +518,17 @@ class PathSet:
     refs and time windows) without re-querying the store per edge.
     ``clock`` is the resolved version the walk was pinned to, kept so the
     card's knowledge stamp reports the same instant the walk actually used.
+
+    ``probe_failed`` is set when the version-boundary probe could not run.
+    It is separate from ``failed`` on purpose: ``failed`` holds edges the
+    cutoff actually excluded, and a probe error is not evidence of absence.
     """
     paths: list[Any] = field(default_factory=list)
     failed: list[Any] = field(default_factory=list)
     scored: list[Any] = field(default_factory=list)
     version_pinned: bool = False
     early_stopped: bool = False
+    probe_failed: bool = False
     claims_by_path: dict[int, list[str]] = field(default_factory=dict)
     edges_by_path: dict[int, list[Any]] = field(default_factory=dict)
     clock: Any = None
@@ -529,3 +551,163 @@ class Timeline:
     decision_id: Any | None = None
     events: list[dict[str, Any]] = field(default_factory=list)
     truncated: bool = False
+
+
+# ---------------------------------------------------------------------------
+# Validation contracts at the JSON boundary (T-09)
+#
+# The dataclasses above are the in-process shape. These models guard the
+# two places where data crosses a serialization boundary and a typo would
+# otherwise travel silently: the card payload read back out of
+# decision_card_t by T-10b/T-12, and the calibration table T-10b writes
+# into eval_run_t.calibration.
+#
+# Deliberate choice: ``extra="allow"`` everywhere. The card payload is
+# forward-compatible by design - a consumer that predates a newly added
+# field must ignore it, not crash on it - and the fields the card actually
+# asserts are the ones enumerated here. Validation therefore catches type
+# and structure errors (a payload that is a list where a dict belongs, a
+# stamp missing its cutoff) without turning every schema addition into a
+# breaking change for the reader.
+# ---------------------------------------------------------------------------
+
+class CalibrationBucketModel(BaseModel):
+    """One confidence bucket of the empirical calibration table.
+
+    ``lo``/``hi`` are the bucket's half-open interval; ``empirical`` is the
+    observed accuracy of predictions that fell inside it. Bounds are
+    *validated* rather than clamped: a table with an inverted or
+    out-of-[0,1] interval is a producer bug, and silently clamping it would
+    hide exactly the mistake that makes the calibration wrong.
+    """
+    model_config = ConfigDict(extra="allow")
+
+    lo: float = Field(ge=0.0, le=1.0)
+    hi: float = Field(gt=0.0, le=1.0)
+    empirical: float = Field(ge=0.0, le=1.0)
+
+
+class CalibrationTableModel(BaseModel):
+    """The ten-bucket curve, validated as a curve rather than a list.
+
+    K4 fixes ten buckets so every card's calibration is comparable across
+    evaluation runs; a 3-bucket table answers a different question and must
+    not be presented as this one. The model therefore rejects any bucket
+    count other than ten (``ensure_table`` raises for it), while the
+    runtime lookup stays tolerant of a partial table so an in-flight
+    migration cannot take card rendering down with it.
+    """
+    model_config = ConfigDict(extra="allow")
+
+    buckets: list[CalibrationBucketModel]
+
+    def covers(self, conf: float) -> bool:
+        """Would a confidence in [0,1] land in some bucket?"""
+        return any(b.lo <= conf < b.hi or (b.hi >= 1.0 and conf >= b.lo)
+                   for b in self.buckets)
+
+
+class ProvenanceModel(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    doc: str = ""
+    span: str = ""
+    kg_path: list[str] = Field(default_factory=list)
+    version_pinned: bool = False
+
+
+class EvidenceItemModel(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    claim: str = ""
+    provenance: ProvenanceModel = Field(default_factory=ProvenanceModel)
+    tag: str = TAG_EXTRACTED
+    source_channel: str = CHANNEL_KG
+    contested: bool = False
+
+
+class CounterfactualModel(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    not_choose: str = ""
+    tag: str = TAG_INFERRED
+
+
+class CandidateModel(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    option: str = ""
+    score: float = 0.0
+    confidence_calibrated: float = 0.0
+    evidence_chain: list[EvidenceItemModel] = Field(default_factory=list)
+    risks: list[str] = Field(default_factory=list)
+    counterfactual: CounterfactualModel | None = None
+
+
+class ConflictAdjudicationModel(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    conflict_id: str = ""
+    type: str = ""
+    resolution: str = ""
+
+
+class KnowledgeStampModel(BaseModel):
+    """The knowledge version stamped on a card.
+
+    ``kg_cutoff`` stays loosely typed because it round-trips through JSONB
+    as an ISO string but is a datetime in process; both must validate.
+    """
+    model_config = ConfigDict(extra="allow")
+
+    ontology_version: str | None = None
+    kg_cutoff: Any = None
+    clock_source: str = "now"
+
+
+class DecisionCardContract(BaseModel):
+    """Validated wire format of decision_card_t.payload.
+
+    Used by ``DecisionService.validate_card_payload`` and by T-10b/T-12
+    when they read a card back out of the table. The invariants it encodes
+    are the ones the decision layer promises: a card that says it
+    recommends something has at least one candidate, and a card that says
+    evidence was insufficient has none.
+    """
+    model_config = ConfigDict(extra="allow")
+
+    question_id: str = ""
+    question: str = ""
+    knowledge_stamp: KnowledgeStampModel = Field(
+        default_factory=KnowledgeStampModel)
+    candidates: list[CandidateModel] = Field(default_factory=list)
+    decision: str = DECISION_RECOMMEND
+    conflict_adjudications: list[ConflictAdjudicationModel] = Field(
+        default_factory=list)
+    uncertainty_notes: list[str] = Field(default_factory=list)
+    disclaimer: str = ""
+    route: str = ROUTE_REASONING
+    calibration_applied: bool = False
+    knowledge_version_pinned: bool = False
+    used_tokens: int = 0
+    elapsed_ms: int = 0
+
+    @model_validator(mode="after")
+    def _decision_agrees_with_candidates(self) -> DecisionCardContract:
+        """The two refusal invariants, enforced wherever a card is read.
+
+        These are the properties K4's X-type questions depend on: a card
+        that refuses must not smuggle in a candidate, and a card that
+        recommends must have something to recommend. Checked here so a
+        consumer reading a stored payload gets the same guarantee the
+        renderer gives at production time.
+        """
+        if self.decision == DECISION_INSUFFICIENT and self.candidates:
+            raise ValueError(
+                f"decision={DECISION_INSUFFICIENT} must carry no candidates, "
+                f"got {len(self.candidates)}")
+        if self.decision == DECISION_RECOMMEND and not self.candidates:
+            raise ValueError(
+                f"decision={DECISION_RECOMMEND} requires at least one "
+                "candidate")
+        return self
