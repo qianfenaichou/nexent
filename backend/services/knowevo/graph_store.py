@@ -14,6 +14,18 @@ algorithm source: memo 09-A1 (02-technical-plan 2.6). The PoC benchmark
 probes (P1 multi-hop p95 < 1.5s @ 20k/30k, P2 supersede p95 < 200ms) run
 against the synthetic graph in pipeline/gen_synthetic_graph.py.
 
+T-09 seam extension (recorded here because the frozen contract says seam
+changes are documented in one place): ``neighbors`` and ``multi_hop`` take
+an optional ``as_of`` keyword, and ``EdgeCard`` carries ``valid_at`` /
+``invalid_at``. Together they are what version-pinned traversal walks on -
+every hop is evaluated at a knowledge version's cutoff t_v instead of
+now() (02-tech-plan 3.2, literature gap B2). Both extensions are additive:
+the parameters default to None and reproduce the previous behaviour
+exactly, so no existing caller changes, and the T-07 suite passing
+unchanged is the compatibility evidence. An adapter that cannot honour a
+cutoff may ignore it; callers detect support via ``inspect`` and fall back
+to post-filtering (see DecisionService._store_supports_as_of).
+
 Design inspired by: graphiti's bi-temporal edges and neighborhood walks
 (attribution per 03-development-plan 4.2).
 """
