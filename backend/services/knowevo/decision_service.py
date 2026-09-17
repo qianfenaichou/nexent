@@ -40,6 +40,8 @@ from dataclasses import asdict
 from datetime import datetime
 from typing import Any
 
+from pydantic import ValidationError
+
 from consts.const import KW_MULTIHOP_BEAM, KW_MULTIHOP_MAX_DEPTH, LANGUAGE
 from services.knowevo.graph_store import EdgeCard, HopPlan, Path, Subgraph
 from services.knowevo.kg_service import _render_prompt
@@ -54,10 +56,12 @@ from services.knowevo.schemas import (
     ROUTE_RETRIEVAL,
     TAG_EXTRACTED,
     TAG_INFERRED,
+    CalibrationTableModel,
     Candidate,
     ConflictAdjudication,
     Counterfactual,
     DecisionCard,
+    DecisionCardContract,
     DocHit,
     EvidenceChain,
     EvidenceItem,
@@ -116,15 +120,21 @@ VERSION_COMPARE_WORDS = [
 ]
 
 # A lookup rule match is vetoed when the question also carries one of
-# these: "首选是什么以及为什么" matches rule 6 but is plainly multi-hop.
+# these: a question matching the "first-line drug is" rule but also asking
+# "and why" is plainly multi-hop, not a lookup.
 MULTI_HOP_MARKERS = [
     "以及", "并且", "同时", "机制", "为什么", "为何", "风险", "警惕",
     "需注意", "如何调整", "怎么选", "先后", "导致",
     "and", "why", "mechanism", "risk", "how should", "adjust",
 ]
 
-# Polarity markers for the narrow contradiction heuristic below.
-NEGATION_MARKERS = ["不", "无", "禁", "停用", "不可", "避免", "不再", "取消",
+# Polarity markers for the narrow contradiction heuristic below. These are
+# matched as substrings, so an entry must be a genuine polarity flip and
+# not a domain word that merely contains one: "禁" was in this list and
+# made every claim mentioning 禁忌 (contraindication) look negated, which
+# silently disabled contradiction detection for exactly the drug-safety
+# pairs the check exists for (pitfall #34).
+NEGATION_MARKERS = ["不", "无", "禁用", "停用", "不可", "避免", "不再", "取消",
                     "not", "no longer", "avoid", "contraindicated", "never"]
 
 # Router few-shot, one example per route. Kept short on purpose: the L2
@@ -150,6 +160,21 @@ HEALTHCARE_DISCLAIMER = (
 # Content-word overlap above which two claims are treated as the same
 # proposition (used for cross-channel fusion and contradiction checks).
 PROPOSITION_MATCH = 0.5
+
+# K4 4.1: empirical calibration is a ten-bucket curve, so every card's
+# confidence means the same thing across evaluation runs. The edges are
+# fixed here rather than inferred from the table so a short or ragged
+# table is detectable instead of silently producing a different curve.
+CALIBRATION_BUCKETS = 10
+CALIBRATION_EDGES = [i / CALIBRATION_BUCKETS
+                     for i in range(CALIBRATION_BUCKETS + 1)]
+
+# Sentinel reason on the synthetic entry _probe_excluded emits when the
+# boundary probe itself failed. Never surfaces as a decision reason: the
+# walk lifts it into PathSet.probe_failed and the card turns that into an
+# uncertainty note (an unbacked "nothing was excluded" is the one outcome
+# version pinning must not produce silently).
+PROBE_FAILED = "probe_failed"
 
 _DIGITS = re.compile(r"[0-9０-９%．.]")
 _WORD = re.compile(r"[\u4e00-\u9fff]|[a-zA-Z0-9]+")
@@ -427,7 +452,12 @@ class DecisionService:
         if not seeds:
             return result
 
-        hop_plan = HopPlan(rel_types=rel_types)
+        # Hop plan: an explicit rel_types argument wins (the caller knows
+        # the domain); otherwise the LLM decomposes the question once, and
+        # every hop of the walk follows that plan. A failed plan degrades
+        # to "no relation-type filter", which widens the walk rather than
+        # breaking it.
+        plans = await self.plan_hops(question, seeds, rel_types=rel_types)
         paths: list[Path] = [Path(entities=[s]) for s in seeds]
         # Keyed by id(path): Path carries edge *ids* (for storage lookup)
         # and claim texts, so the EdgeCards collected during expansion are
@@ -436,12 +466,17 @@ class DecisionService:
         edges_by_path: dict[int, list[EdgeCard]] = {id(p): [] for p in paths}
         claims_by_path: dict[int, list[str]] = {id(p): [] for p in paths}
 
-        for _ in range(depth):
+        for level in range(depth):
             frontier = [p.entities[-1] for p in paths]
+            hop_plan = plans[min(level, len(plans) - 1)]
             sub = await self._expand(frontier, hop_plan, t_v)
             if t_v is not None:
-                result.failed.extend(
-                    await self._probe_excluded(frontier, hop_plan, clock))
+                probe = await self._probe_excluded(frontier, hop_plan, clock)
+                real = [e for e in probe
+                        if e.invalid_edge_reason != PROBE_FAILED]
+                if len(real) != len(probe):
+                    result.probe_failed = True
+                result.failed.extend(real)
             if not sub.edges:
                 break
             by_entity: dict[str, list[EdgeCard]] = {}
@@ -519,6 +554,64 @@ class DecisionService:
             kwargs["as_of"] = t_v
         return await self.store.neighbors(self.tenant_id, frontier, **kwargs)
 
+    async def plan_hops(self, question: str, seeds: list[str],
+                        rel_types: list[str] | None = None,
+                        depth: int | None = None) -> list[HopPlan]:
+        """Decompose the question into one HopPlan per level (LLM, mid tier).
+
+        Returns a list rather than a single plan because hop intent changes
+        along the walk (drug -> indication -> monitoring lab), so each level
+        gets its own relation-type whitelist instead of one whitelist
+        stretched across the whole path.
+
+        Every failure mode degrades to an unfiltered plan: no LLM, a
+        malformed reply, or relation types outside the active ontology
+        vocabulary all mean "walk everything" - which is slower and less
+        precise but never wrong, whereas a hallucinated relation type would
+        silently return an empty graph and look like "no knowledge exists".
+
+        ``HopPlan.reverse`` is carried through but has no effect yet: the
+        graph store traverses both edge directions in one hop, so a
+        reversed hop is already covered. It is kept on the plan because the
+        hop planner's answer is worth recording (and a future unidirectional
+        adapter would need it), not because anything acts on it.
+        """
+        levels = max(1, int(depth if depth is not None else self.max_depth))
+        # An explicit rel_types argument still wins for level 0 (callers
+        # that know their domain keep full control); later levels are
+        # unfiltered so the walk can turn a corner.
+        base = HopPlan(rel_types=rel_types)
+        if rel_types is not None or self.llm is None:
+            return [base] * levels
+        vocabulary = [str(r) for r in (self.ontology.get("rel_types") or [])]
+        system, user = _render_prompt(
+            "knowevo_hops", lang=self.lang, question=question,
+            seeds=", ".join(seeds[:10]),
+            rel_vocabulary=json.dumps(vocabulary, ensure_ascii=False)
+            if vocabulary else "(ontology relation vocabulary unavailable)")
+        try:
+            raw = await self._call_llm(system, user, kind="hop_plan",
+                                       tier=TIER_MID)
+        except Exception as exc:  # noqa: BLE001 - plan failure degrades only
+            logger.warning("hop planning failed: %s", exc)
+            return [base] * levels
+        data = _parse_json(raw)
+        if not isinstance(data, dict):
+            return [base] * levels
+        known = set(vocabulary)
+        plans: list[HopPlan] = []
+        for hop in (data.get("hops") or [])[:levels]:
+            if not isinstance(hop, dict):
+                plans.append(HopPlan())
+                continue
+            types = [str(t) for t in (hop.get("rel_types") or [])
+                     if not known or str(t) in known]
+            plans.append(HopPlan(rel_types=types or None,
+                                 reverse=bool(hop.get("reverse", False))))
+        while len(plans) < levels:
+            plans.append(HopPlan())
+        return plans
+
     def _store_supports_as_of(self) -> bool:
         """Does the injected store accept the ``as_of`` keyword?
 
@@ -580,6 +673,13 @@ class DecisionService:
         The probe reads the same edges the store has, so it never invents
         a failure: an edge is reported only when it exists and is outside
         G_v, with the cutoff reason that excluded it.
+
+        A probe failure is reported as one synthetic entry rather than an
+        empty list. Returning ``[]`` would make "the version cutoff removed
+        nothing" and "we could not check what it removed" produce the same
+        card, and only the second of those is unbacked. The caller filters
+        the synthetic entry out of ``failed`` and surfaces it as an
+        uncertainty note instead (see ``multi_hop``).
         """
         if self.store is None or not frontier:
             return []
@@ -589,8 +689,11 @@ class DecisionService:
             sub = await self.store.neighbors(self.tenant_id, frontier,
                                              **kwargs)
         except Exception as exc:  # noqa: BLE001 - probe is best-effort
-            logger.info("version boundary probe failed: %s", exc)
-            return []
+            logger.warning("version boundary probe failed: %s", exc)
+            return [ScoredPath(path=Path(entities=list(frontier)),
+                               score=PathScore(),
+                               version_valid=False,
+                               invalid_edge_reason="probe_failed")]
         out: list[ScoredPath] = []
         for edge in sub.edges:
             if edge_in_version(edge.valid_at, edge.invalid_at, clock):
@@ -709,6 +812,7 @@ class DecisionService:
             claims_by_path = paths.claims_by_path
             edges_by_path = paths.edges_by_path
             chain.failed_paths = list(paths.failed)
+            chain.probe_failed = bool(paths.probe_failed)
             pinned = bool(paths.version_pinned)
         else:
             path_list = list(paths)
@@ -836,6 +940,14 @@ class DecisionService:
             card.decision = DECISION_RECOMMEND
         if card.decision == DECISION_INSUFFICIENT:
             card.candidates = []
+        elif not card.candidates:
+            # An unparseable decision plus zero candidates leaves nothing to
+            # recommend. Keeping RECOMMEND here would produce a card that
+            # asserts a recommendation it cannot name, which the wire
+            # contract rejects and a reader would rightly distrust.
+            logger.warning("no candidates produced; refusing instead of "
+                           "recommending nothing")
+            card.decision = DECISION_INSUFFICIENT
         card.uncertainty_notes.extend(
             str(n) for n in (data.get("uncertainty_notes") or []))
         for adj in data.get("conflict_adjudications") or []:
@@ -849,8 +961,9 @@ class DecisionService:
         card.calibration_applied = table is not None
         if table is not None:
             for cand in card.candidates:
-                cand.confidence_calibrated = self.calibrate(
-                    cand.confidence_calibrated)
+                cand.confidence_calibrated = self._calibrate_in_table(
+                    cand.confidence_calibrated, table,
+                    _card_notes_appender(card))
         else:
             card.uncertainty_notes.append(
                 "未找到校准表（eval_run_t.calibration 为空）：置信度为模型"
@@ -860,11 +973,23 @@ class DecisionService:
             card.uncertainty_notes.append(
                 "知识不一致：双通道或跨文档存在相互矛盾的表述，已标注"
                 "而非静默取舍。")
+        if chain.probe_failed:
+            card.uncertainty_notes.append(
+                "版本边界探测未能执行：无法确认当前版本之外是否还有"
+                "被排除的旧事实，\"无差异\"在此处未经验证。")
         if mode == "lite":
             for cand in card.candidates:
                 cand.risks = []
                 cand.counterfactual = None
         self._apply_domain_rules(card)
+        # Validate before returning: the producer-side check that catches a
+        # card violating its own refusal/recommend invariants here, rather
+        # than in whichever downstream consumer reads the payload first.
+        try:
+            self.validate_card(card)
+        except ValidationError as exc:
+            logger.warning("rendered card failed contract validation: %s",
+                           exc)
         return card
 
     def _apply_domain_rules(self, card: DecisionCard) -> None:
@@ -877,7 +1002,8 @@ class DecisionService:
 
         Returns the raw value unchanged when no table is loaded, and the
         card records that fact, so no card ever implies a calibration that
-        never ran.
+        never ran. Non-numeric input passes through untouched: it is a
+        producer bug to be surfaced, not a number to invent.
         """
         table = self._load_calibration()
         if not table:
@@ -886,18 +1012,52 @@ class DecisionService:
             conf = max(0.0, min(1.0, float(raw_conf)))
         except (TypeError, ValueError):
             return raw_conf
+        return self._calibrate_in_table(conf, table)
+
+    def _calibrate_in_table(self, conf: float, table: list[dict[str, Any]],
+                            note: Callable[[str], None] | None = None,
+                            ) -> float:
+        """Bucket lookup that admits when it did not find a bucket.
+
+        A confidence that matches no bucket is returned uncalibrated and
+        reported, because the alternative - passing it through while the
+        card says ``calibration_applied=True`` - is a card claiming a
+        calibration it did not perform. A malformed bucket is skipped and
+        also reported: same claim, same obligation.
+        """
         for bucket in table:
             try:
                 lo = float(bucket.get("lo", 0.0))
                 hi = float(bucket.get("hi", 1.0))
             except (TypeError, ValueError, AttributeError):
+                if note is not None:
+                    note(f"校准表单桶结构不合法，已跳过：{bucket!r}")
                 continue
             if lo <= conf < hi or (hi >= 1.0 and conf >= lo):
                 try:
                     return float(bucket.get("empirical", conf))
                 except (TypeError, ValueError):
+                    if note is not None:
+                        note("校准表命中的桶缺少可用 empirical 值，"
+                             "保持模型自报置信度。")
                     return conf
+        if note is not None:
+            note(f"置信度 {conf:.2f} 未落入任何校准桶：该项保持未校准值。")
         return conf
+
+    def validate_card(self, card: DecisionCard) -> DecisionCardContract:
+        """Validate a rendered card against the wire contract.
+
+        Raises ``pydantic.ValidationError`` when the card violates its own
+        guarantees, so a producer bug surfaces at render time (or in CI)
+        instead of inside a downstream consumer that just reads the table.
+        """
+        return DecisionCardContract.model_validate(card.to_payload())
+
+    def validate_card_payload(self, payload: dict[str, Any],
+                              ) -> DecisionCardContract:
+        """Validate a serialized card read back out of decision_card_t."""
+        return DecisionCardContract.model_validate(payload)
 
     def _load_calibration(self) -> list[dict[str, Any]] | None:
         """Load the bucket table once, from eval_run_t or the injected dict.
@@ -905,6 +1065,13 @@ class DecisionService:
         A DB failure is not an error here: "no calibration yet" is a
         legitimate state before T-10b has run, and failing an entire card
         render because a metrics table is missing would be the wrong trade.
+
+        Bucket count is checked, not assumed: the table is a ten-bucket
+        curve (K4 4.1) and a table of any other length would make this
+        card's confidences incomparable with every other card's. A short
+        table is logged and still used - the buckets that are present are
+        real measurements - but the caller's per-value "matched no bucket"
+        reporting is what ultimately keeps the card honest.
         """
         if self._calibration_loaded:
             return self._calibration_table()
@@ -922,7 +1089,21 @@ class DecisionService:
         except Exception as exc:  # noqa: BLE001 - absent table is valid state
             logger.info("calibration table unavailable: %s", exc)
             self._calibration = None
-        return self._calibration_table()
+        table = self._calibration_table()
+        if table is not None:
+            try:
+                model = CalibrationTableModel(buckets=table)
+            except Exception as exc:  # noqa: BLE001 - malformed is reportable
+                logger.warning("calibration table failed contract "
+                               "validation: %s", exc)
+            else:
+                if len(model.buckets) != CALIBRATION_BUCKETS:
+                    logger.warning(
+                        "calibration table has %d buckets, expected %d "
+                        "(K4 4.1); confidences outside the covered range "
+                        "will be reported as uncalibrated",
+                        len(model.buckets), CALIBRATION_BUCKETS)
+        return table
 
     def _calibration_table(self) -> list[dict[str, Any]] | None:
         if not self._calibration:
@@ -1185,6 +1366,21 @@ def _as_float(value: Any, default: float) -> float:
         return float(value)
     except (TypeError, ValueError):
         return default
+
+
+def _card_notes_appender(card: DecisionCard) -> Callable[[str], None]:
+    """Collect calibration degradations onto the card, deduplicated.
+
+    A per-candidate note would repeat the same sentence once per candidate
+    (the failure mode is a property of the table, not of a candidate), so
+    identical notes collapse to one line.
+    """
+    def note(text: str) -> None:
+        if text not in card.uncertainty_notes:
+            card.uncertainty_notes.append(text)
+        if "校准" in text:
+            card.calibration_applied = False
+    return note
 
 
 def _card_diff(old: dict[str, Any], new: dict[str, Any]) -> dict[str, Any]:

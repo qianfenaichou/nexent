@@ -14,9 +14,11 @@ rerun_marked recording the old-vs-new conclusion diff (Q2 ledger material).
 """
 import os
 import sys
+import time
 import uuid as uuid_mod
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import ClassVar
 
 _REPO_ROOT = Path(__file__).resolve().parents[4]
 for _p in (str(_REPO_ROOT / "backend"), ):
@@ -24,10 +26,13 @@ for _p in (str(_REPO_ROOT / "backend"), ):
         sys.path.insert(0, _p)
 
 import pytest
+from pydantic import ValidationError
 
 from services.knowevo.decision_service import (
     HEALTHCARE_DISCLAIMER,
     LOOKUP_RULES,
+    PROBE_FAILED,
+    REASONING_LATENCY_BUDGET_MS,
     ROUTER_EXAMPLES,
     VERSION_COMPARE_WORDS,
     DecisionService,
@@ -379,13 +384,45 @@ class TestVersionPinnedWalk:
         assert result.paths == []
 
     @pytest.mark.asyncio
-    async def test_depth_is_clamped_to_max(self):
-        svc = DecisionService(store=_pinned_store(), tenant_id=TENANT,
-                              max_depth=3)
+    async def test_walk_stops_early_once_a_claim_matches_the_question(self):
+        """Early termination, stated as the behaviour it is.
+
+        The chain test asserts the walk reaches the end of the chain; that
+        only holds while no intermediate claim covers the question's
+        content words. This is the other half: when the first hop's claim
+        already answers the question, the walk stops there rather than
+        paying for more hops (02-tech-plan 3.2 answerable test).
+        """
+        store = FakeStore([
+            ("Drug:a", "Disease:b", "treats", "a 治疗什么的问题", BEFORE, None),
+            ("Disease:b", "Drug:c", "contraindicates", "b 与 c 有禁忌",
+             BEFORE, None)])
+        svc = DecisionService(store=store, tenant_id=TENANT, max_depth=3)
         result = await svc.multi_hop("a 治疗什么？", seeds=["Drug:a"],
+                                     depth=3, pin_version=False)
+        assert result.early_stopped is True
+        longest = max((len(p.entities) for p in result.paths), default=0)
+        assert longest == 2, "the walk answered at hop 1 and stopped there"
+
+    @pytest.mark.asyncio
+    async def test_depth_is_clamped_to_max(self):
+        # A fully current four-entity chain, so the clamp is the only thing
+        # that can shorten the walk (the question shares no content words
+        # with any claim, so the answerable early stop never fires).
+        store = FakeStore([
+            ("Drug:a", "Disease:b", "treats", "P1", BEFORE, None),
+            ("Disease:b", "Drug:c", "contraindicates", "P2", BEFORE, None),
+            ("Drug:c", "Drug:e", "replaced_by", "P3", BEFORE, None)])
+        svc = DecisionService(store=store, tenant_id=TENANT, max_depth=3)
+        result = await svc.multi_hop("zzz", seeds=["Drug:a"],
                                      depth=99, pin_version=False)
         longest = max((len(p.entities) for p in result.paths), default=0)
-        assert longest <= svc.max_depth + 1
+        # Equality, not an upper bound: a clamp to 3 must actually reach 4
+        # entities on a three-edge chain. "<= max+1" is satisfied by a walk
+        # that returns nothing at all - the pitfall #24 defect class where a
+        # vacuous pass looks like a green test. This also locks the beam's
+        # early-stop behaviour (pitfall #33).
+        assert longest == svc.max_depth + 1
 
     @pytest.mark.asyncio
     async def test_version_clock_lands_on_the_result(self):
@@ -402,6 +439,115 @@ class TestVersionPinnedWalk:
                                      pin_version=False, depth=1)
         assert result.version_pinned is False
         assert result.clock.ontology_version is None
+
+
+class TestHopPlanning:
+    """plan_hops is what makes the walk follow the question, and every
+    degradation path matters: a bad plan must widen the walk, never narrow
+    it to nothing (an empty plan looks exactly like "no knowledge")."""
+
+    ONTOLOGY: ClassVar[dict] = {
+        "classes": [], "rel_types": ["treats", "contraindicates",
+                                     "monitored_by"]}
+
+    @pytest.mark.asyncio
+    async def test_plan_comes_from_the_llm(self):
+        llm = FakeLLM(replies={"rel_types": '{"hops": ['
+                              '{"rel_types": ["treats"]},'
+                              '{"rel_types": ["monitored_by"], '
+                              '"reverse": true}'
+                              '], "stop_when": "the lab is named"}'})
+        svc = DecisionService(llm=llm, ontology=self.ONTOLOGY)
+        plans = await svc.plan_hops("a 治疗什么？", ["Drug:a"], depth=2)
+        assert plans[0].rel_types == ["treats"]
+        assert plans[1].rel_types == ["monitored_by"]
+        assert llm.calls[0]["kind"] == "hop_plan"
+
+    @pytest.mark.asyncio
+    async def test_relation_types_outside_the_vocabulary_are_dropped(self):
+        llm = FakeLLM(replies={"rel_types": '{"hops": ['
+                              '{"rel_types": ["invented_rel", "treats"]}]}'})
+        svc = DecisionService(llm=llm, ontology=self.ONTOLOGY)
+        plans = await svc.plan_hops("q", ["Drug:a"], depth=1)
+        assert plans[0].rel_types == ["treats"], (
+            "a hallucinated relation type must be dropped rather than "
+            "silently returning an empty graph")
+
+    @pytest.mark.asyncio
+    async def test_all_invalid_types_degrade_to_unfiltered(self):
+        llm = FakeLLM(replies={"rel_types": '{"hops": ['
+                              '{"rel_types": ["nope"]}]}'})
+        svc = DecisionService(llm=llm, ontology=self.ONTOLOGY)
+        plans = await svc.plan_hops("q", ["Drug:a"], depth=1)
+        assert plans[0].rel_types is None
+
+    @pytest.mark.asyncio
+    async def test_no_llm_means_unfiltered_plan(self):
+        svc = DecisionService(llm=None, ontology=self.ONTOLOGY)
+        plans = await svc.plan_hops("q", ["Drug:a"], depth=3)
+        assert len(plans) == 3 and all(p.rel_types is None for p in plans)
+
+    @pytest.mark.asyncio
+    async def test_explicit_rel_types_short_circuits_the_llm(self):
+        llm = FakeLLM(replies={"plan_hop":
+                               '{"hops": [{"rel_types": ["treats"]}]}'})
+        svc = DecisionService(llm=llm, ontology=self.ONTOLOGY)
+        plans = await svc.plan_hops("q", ["Drug:a"], rel_types=["treats"],
+                                    depth=2)
+        assert all(p.rel_types == ["treats"] for p in plans)
+        assert llm.calls == [], "caller-supplied types win; no LLM call"
+
+    @pytest.mark.asyncio
+    async def test_malformed_reply_degrades(self):
+        svc = DecisionService(llm=FakeLLM(replies={"rel_types": "no json"}),
+                              ontology=self.ONTOLOGY)
+        plans = await svc.plan_hops("q", ["Drug:a"], depth=2)
+        assert len(plans) == 2 and all(p.rel_types is None for p in plans)
+
+    @pytest.mark.asyncio
+    async def test_llm_failure_degrades(self):
+        class Boom(FakeLLM):
+            async def __call__(self, *a, **k):
+                raise RuntimeError("down")
+
+        svc = DecisionService(llm=Boom(), ontology=self.ONTOLOGY)
+        plans = await svc.plan_hops("q", ["Drug:a"], depth=2)
+        # The claim is "degrades to unfiltered", not merely "returns two
+        # things": an exception path that silently narrowed the walk would
+        # look identical if only the length were asserted.
+        assert len(plans) == 2 and all(p.rel_types is None for p in plans)
+
+    @pytest.mark.asyncio
+    async def test_short_plan_is_padded_to_depth(self):
+        llm = FakeLLM(replies={"plan_hop":
+                               '{"hops": [{"rel_types": ["treats"]}]}'})
+        svc = DecisionService(llm=llm, ontology=self.ONTOLOGY)
+        plans = await svc.plan_hops("q", ["Drug:a"], depth=3)
+        assert len(plans) == 3 and plans[1].rel_types is None
+
+    @pytest.mark.asyncio
+    async def test_walk_follows_the_plan(self):
+        """The plan must actually reach the store, not just be computed."""
+        store = FakeStore([
+            ("Drug:a", "Disease:b", "treats", "a 治疗 b", BEFORE, None),
+            ("Drug:a", "Drug:z", "replaced_by", "a 被 z 取代", BEFORE, None),
+        ])
+        svc = DecisionService(
+            store=store, tenant_id=TENANT, ontology=self.ONTOLOGY,
+            llm=FakeLLM(replies={"rel_types": '{"hops": ['
+                                 '{"rel_types": ["treats"]}]}'}))
+        seen: list[list[str] | None] = []
+        original = store.neighbors
+
+        async def spy(tenant_id, entity_ids, rel_types=None, hop=1,
+                      valid_view=True, as_of=None):
+            seen.append(rel_types)
+            return await original(tenant_id, entity_ids, rel_types=rel_types,
+                                  hop=hop, valid_view=valid_view, as_of=as_of)
+
+        store.neighbors = spy
+        await svc.multi_hop("a 治疗什么？", seeds=["Drug:a"], depth=1)
+        assert seen and seen[0] == ["treats"]
 
 
 class TestPathScoring:
@@ -500,16 +646,37 @@ class TestEvidenceAssembly:
 
     @pytest.mark.asyncio
     async def test_contradicting_channels_mark_contested(self):
-        svc = DecisionService()
-        result = await svc.assemble_evidence(
-            [], [DocHit(doc_id="d1", doc_title="A",
-                        span_text="eGFR 45 时 SGLT2i 仍可起始"),
-                 DocHit(doc_id="d2", doc_title="B",
-                        span_text="eGFR 45 时 SGLT2i 不可起始")])
-        # Both doc-channel items stay, and the pair is flagged rather than
-        # silently resolved in either direction.
-        assert len(result.items) == 2
-        assert result.contested is False  # same channel: no cross-check
+        """A real cross-channel contradiction: KG says one thing, the
+        guideline passage says the opposite about the same proposition.
+
+        The earlier version of this test put two *doc* hits in and asserted
+        `contested is False`, which cannot fail in a way that matters: the
+        fusion only cross-checks kg against doc, so it was asserting that
+        an unchecked pair is unchecked. Both items must now survive AND the
+        chain must carry the flag, because "nothing is dropped silently" is
+        the actual promise.
+        """
+        svc = DecisionService(store=_pinned_store(), tenant_id=TENANT)
+        result = await svc.multi_hop("b 与 c 有什么禁忌？", seeds=["Disease:b"],
+                                     version="v1.0.0", as_of=T_V, depth=1)
+        # Same proposition wording, opposite polarity: the kg side asserts
+        # the combination, the doc side forbids it.
+        doc_claim = "b 与 c 不有禁忌"
+        chain = await svc.assemble_evidence(
+            result, [DocHit(doc_id="d1", doc_title="指南2024版",
+                            span_text=doc_claim)])
+        kg_items = [i for i in chain.items if i.source_channel == CHANNEL_KG]
+        doc_items = [i for i in chain.items
+                     if i.source_channel == CHANNEL_DOC]
+        assert kg_items and doc_items, (
+            "a contradiction must not be resolved by dropping a side")
+        assert chain.contested is True
+        assert all(i.contested for i in kg_items + doc_items), (
+            "every item in the conflicting pair is flagged, so a reader "
+            "cannot tell which side was privileged")
+        assert not any(i.source_channel == CHANNEL_KG_DOC
+                       for i in chain.items), (
+            "a contradicting pair must not be presented as agreement")
 
     @pytest.mark.asyncio
     async def test_failed_paths_ride_along_for_counterfactuals(self):
@@ -603,11 +770,12 @@ class TestDecisionCard:
 
     @pytest.mark.asyncio
     async def test_unknown_decision_value_falls_back_to_recommend(self):
-        llm = FakeLLM(replies={"决策卡": '{"decision": "MAYBE", '
-                                       '"candidates": []}'})
+        llm = FakeLLM(replies={"决策卡": '{"decision": "MAYBE", "candidates": '
+                                       '[{"option": "首选 SGLT2i"}]}'})
         svc = DecisionService(llm=llm, tenant_id=TENANT)
         card = await svc.render_card("q", _chain_with_claim())
         assert card.decision == DECISION_RECOMMEND
+        assert card.candidates[0].option == "首选 SGLT2i"
 
     @pytest.mark.asyncio
     async def test_lite_mode_drops_risks_and_counterfactual(self):
@@ -646,6 +814,26 @@ class TestDecisionCard:
         svc = DecisionService(llm=llm, tenant_id=TENANT)
         card = await svc.render_card("q", _chain_with_claim())
         assert len(card.candidates) == 2
+        assert card.candidates[0].option.startswith("首选 SGLT2i"), (
+            "a mangled parse that still yielded two entries would pass a "
+            "count-only assertion")
+
+    @pytest.mark.asyncio
+    async def test_recommend_with_no_candidates_becomes_refusal(self):
+        """Zero candidates cannot be a recommendation.
+
+        The wire contract rejects `RECOMMEND` with an empty candidate list,
+        so a card that reached that state used to be an invalid payload
+        waiting for whichever reader touched it first.
+        """
+        llm = FakeLLM(replies={"决策卡": '{"decision": "RECOMMEND", '
+                                      '"candidates": []}'})
+        svc = DecisionService(llm=llm, tenant_id=TENANT)
+        card = await svc.render_card("q", _chain_with_claim())
+        assert card.decision == DECISION_INSUFFICIENT
+        assert card.candidates == []
+        # And the payload it would have written is a valid one.
+        svc.validate_card(card)
 
     @pytest.mark.asyncio
     async def test_non_json_reply_raises_typeerror(self):
@@ -663,6 +851,66 @@ class TestDecisionCard:
         card = await svc.render_card("q", chain)
         assert any("知识不一致" in n for n in card.uncertainty_notes)
 
+    @pytest.mark.asyncio
+    async def test_failed_probe_adds_an_uncertainty_note(self):
+        """A failed version-boundary probe must not read as "nothing was
+        excluded" - that is the one claim version pinning may not fake."""
+        llm = FakeLLM(replies={"决策卡": CARD_JSON})
+        chain = _chain_with_claim()
+        chain.probe_failed = True
+        svc = DecisionService(llm=llm, tenant_id=TENANT)
+        card = await svc.render_card("q", chain)
+        assert any("版本边界探测" in n for n in card.uncertainty_notes)
+
+    @pytest.mark.asyncio
+    async def test_walk_surfaces_probe_failure_instead_of_empty_failed(self):
+        class BrokenProbeStore(FakeStore):
+            async def neighbors(self, tenant_id, entity_ids, rel_types=None,
+                                hop=1, valid_view=True, as_of=None):
+                if not valid_view:  # the probe's all-time query
+                    raise RuntimeError("store down")
+                return await super().neighbors(
+                    tenant_id, entity_ids, rel_types=rel_types, hop=hop,
+                    valid_view=valid_view, as_of=as_of)
+
+        svc = DecisionService(store=BrokenProbeStore([
+            ("Drug:a", "Disease:b", "treats", "a 治疗 b", BEFORE, None)]),
+            tenant_id=TENANT)
+        result = await svc.multi_hop("a", seeds=["Drug:a"], version="v1",
+                                     as_of=T_V, depth=1)
+        assert result.probe_failed is True
+        assert all(getattr(f, "invalid_edge_reason", "") != PROBE_FAILED
+                   for f in result.failed), (
+            "the synthetic probe marker must not masquerade as a real "
+            "excluded edge")
+        chain = await svc.assemble_evidence(result)
+        assert chain.probe_failed is True
+
+    def test_card_contract_rejects_a_refusal_with_candidates(self):
+        from services.knowevo.schemas import Candidate, DecisionCardContract
+        with pytest.raises(ValidationError):
+            DecisionCardContract(decision=DECISION_INSUFFICIENT,
+                                 candidates=[Candidate(option="x")])
+
+    def test_card_contract_rejects_a_recommendation_without_candidates(self):
+        from services.knowevo.schemas import DecisionCardContract
+        with pytest.raises(ValidationError):
+            DecisionCardContract(decision=DECISION_RECOMMEND)
+
+    def test_validate_card_round_trips_a_real_payload(self):
+        svc = DecisionService()
+        payload = DecisionCard(
+            question_id="Q-1", question="q",
+            knowledge_stamp=KnowledgeStamp(ontology_version="v1.0.0",
+                                           kg_cutoff=T_V.isoformat(),
+                                           clock_source="version_created_at"),
+            candidates=[], decision=DECISION_INSUFFICIENT,
+            uncertainty_notes=["no evidence"]).to_payload()
+        validated = svc.validate_card_payload(payload)
+        assert validated.question_id == "Q-1"
+        assert validated.knowledge_stamp.ontology_version == "v1.0.0"
+        assert validated.decision == DECISION_INSUFFICIENT
+
 
 class TestCalibration:
     def test_no_table_returns_raw_value(self):
@@ -675,6 +923,21 @@ class TestCalibration:
         svc = DecisionService(calibration=table)
         assert svc.calibrate(0.85) == 0.72
         assert svc.calibrate(0.95) == 0.88
+
+    def test_k4_ten_bucket_table_is_what_the_lookup_expects(self):
+        """The table shape K4 4.1 specifies: ten tenth-width buckets.
+
+        Pinned as a positive case so the bucket contract is exercised by a
+        real curve rather than only by two hand-written rows.
+        """
+        table = [{"lo": i / 10,
+                  "hi": (i + 1) / 10 if i < 9 else 1.0,
+                  "empirical": round((i + 0.5) / 10, 2)}
+                 for i in range(10)]
+        svc = DecisionService(calibration=table)
+        assert svc.calibrate(0.05) == 0.05
+        assert svc.calibrate(0.95) == 0.95
+        assert svc.calibrate(0.55) == pytest.approx(0.55)
 
     def test_calibration_dict_wrapper_is_unwrapped(self):
         svc = DecisionService(calibration={"buckets": [
@@ -692,14 +955,55 @@ class TestCalibration:
             {"lo": 0.0, "hi": 1.01, "empirical": 0.5}])
         assert svc.calibrate("n/a") == "n/a"
 
+    def test_confidence_outside_every_bucket_is_reported_not_claimed(self):
+        """A passthrough must not be reported as a calibration.
+
+        The table below covers only [0.9,1]; a 0.55 confidence used to pass
+        through while the card still said calibration_applied=True, which is
+        the card claiming a measurement it never made.
+        """
+        notes: list[str] = []
+        svc = DecisionService(calibration=[
+            {"lo": 0.9, "hi": 1.0, "empirical": 0.88}])
+        value = svc._calibrate_in_table(0.55, svc._calibration_table(),
+                                        notes.append)
+        assert value == 0.55
+        assert notes and "未落入任何校准桶" in notes[0]
+
+    def test_malformed_bucket_is_skipped_and_reported(self):
+        notes: list[str] = []
+        table = [{"lo": "bad", "hi": "worse", "empirical": 0.5},
+                 {"lo": 0.5, "hi": 0.6, "empirical": 0.42}]
+        value = DecisionService(calibration=table)._calibrate_in_table(
+            0.55, table, notes.append)
+        assert value == 0.42
+        assert any("结构不合法" in n for n in notes)
+
     @pytest.mark.asyncio
     async def test_card_records_that_calibration_ran(self):
         llm = FakeLLM(replies={"决策卡": CARD_JSON})
-        svc = DecisionService(llm=llm, tenant_id=TENANT, calibration=[
-            {"lo": 0.9, "hi": 1.01, "empirical": 0.88}])
+        # A ten-bucket curve. Bucket 9 (0.9-1.0) is the one the fixture's
+        # top candidate (raw 0.9) lands in; bucket 4 covers 0.4 by identity.
+        table = [{"lo": i / 10, "hi": (i + 1) / 10 if i < 9 else 1.0,
+                  "empirical": 0.88 if i == 9 else (i + 0.5) / 10}
+                 for i in range(10)]
+        svc = DecisionService(llm=llm, tenant_id=TENANT, calibration=table)
         card = await svc.render_card("q", _chain_with_claim())
         assert card.calibration_applied is True
-        assert card.candidates[0].confidence_calibrated == 0.88
+        assert card.candidates[0].confidence_calibrated == 0.88, (
+            "0.9 must hit the 0.9-1.0 bucket and come out empirically "
+            "corrected")
+
+    @pytest.mark.asyncio
+    async def test_card_reports_uncalibrated_confidence_as_uncalibrated(self):
+        """A partial table that misses a candidate must not claim coverage."""
+        llm = FakeLLM(replies={"决策卡": CARD_JSON})
+        svc = DecisionService(llm=llm, tenant_id=TENANT, calibration=[
+            {"lo": 0.0, "hi": 0.1, "empirical": 0.05}])
+        card = await svc.render_card("q", _chain_with_claim())
+        assert card.calibration_applied is False, (
+            "no candidate fell in a bucket, so no calibration was applied")
+        assert any("未落入任何校准桶" in n for n in card.uncertainty_notes)
 
 
 class TestCalibrateHops:
@@ -714,6 +1018,49 @@ class TestCalibrateHops:
         assert all(r["n_questions"] == 3 for r in curve.rows)
         assert curve.testset_hash == "abc"
         assert curve.recommended_depth in (1, 2)
+
+    @pytest.mark.asyncio
+    async def test_recommendation_filters_by_latency_budget_first(self):
+        """Depth 2 wins on accuracy, depth 3 blows the p95 budget; the curve
+        must recommend depth 2.
+
+        The docstring's whole claim is "the most accurate depth that cannot
+        answer inside p95 is a regression, not a recommendation". The
+        previous assertion (`recommended_depth in (1, 2)`) was satisfied by
+        either answer and never exercised the filter.
+        """
+        # A current-view three-edge chain whose claims do not answer the
+        # question, so the walk is governed by depth alone: depth 1 sees one
+        # edge, depth 2 reaches the end of the chain, depth 3 adds nothing.
+        store = FakeStore([
+            ("Drug:a", "Disease:b", "treats", "P1", BEFORE, None),
+            ("Disease:b", "Drug:c", "contraindicates", "P2", BEFORE, None),
+            ("Drug:c", "Drug:e", "replaced_by", "P3", BEFORE, None)])
+        svc = DecisionService(store=store, tenant_id=TENANT)
+        real_hop = svc.multi_hop
+        delays = {1: 0.0, 2: 0.001, 3: 40.0}
+
+        async def slow(question, depth=None, **kw):
+            # Blocking sleep on purpose: this stands in for a slow store and
+            # must be measured by the wall clock, exactly as a real slow
+            # query would be. ASYNC251 is wrong for that intent.
+            time.sleep(delays[depth])  # noqa: ASYNC251 - simulated latency
+            return await real_hop(question, depth=depth, **kw)
+
+        svc.multi_hop = slow
+        curve = await svc.calibrate_hops(
+            ["zzz"], seeds_for=lambda q: ["Drug:a"],
+            judge=lambda q, r: max((len(p.entities) for p in r.paths),
+                                   default=0) >= 3,
+            depths=(1, 2, 3))
+        by_depth = {r["depth"]: r for r in curve.rows}
+        assert by_depth[3]["latency_ms"] > REASONING_LATENCY_BUDGET_MS
+        assert by_depth[2]["accuracy"] > by_depth[1]["accuracy"], (
+            "the fixture must make depth 2 the most accurate in-budget "
+            "depth, or this test proves nothing")
+        assert curve.recommended_depth == 2, (
+            "an over-budget depth must not be recommended no matter how "
+            "accurate it looks")
 
     @pytest.mark.asyncio
     async def test_empty_questions_still_returns_rows(self):
