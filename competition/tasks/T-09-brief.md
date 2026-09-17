@@ -100,19 +100,20 @@ cd backend && POSTGRES_HOST=localhost POSTGRES_PORT=5434 POSTGRES_USER=root POST
 **Evidence**:
 
 ```bash
-# 1. 全量 knowevo 测试（无 PG 门控）
+# 1. 全量 knowevo 测试（无 PG 门控）—— 交付时首跑 / 复核修复后 HEAD 终值
+#    首跑 292 passed（T-09 新增 128 例）；复核修复并补齐空洞断言后为下列终值
 $ cd backend && uv run pytest ../test/backend/services/knowevo/ -q --no-header
-292 passed, 23 skipped, 5 warnings in 8.46s
-#    T-09 新增三个文件贡献 128 个用例：
-#      test_version_pin.py        25 passed, 4 skipped（Layer 1 纯函数语义 + Layer 2 真库）
-#      test_decision_service.py   81 passed, 5 skipped（路由/束搜索/证据链/卡片/校准/落库重算）
-#      test_kg_multi_hop_mcp.py   22 passed（双注册单一 schema 源 + 输入护杆 + 结构化错误）
+304 passed, 23 skipped, 5 warnings in 47.23s
+#    T-09 新增三个文件的终值（共 141 例，含复核补充）：
+#      test_version_pin.py        25 passed,  4 skipped（Layer 1 纯函数语义 + Layer 2 真库）
+#      test_decision_service.py   93 passed,  5 skipped（路由/束搜索/跳数规划/证据链/卡片/校准/落库重算）
+#      test_kg_multi_hop_mcp.py   23 passed（双注册单一 schema 源 + 输入护杆 + 结构化错误）
 
 # 2. PG 集成全量（真实 PG 5434）——版本钉住必须在真库验证（坑 #25）
 $ cd backend && export NEXENT_POSTGRES_PASSWORD=... \
   POSTGRES_HOST=localhost POSTGRES_PORT=5434 POSTGRES_USER=root POSTGRES_DB=nexent \
   RUN_POSTGRES_INTEGRATION=1 uv run pytest ../test/backend/services/knowevo/ -q --no-header
-315 passed, 5 warnings in 8.06s
+327 passed, 0 skipped, 5 warnings in 48.91s   # 交付时 315 → 复核补齐断言后 327，门控跳过 23→0
 
 # 3. ★B2 核心断言：版本钉住的 on/off 消融（真库，独立脚本复核）
 #   图：A->B 有效[2024-01-01, 2025-01-01)；A->C 有效[2026-01-01, 开放)；B->D 有效[2024-01-01, 开放)
@@ -156,7 +157,25 @@ multi_hop(depth=2) 在 A->B->D 链上返回 ['A','B','D']（此前因早停判�
 - 全部 8 类敌意 LLM 输入下卡片不崩、不出现无据溯源。
 - 过程中真库集成测试抓出**两个既有实现 bug**（坑 #32 邻域边新颖性判据、坑 #33 光束早停判据），都已修复并补 Layer 1 回归用例——再次验证坑 #25 的"集成测试不能只当装饰"。
 
-**合并门禁备注**: 待合并 develop。分支 `feat/kw-T09-multihop-decision-card`。
+**合并门禁备注**: ✅ **已合并 develop**（`6718f6244`，2026-09-17）。合并前经双轴复核与真库复核（见下节），复核缺陷已随 `eac21c531` 一并进入 develop；复核遗留的两项记录在案项（模块级 seam 说明、`plan_hops` 接线）已在 develop 上补完（见「复核后补记」）。
+
+---
+
+## 复核后补记（2026-09-17 · 已随 develop 落地）
+
+复核遗留的两项「记录在案但未修」已处理，当前 HEAD 状态与上面复核表格的差异如下：
+
+1. **模块级 seam 说明已补**（原判为「违反冻结声明，如实记录」）：`graph_store.py` 模块 docstring 新增 T-09 seam 扩展段，写明 `as_of` 与 `EdgeCard` 时间窗是**加性扩展**（默认 None = 行为不变，T-07 既有测试全绿即兼容性证据）、为何要记在一处、以及不支持该参数的适配器如何被 `inspect` 检出并降级为事后过滤。
+2. **`plan_hops` 已真正接进束搜索**（原为「prompt 已交付但未接线」）：问题先由中档模型分解为逐层 `HopPlan`，`multi_hop` 每一层用对应层的 `rel_types` 白名单展开；词汇表外的关系类型被丢弃，全部非法则降级为"不过滤"（宁可走宽，不可走成空图——空图看起来就像"没有知识"）。新增 `TestHopPlanning` 9 例锁定该行为，含"显式 rel_types 短路 LLM"与"LLM 失败降级"。
+
+```bash
+# 复核后终值（HEAD 6718f6244 + 上述两项）
+$ uv run pytest ../test/backend/services/knowevo/ -q --no-header          # 304 passed, 23 skipped
+$ RUN_POSTGRES_INTEGRATION=1 ... uv run pytest ... -q --no-header         # 327 passed, 0 skipped
+$ uv run ruff check services/knowevo/ ../mcp_servers/knowevo_mcp/ tool_collection/mcp/kg_tools.py \
+    ../test/backend/services/knowevo/test_{version_pin,decision_service,kg_multi_hop_mcp}.py
+All checks passed!
+```
 
 ---
 
