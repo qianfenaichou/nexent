@@ -1,5 +1,7 @@
 from fastmcp import FastMCP
 
+from tool_collection.mcp.kg_tools import SERVICE_NAME as KNOWEVO_MCP_SERVICE_NAME
+from tool_collection.mcp.kg_tools import wire as wire_knowevo_mcp
 from tool_collection.mcp.nl2agent_mcp_service import nl2agent_mcp_service
 from tool_collection.mcp.nl2agent_mcp_tools import NL2A_MCP_TOOL_NAMES
 
@@ -13,6 +15,12 @@ local_mcp_service = FastMCP("local")
 local_mcp_service.mount(
     nl2agent_mcp_service,
     nl2agent_mcp_service.name,
+)
+# T-08 wiring: mount the KnowEvo kg_search/kg_stats surface (same handlers
+# as the standalone knowevo_mcp server - single schema source, no drift).
+local_mcp_service.mount(
+    wire_knowevo_mcp(),
+    KNOWEVO_MCP_SERVICE_NAME,
 )
 
 
