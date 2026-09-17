@@ -48,26 +48,42 @@ cd backend && uv run ruff check services/knowevo/llm_client.py apps/config_app.p
 - [x] `config_app.py`/`runtime_app.py` 各含且仅含一行 `include_router(knowevo_router)`（grep 可证，见 Evidence）
 - [x] `local_mcp_service.py` 里能 grep 到 `kg_search`/`kg_stats` 挂载（坑 #27：勾验收项前必须指到实现行；挂载后 `MountedServer(prefix='knowevo')` 工具表含两工具）
 - [x] `llm_client.py` 实现 `LlmRouter(tenant_id)` + `build_llm_callable(tenant_id)`，三档 tier 活读取 `KW_LLM_*_MODEL_ID`，未配置模型报 `LLMConfigurationError`（清晰错误）
-- [x] 新增接线测试（test_llm_client.py 5 个：tier 解析/fallback/错误路径/契约/缓存）进 test 树
+- [x] 新增接线测试（test_llm_client.py 5 个 + test_t08_wiring.py 10 个 HTTP/挂载护栏）进 test 树
 - [x] 不引入任何新依赖（pyproject 零改动；fastmcp/mcp 已在树）
 - [x] 前端零改动（菜单接线归 T-12）
-- [x] 新踩坑记 `competition/docs/pitfalls.md`（#29 ruff --fix 删 globals() import、#30 _IncludedRouter/MountedServer 假阴性验证）
+- [x] 新踩坑记 `competition/docs/pitfalls.md`（#29 ruff --fix 删 globals() import、#30 包装型假阴性、#31 router 双前缀）
+
+**运行时验证补充（2026-09-17）**:
+- TestClient HTTP 冒烟发现 **T-05 遗留接线 bug**：`knowledge_graph_app.py` 的 `prefix="/api/knowevo"` 与 `create_app(root_path="/api")` 叠出 `/api/api/knowevo` → 5 端点全 404。已修为 `prefix="/knowevo"`（T-08 接线职责）。
+- 修复后真实命中：`GET /api/knowevo/ontology/proposals` → 403（路由存在+鉴权拦截）、`POST .../review` → 405（POST 路由存在）、runtime_app 同验——**均非 404**。
+- 全量 161 passed（146 既有 + 5 llm_client + 10 wiring 护栏），14 skipped（PG 门控）。
 
 **Evidence**:
 ```bash
-# 1. 全量测试（151 passed = 146 既有 + 5 新增 llm_client）
+# 1. 全量测试（161 passed = 146 既有 + 5 llm_client + 10 wiring 护栏）
 $ cd backend && uv run pytest ../test/backend/services/knowevo/ -q --no-header
-151 passed, 14 skipped, 5 warnings in 3.18s
+161 passed, 14 skipped, 5 warnings
 
-# 2. router 挂载冒烟（config_app + runtime_app 各 5 端点；FastAPI _IncludedRouter 惰性包装，需经 original_router 断言）
-config_app knowevo routes (5): /api/knowevo/ontology/proposals, /api/knowevo/ontology/proposals/review, /api/knowevo/ontology/versions, /api/knowevo/ontology/versions/{version}/metrics, /api/knowevo/ontology/diff
+# 2. PG 集成全量（RUN_POSTGRES_INTEGRATION=1，真实 PG 5434）：165 passed, 0 skipped
+#    （含 GraphStore/抽取流水线/MCP 双注册集成测试，全部真库执行通过）
+
+# 3. router 挂载冒烟（FastAPI _IncludedRouter 惰性包装，经 original_router 断言）
+config_app knowevo routes (5): /api/knowevo/ontology/proposals, .../review, .../versions, .../versions/{version}/metrics, .../diff
 runtime_app knowevo routes (5): 同上 5 条
 
-# 3. Local MCP 双注册冒烟（FastMCP MountedServer 命名空间挂载）
+# 4. HTTP 端到端（TestClient）：prefix 修复前 404，修复后 403/405（路由真实命中）
+$ GET  /api/knowevo/ontology/proposals            -> 403 (route hit, auth gate)
+$ POST /api/knowevo/ontology/proposals/review     -> 405 (route hit, method gate)
+$ POST /api/knowevo/ontology/versions             -> 405
+$ GET  /api/knowevo/ontology/versions/v1/metrics  -> 403
+$ GET  /api/knowevo/ontology/diff?from=v0&to=v1   -> 403
+
+# 5. Local MCP 双注册冒烟（FastMCP MountedServer 命名空间挂载）
 knowevo mounted server tools: ['kg_search', 'kg_stats']
 
-# 4. ruff：llm_client.py 零告警；config_app/runtime_app 的 4 个既有告警（I001/BLE001/RUF010）经 git stash 对比确认是上游基线遗留，非本任务引入
-$ uv run ruff check services/knowevo/llm_client.py
-All checks passed!
+# 6. ruff：llm_client.py 零告警；config_app/runtime_app 的 4 个既有告警（I001/BLE001/RUF010）经 git stash 对比确认是上游基线遗留，非本任务引入
+
+# 7. RBAC 种子真库验证（nexent-postgresql）：INSERT 0 2；幂等重跑同结果；查询得 SU/ADMIN 各行
 ```
-**合并门禁备注**: 按 03 计划 §5 DoD，本任务已自查；合并 develop 前建议跑一次 code-review 双轴（本分支 diff = 4 文件 + 3 新文件，量级小）。
+
+**合并门禁备注**: 已合并 develop（33ac351b3 fix 含护栏测试；⚠️ fix 因在 develop 上直接验证发现并提交，未走独立分支——流程偏差已记录，教训见坑 #31 备注）。
