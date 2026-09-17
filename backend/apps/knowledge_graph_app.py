@@ -19,7 +19,10 @@ from utils.auth_utils import get_current_user_context
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/knowevo", tags=["knowevo"])
+# Prefix without /api: create_app(root_path="/api") mounts every router
+# under /api, so the effective endpoint is /api/knowevo/... (T-08 wiring
+# fix: this router previously declared "/api/knowevo", doubling the prefix).
+router = APIRouter(prefix="/knowevo", tags=["knowevo"])
 
 REVIEW_ACTIONS = {"confirm", "reject", "reparent"}
 
