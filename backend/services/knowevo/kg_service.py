@@ -37,6 +37,7 @@ from services.knowevo.schemas import (
     PendingSummary,
     Relation,
     Thresholds,
+    Timeline,
     cosine,
     normalize_name_key,
 )
@@ -256,6 +257,20 @@ STATIC_EXAMPLES = [
 def _anchor_key(class_ref: str) -> str:
     """Normalize a class_ref from extraction to a lookup key."""
     return (class_ref or "").strip().removeprefix("cls:")
+
+
+def _iso(value: Any) -> str | None:
+    """ISO-8601 string for timeline events, tolerating None and str input.
+
+    Some store rows carry raw strings (FakeStore fixtures) and others real
+    datetimes (Postgres); the timeline sorts on this value, so it has to be
+    one comparable type on both paths.
+    """
+    if value is None:
+        return None
+    if hasattr(value, "isoformat"):
+        return value.isoformat()
+    return str(value)
 
 
 class PgStore:
@@ -1295,10 +1310,79 @@ class KGService:
         T-11 (alignment_service triggers it); not implemented here."""
         raise NotImplementedError("ingest_new_version belongs to T-11")
 
-    async def evolution_trace(self, entity_id=None, decision_id=None):
-        """Timeline of an entity / hops behind a decision card. Owned by
-        T-09 (multi-hop + evidence chain); not implemented here."""
-        raise NotImplementedError("evolution_trace belongs to T-09")
+    async def evolution_trace(self, entity_id=None, decision_id=None,
+                              limit: int = 50) -> "Timeline":
+        """Knowledge-evolution timeline for an entity or a decision card.
+
+        T-09 owns this (the frozen kg_service contract lists it under the
+        query surface, and the source comment pointed here). Two event
+        sources, both already in the schema - no new table, no migration:
+
+        - **graph events**: every relation touching the entity with its
+          bi-temporal window, so a reader sees what was asserted, when it
+          became true and when it stopped being true. Superseded edges are
+          included on purpose: a timeline that only shows the current view
+          cannot show that anything evolved.
+        - **decision events** (``decision_id`` given): the stored card's
+          knowledge stamp, which is what ties a conclusion to the version
+          it was drawn under.
+
+        Events are ordered oldest-first and ``truncated`` reports whether
+        the limit cut the history short, because a silently clipped
+        provenance chain is worse than an honestly partial one.
+        """
+        events: list[dict[str, Any]] = []
+        by_decision = decision_id is not None
+        if by_decision:
+            # Read the row here rather than through knowevo_db.get_by_id:
+            # that helper returns only the primary key, and the timeline
+            # needs the stamp. Values are extracted inside the session block
+            # because the session commits and expires ORM rows on exit
+            # (pitfall #26).
+            from database.knowevo_db import DecisionCard, _get_db_session
+            with _get_db_session() as session:
+                row = session.query(DecisionCard).filter(
+                    DecisionCard.id == decision_id,
+                    DecisionCard.tenant_id == self.tenant_id,
+                ).first()
+                card = None if row is None else {
+                    "id": row.id,
+                    "question_id": row.question_id,
+                    "knowledge_stamp": dict(row.knowledge_stamp or {}),
+                    "needs_rerun": row.needs_rerun,
+                    "created_at": row.created_at,
+                }
+            if card is not None:
+                events.append({
+                    "type": "decision",
+                    "at": _iso(card["created_at"]),
+                    "decision_id": str(card["id"]),
+                    "question_id": card["question_id"],
+                    "knowledge_stamp": card["knowledge_stamp"],
+                    "needs_rerun": card["needs_rerun"],
+                })
+        elif entity_id:
+            relations = await self.store.list_relations_by_entity(
+                self.tenant_id, entity_id)
+            for rel in relations:
+                events.append({
+                    "type": "relation",
+                    "at": _iso(rel.get("valid_at")),
+                    "src": rel.get("src"),
+                    "dst": rel.get("dst"),
+                    "rel_type": rel.get("rel_type"),
+                    "claim": rel.get("claim"),
+                    "valid_at": _iso(rel.get("valid_at")),
+                    "invalid_at": _iso(rel.get("invalid_at")),
+                    "contested": rel.get("contested"),
+                    "evidence_id": str(rel.get("evidence_id"))
+                    if rel.get("evidence_id") else None,
+                })
+
+        events.sort(key=lambda e: e.get("at") or "")
+        truncated = len(events) > limit
+        return Timeline(entity_id=entity_id, decision_id=decision_id,
+                        events=events[:limit], truncated=truncated)
 
     # ── parsing helpers ────────────────────────────────────────────────
 

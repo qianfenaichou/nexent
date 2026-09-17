@@ -86,3 +86,54 @@ class KGStatsOutput(BaseModel):
 class ToolError(BaseModel):
     error_code: str
     hint: str
+
+
+# ---------------------------------------------------------------------------
+# kg_multi_hop (T-09) - the reasoning-path tool, version-pinned
+# ---------------------------------------------------------------------------
+
+class HopStep(BaseModel):
+    """One hop of the returned walk: the edge and the claim it asserted."""
+    src: str
+    dst: str
+    rel_type: str
+    claim: str
+    evidence_id: str | None = None
+
+
+class KGMultiHopPath(BaseModel):
+    """One walked path as the Agent sees it.
+
+    ``version_valid`` is the version-pinned verdict: False means the walk
+    touched a fact outside the requested knowledge version. Such paths are
+    returned rather than hidden - the caller needs to see that the
+    evidence was rejected and why, and the ablation depends on both
+    variants being observable.
+    """
+    entities: list[str] = Field(default_factory=list)
+    hops: list[HopStep] = Field(default_factory=list)
+    score: float = 0.0
+    version_valid: bool = True
+
+
+class KGMultiHopInput(BaseModel):
+    """Hard guardrails live in Field constraints (SPEC discipline 3): depth
+    <= 3 and beam <= 3 are enforced by the MCP layer itself, so a
+    hallucinating Agent cannot ask for an unbounded walk."""
+
+    question: str = Field(min_length=1, max_length=500)
+    seeds: list[str] = Field(default_factory=list, max_length=10)
+    depth: int = Field(3, ge=1, le=3)
+    beam: int = Field(3, ge=1, le=3)
+    ontology_version: str | None = None
+    top_k: int = Field(5, ge=1, le=10)
+
+
+class KGMultiHopOutput(BaseModel):
+    paths: list[KGMultiHopPath] = Field(default_factory=list)
+    failed: list[KGMultiHopPath] = Field(default_factory=list)
+    version_pinned: bool = False
+    ontology_version: str | None = None
+    valid_view: datetime
+    used_tokens: int = 0
+    elapsed_ms: int = 0
