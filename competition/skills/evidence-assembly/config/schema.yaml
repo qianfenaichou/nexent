@@ -1,0 +1,10 @@
+default_mode:
+  type: string
+  required: false
+  description_en: "decision_card_render mode when the entry skill does not specify: full | lite"
+  description_zh: "入口未指定时 decision_card_render 的模式：full | lite"
+disclaimer_domains:
+  type: array
+  required: false
+  description_en: "Domains that require the cognitive-assistance disclaimer on cards"
+  description_zh: "需要在卡尾加认知辅助免责声明的领域列表"

@@ -1,0 +1,15 @@
+default_route:
+  type: string
+  required: false
+  description_en: "Default route when heuristics are unsure: auto | retrieval | reasoning | both"
+  description_zh: "启发式不确定时的默认路由：auto | retrieval | reasoning | both"
+fallback_parallel:
+  type: boolean
+  required: false
+  description_en: "Run both paths in parallel after 2 same-route failures"
+  description_zh: "同路失败 2 次后是否升级双路并发"
+route_anchor_required:
+  type: boolean
+  required: false
+  description_en: "Require kg_search entity anchoring before routing"
+  description_zh: "路由前是否强制 kg_search 实体锚定"

@@ -1,0 +1,15 @@
+top_k:
+  type: number
+  required: false
+  description_en: "Top-k hits for knowledge_base_search and kg_search"
+  description_zh: "knowledge_base_search 与 kg_search 的 top_k"
+hop:
+  type: number
+  required: false
+  description_en: "kg_search neighborhood hop (retrieval path stays at 1)"
+  description_zh: "kg_search 邻域跳数（检索路固定 1 跳）"
+timeout_budget_s:
+  type: number
+  required: false
+  description_en: "Latency budget in seconds; on timeout return partial bundle"
+  description_zh: "延迟预算（秒）；超时返回部分 EvidenceBundle"

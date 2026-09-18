@@ -1,0 +1,3 @@
+default_route: auto
+fallback_parallel: true
+route_anchor_required: true

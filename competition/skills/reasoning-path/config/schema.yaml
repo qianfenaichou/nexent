@@ -1,0 +1,15 @@
+max_depth:
+  type: number
+  required: false
+  description_en: "Hard cap of multi-hop depth (tool layer enforces the guardrail)"
+  description_zh: "多跳深度硬顶（工具层另有护杆）"
+beam:
+  type: number
+  required: false
+  description_en: "Beam width for kg_multi_hop; halved once on timeout"
+  description_zh: "kg_multi_hop 束宽；超时降半续跑一次"
+latency_budget_ms:
+  type: number
+  required: false
+  description_en: "Reasoning path latency budget (p95), milliseconds"
+  description_zh: "推理路延迟预算 p95（毫秒）"
