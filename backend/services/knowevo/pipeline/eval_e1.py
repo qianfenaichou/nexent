@@ -57,13 +57,16 @@ PASS_LINE = 0.8
 # Platform fault markers (E0 limitation 3: the free-tier gateway 429/500s
 # and returns empty content under load; a platform fault is NOT a reasoned
 # answer and must never be averaged into acc as a failed run).
+# T-18c D2: the marker list is a *substring* heuristic - a code bug whose
+# message happens to contain e.g. "502" (a line number, a port) must not be
+# classified as a platform fault. The authoritative classifier is
+# `_is_platform_fault(exc)` which checks exception types first and only
+# falls back to these markers for transport-shaped messages.
 _PLATFORM_FAULT_MARKERS = (
     "no active accounts available",
     "rate limit",
-    "429",
     "insufficient_quota",
     "402",
-    "timeout",
     "timed out",
     "connection reset",
     "connection aborted",
@@ -73,6 +76,10 @@ _PLATFORM_FAULT_MARKERS = (
     "503",
     "504",
 )
+# Exception types that are always platform faults regardless of message
+# content (they cannot be produced by a code bug in the pipeline itself).
+_PLATFORM_FAULT_TYPES = (TimeoutError, ConnectionError,
+                         ConnectionResetError, ConnectionAbortedError)
 JUDGE_RETRIES = 6
 RETRY_BACKOFF_SECONDS = 5.0
 # Hard per-call ceiling enforced by the runner itself, independent of the
@@ -119,9 +126,40 @@ async def _pace(min_interval: float | None = None) -> None:
     _LAST_CALL_AT = time.monotonic()
 
 
-def _is_platform_fault(message: str) -> bool:
-    return any(marker.lower() in (message or "").lower()
-               for marker in _PLATFORM_FAULT_MARKERS)
+def _is_platform_fault(exc: Exception | str) -> bool:
+    """Classify an error as a platform fault (T-18c D2).
+
+    Platform faults are infra/transport conditions: type-first (timeouts,
+    connection resets are always platform), then a *message* match only for
+    gateway/quota phrases. A code bug (KeyError, Pydantic validation,
+    ValueError from our own parsing) is never a platform fault even if its
+    message accidentally contains a marker substring like "502".
+    """
+    if isinstance(exc, Exception) and isinstance(exc, _PLATFORM_FAULT_TYPES):
+        return True
+    message = exc if isinstance(exc, str) else str(exc)
+    if not message:
+        return False
+    lowered = message.lower()
+    # 429 must appear in a transport-shaped frame ("HTTP 429", "status 429",
+    # "error code: 429"); a bare "429" (a line number, a lab value echoed in
+    # an error message) must not classify a code bug as a platform fault.
+    if "too many requests" in lowered or re.search(
+            r"(?:http|status|error\s*code|response)\D{0,8}429", lowered):
+        return True
+    if "no active accounts available" in lowered or "insufficient_quota" in lowered:
+        return True
+    # Remaining markers are unambiguous transport phrases; "402"/"502" etc.
+    # keep the frame requirement for the same reason as 429.
+    for marker in (_PLATFORM_FAULT_MARKERS):
+        if marker.isdigit():
+            if re.search(rf"(?:http|status|error\s*code|response)\D{{0,8}}{marker}",
+                         lowered):
+                return True
+            continue
+        if marker in lowered:
+            return True
+    return False
 
 
 def _render_prompt(name: str, lang: str, **variables: Any) -> tuple[str, str]:
@@ -247,11 +285,13 @@ def evidence_chain_text(evidence: list[dict[str, Any]]) -> str:
 
 
 def trace_completeness(evidence: list[dict[str, Any]]) -> float:
-    """Share of retrieved hits that carry the full locator set.
+    """Machine trace completeness: share of hits carrying full locators.
 
-    The trace metric needs a doc, a span and a score to be auditable; a hit
-    with no span is not a trace. E1 retrieves spans by construction, so this
-    measures whether the pipeline kept them intact end to end.
+    Renamed semantics under T-18c D3 (exported as ``trace_machine`` in the
+    report): this measures whether the *retriever* kept the doc/chunk/score
+    locators intact end to end - it says nothing about whether the answer
+    actually cites them. See ``trace_answer_cite`` for the answer-level
+    counterpart.
     """
     if not evidence:
         return 0.0
@@ -261,10 +301,49 @@ def trace_completeness(evidence: list[dict[str, Any]]) -> float:
     return round(complete / len(evidence), 4)
 
 
+_CITATION_RE = re.compile(r"\[(\d{1,2})\]")
+
+
+def trace_answer_cite(question: str, evidence: list[dict[str, Any]],
+                      answer: str | None = None) -> dict[str, Any]:
+    """Answer-level citation trace (D3, deterministic layer - zero LLM).
+
+    Checks that every ``[n]`` reference in the generated answer points at a
+    chunk that was actually retrieved (``n`` within 1..len(evidence)). A
+    fabricated or out-of-range citation - exactly the false-positive
+    reference the judge prompt vetoes - is countable here without paying a
+    judge call, so this layer runs on every question.
+
+    Returns ``{"cited": <n of citations in range>, "out_of_range": <n>,
+    "no_citation": bool, "n_evidence": len(evidence)}``; aggregated into
+    ``trace_answer_cite`` = cited / (cited + out_of_range) with no-citation
+    answers reported separately (never silently scored 1.0).
+    """
+    if answer is None:
+        # Citation checks need a generated answer; the retrieve-only summary
+        # records the zero-signal state instead of pretending a score.
+        return {"citations": 0, "out_of_range": 0, "no_citation": True,
+                "n_evidence": len(evidence)}
+    nums = [int(m.group(1)) for m in _CITATION_RE.finditer(answer)]
+    if not nums:
+        return {"citations": 0, "out_of_range": 0, "no_citation": True,
+                "n_evidence": len(evidence)}
+    out_of_range = sum(1 for n in nums if n < 1 or n > len(evidence))
+    return {"citations": len(nums) - out_of_range, "out_of_range": out_of_range,
+            "no_citation": False, "n_evidence": len(evidence)}
+
+
 async def run_question(router, item: dict[str, Any], retriever: Retriever,
-                       runs: int, top_k: int, lang: str = "zh"
+                       runs: int, top_k: int, lang: str = "zh",
+                       on_unexpected: str = "raise"
                        ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    """One question x ``runs`` trials: retrieve, generate, judge."""
+    """One question x ``runs`` trials: retrieve, generate, judge.
+
+    ``on_unexpected`` follows the D2 contract: "raise" (default) lets a
+    non-platform error abort the batch loudly; "count_fail" records such an
+    error as ``pass=0`` with ``error="runner_error"`` so it stays in the
+    accuracy denominator instead of vanishing into platform_fault.
+    """
     qid = item["id"]
     question = item["question"]
     context, evidence = retrieve_context(retriever, question, top_k=top_k)
@@ -273,21 +352,33 @@ async def run_question(router, item: dict[str, Any], retriever: Retriever,
 
     per_run: list[dict[str, Any]] = []
     latencies: list[float] = []
+    citation_traces: list[dict[str, Any]] = []
     tokens_in = tokens_out = 0
     prompt = render_answer_prompt(context, question, lang=lang)
 
     for run_idx in range(runs):
         t0 = time.monotonic()
         # Generation retries on platform faults (free-tier gateway 500s are
-        # transient and honest retry beats recording a fake fail).
-        answer, gen_usage = await _call_with_retry(
-            router, prompt, kind="e1_answer", tier=GENERATE_TIER,
-            qid=qid, run_idx=run_idx, label="generation",
-            raise_on_fault=False)
+        # transient and honest retry beats recording a fake fail). A code bug
+        # is counted as a failed run (count_fail) so the denominator is
+        # honest - it must never be swept under platform_fault.
+        try:
+            answer, gen_usage = await _call_with_retry(
+                router, prompt, kind="e1_answer", tier=GENERATE_TIER,
+                qid=qid, run_idx=run_idx, label="generation",
+                on_unexpected=on_unexpected)
+        except Exception as exc:
+            if on_unexpected == "count_fail":
+                per_run.append({"question_id": qid, "pass": 0, "run": run_idx,
+                                "error": "runner_error",
+                                "platform_fault": False,
+                                "reason": f"generation runner error: {exc}"[:200]})
+                continue
+            raise
         if answer is None:
-            # pass=None keeps this run out of the acc denominator (a
-            # platform outage is not a wrong answer); summarize() only
-            # counts pass in (0, 1) as a judged run.
+            # pass=None keeps this run out of the acc denominator only for a
+            # genuine platform outage; a runner error (count_fail) is marked
+            # pass=0 above and stays in the denominator.
             per_run.append({"question_id": qid, "pass": None, "run": run_idx,
                             "error": "generation_failed",
                             "platform_fault": True})
@@ -295,15 +386,30 @@ async def run_question(router, item: dict[str, Any], retriever: Retriever,
         gen_usage = gen_usage or {"input_tokens": 0, "output_tokens": 0}
         tokens_in += gen_usage.get("input_tokens", 0)
         tokens_out += gen_usage.get("output_tokens", 0)
+        # D3 answer-level citation trace (deterministic layer, no LLM):
+        # every [n] in the answer must point at a retrieved chunk.
+        citation_traces.append(trace_answer_cite(question, evidence, answer))
 
         judge_prompt = render_judge_prompt(item, answer, chain, lang=lang)
         # Judge retries hard on platform faults: an unavailable judge is not
         # a verdict "failed", and we do not pay for a partial run's answer
         # without a verdict - the run is marked platform_fault and excluded
         # from the acc denominator instead of silently counted wrong.
-        judge_raw, judge_usage = await _call_with_retry(
-            router, judge_prompt, kind="e1_judge", tier=JUDGE_TIER,
-            qid=qid, run_idx=run_idx, label="judge")
+        try:
+            judge_raw, judge_usage = await _call_with_retry(
+                router, judge_prompt, kind="e1_judge", tier=JUDGE_TIER,
+                qid=qid, run_idx=run_idx, label="judge",
+                on_unexpected=on_unexpected)
+        except Exception as exc:
+            # Non-platform judge error: re-raise by default (a code bug must
+            # surface); count_fail records it as a failed judged observation.
+            if on_unexpected == "count_fail":
+                per_run.append({"question_id": qid, "pass": 0, "run": run_idx,
+                                "error": "runner_error",
+                                "platform_fault": False,
+                                "reason": f"judge runner error: {exc}"[:200]})
+                continue
+            raise
         if judge_raw is None:
             per_run.append({"question_id": qid, "pass": None, "run": run_idx,
                             "error": "judge_unavailable", "platform_fault": True})
@@ -335,6 +441,7 @@ async def run_question(router, item: dict[str, Any], retriever: Retriever,
             "type": item.get("type"),
             "latency_s": round(latency, 2),
             "answer": answer[:2000],
+            "trace_answer_cite": citation_traces[-1],
             "reason": verdict.get("reason", ""),
             "parse_error": verdict.get("parse_error", False),
         })
@@ -344,6 +451,7 @@ async def run_question(router, item: dict[str, Any], retriever: Retriever,
         "type": item.get("type"),
         "question": question,
         "trace_completeness": trace,
+        "trace_answer_cite": _aggregate_citation_traces(citation_traces),
         "evidence": evidence,
         "p50_latency_s": round(statistics.median(latencies), 2) if latencies else 0.0,
         "tokens_in": tokens_in,
@@ -352,17 +460,43 @@ async def run_question(router, item: dict[str, Any], retriever: Retriever,
     return per_run, detail
 
 
+def _aggregate_citation_traces(
+        traces: list[dict[str, Any]]) -> dict[str, Any]:
+    """Fold per-run citation traces into one answer-level record.
+
+    ``cited``/``out_of_range`` are summed over runs that produced an answer;
+    ``rate`` is the in-range share (undefined -> None when nothing was ever
+    cited - reported as ``no_citation_run=True``, never as a fake 1.0).
+    """
+    if not traces:
+        return {"citations": 0, "out_of_range": 0, "rate": None,
+                "no_citation_run": True}
+    cited = sum(t["citations"] for t in traces)
+    out_of_range = sum(t["out_of_range"] for t in traces)
+    total = cited + out_of_range
+    return {
+        "citations": cited,
+        "out_of_range": out_of_range,
+        "rate": round(cited / total, 4) if total else None,
+        "no_citation_run": total == 0,
+    }
+
+
 async def _call_with_retry(router, prompt: str, *, kind: str, tier: str,
                            qid: str, run_idx: int, label: str,
-                           raise_on_fault: bool = False) -> tuple[str | None, dict[str, int] | None]:
+                           on_unexpected: str = "raise") -> tuple[str | None, dict[str, int] | None]:
     """Call the router with backoff retries on platform faults.
 
     Returns ``(content, usage)``; on an unrecoverable platform fault returns
-    ``(None, None)`` (caller marks the run platform_fault) unless
-    ``raise_on_fault`` is set. Non-platform errors raise immediately - a
-    code bug must surface, not masquerade as flaky infra.
+    ``(None, None)`` (caller marks the run platform_fault). Non-platform
+    errors are handled by ``on_unexpected`` (T-18c D2):
+      * "raise" (default): re-raise immediately - a code bug must surface,
+        never masquerade as flaky infra;
+      * "count_fail": return ``(None, None)`` with ``_last_message`` set to
+        the exception text; the caller records pass=0 in the denominator.
     """
     last_message = ""
+    last_is_fault = False
     for attempt in range(JUDGE_RETRIES):
         await _pace()
         try:
@@ -374,6 +508,7 @@ async def _call_with_retry(router, prompt: str, *, kind: str, tier: str,
         except TimeoutError:
             last_message = (
                 f"runner hard timeout after {CALL_HARD_TIMEOUT_SECONDS:.0f}s")
+            last_is_fault = True
             if attempt < JUDGE_RETRIES - 1:
                 wait = RETRY_BACKOFF_SECONDS * (attempt + 1)
                 logger.warning("%s %s for %s run %d (attempt %d); retrying in %.0fs",
@@ -382,7 +517,8 @@ async def _call_with_retry(router, prompt: str, *, kind: str, tier: str,
             continue
         except Exception as exc:
             last_message = str(exc)
-            if _is_platform_fault(last_message):
+            last_is_fault = _is_platform_fault(exc)
+            if last_is_fault:
                 if attempt < JUDGE_RETRIES - 1:
                     # Respect a server-advised wait when the provider states
                     # one; otherwise exponential-ish linear backoff.
@@ -394,49 +530,94 @@ async def _call_with_retry(router, prompt: str, *, kind: str, tier: str,
                         last_message[:160], wait)
                     await asyncio.sleep(wait)
                 continue
-            if raise_on_fault:
-                raise
-            return None, None
+            # Non-platform error: a code bug, not flaky infra. Default is to
+            # let it crash the run loudly; count_fail opts in to recording it
+            # as a failed observation that stays in the denominator.
+            if on_unexpected == "count_fail":
+                return None, None
+            raise
     logger.warning("%s unavailable for %s run %d after %d attempts: %s",
                    label, qid, run_idx, JUDGE_RETRIES, last_message[:200])
     return None, None
 
 
 def summarize(runs: list[dict[str, Any]], details: list[dict[str, Any]],
-              config: dict[str, Any]) -> dict[str, Any]:
+              config: dict[str, Any],
+              n_expected: int | None = None) -> dict[str, Any]:
     """Aggregate one evaluation run into the ``eval_run_t.metrics`` shape.
 
-    Platform faults (judge/generation unavailable) are excluded from the
-    acc/pass^k denominators and reported separately - E0 limitation 3 fix:
-    a thundering free-tier gateway must not masquerade as a wrong answer.
+    Honesty contract (T-18c D2):
+      * Platform faults (judge/generation unavailable) are excluded from the
+        acc/pass^k denominators and reported separately - a thundering
+        free-tier gateway must not masquerade as a wrong answer;
+      * ``n_judged`` (runs with a real verdict) is always reported next to
+        ``acc``/``n_expected`` so an inflated acc is visible at a glance;
+      * a type with zero judged runs is reported with
+        ``insufficient_data=true`` instead of silently disappearing (the old
+        behaviour inflated by_type accuracy by omission);
+      * ``integrity_warning=true`` whenever a non-platform runner error was
+        recorded (it stays in the denominator as pass=0) or when judged
+        runs fall short of expected ones for non-platform reasons.
     """
     judged = [r for r in runs if r.get("pass") in (0, 1)]
     faults = [r for r in runs if r.get("platform_fault")]
+    runner_errors = [r for r in runs
+                     if r.get("error") == "runner_error"]
     agg = passk_aggregate(judged) if judged else {
         "acc": 0.0, "pass2": 0.0, "pass3": 0.0,
         "n_questions": 0, "n_runs": 0}
     latencies = [d["p50_latency_s"] for d in details if d.get("p50_latency_s")]
     traces = [d["trace_completeness"] for d in details]
+    answer_traces = [d["trace_answer_cite"] for d in details
+                     if isinstance(d.get("trace_answer_cite"), dict)]
+    cited = sum(t.get("citations", 0) for t in answer_traces)
+    out_of_range = sum(t.get("out_of_range", 0) for t in answer_traces)
+    citation_total = cited + out_of_range
     by_type: dict[str, dict[str, Any]] = {}
     for qtype in ("F", "M", "V", "X"):
         sub = [r for r in judged if r.get("type") == qtype]
         if sub:
             by_type[qtype] = {
                 "n": len({r["question_id"] for r in sub}),
+                "n_judged": len(sub),
                 "acc": round(sum(r["pass"] for r in sub) / len(sub), 4),
             }
-    parse_errors = sum(1 for r in runs if r.get("parse_error"))
+        else:
+            by_type[qtype] = {
+                "n": 0, "n_judged": 0, "acc": None,
+                "insufficient_data": True,
+            }
+    if n_expected is None:
+        n_expected = agg["n_runs"]
+    # Integrity: runs that were expected but never received a verdict for a
+    # non-platform reason (code bug swallowed elsewhere, count_fail path).
+    # Platform faults that explain the whole shortfall keep this False; a
+    # shortfall the faults cannot account for means the denominator shrank
+    # for an unexplained reason and the report must say so.
+    unaccounted = (n_expected - len(judged)) - len(faults)
+    integrity_warning = bool(runner_errors) or unaccounted > 0
     metric = {
         "acc": agg["acc"],
         "pass2": agg["pass2"],
         "pass3": agg["pass3"],
         "n_questions": agg["n_questions"],
         "n_runs": agg["n_runs"],
+        "n_judged": len(judged),
+        "n_expected": n_expected,
         "trace_machine": round(sum(traces) / len(traces), 4) if traces else 0.0,
+        "trace_answer_cite": {
+            "citations": cited,
+            "out_of_range": out_of_range,
+            "rate": round(cited / citation_total, 4) if citation_total else None,
+            "no_citation_run": citation_total == 0,
+        },
         "p95_latency_s": _p95(latencies),
         "tokens_in": sum(d["tokens_in"] for d in details),
         "tokens_out": sum(d["tokens_out"] for d in details),
-        "judge_parse_errors": parse_errors,
+        "judge_parse_errors": sum(
+            1 for r in runs if r.get("parse_error")),
+        "runner_errors": len(runner_errors),
+        "integrity_warning": integrity_warning,
         "platform_faults": {
             "n": len(faults),
             "generation": sum(1 for r in faults if r.get("error") == "generation_failed"),
@@ -518,8 +699,16 @@ def append_cost_ledger(metrics: dict[str, Any], run_id: str | None,
 async def evaluate(testset_path: Path, runs: int = 3, top_k: int = 5,
                    limit: int | None = None, tenant_id: str = DEFAULT_TENANT,
                    lang: str = "zh", build_llm=None,
-                   retriever: Retriever | None = None) -> dict[str, Any]:
-    """Run the E1 baseline over a testset and return the metrics payload."""
+                   retriever: Retriever | None = None,
+                   on_unexpected: str = "raise") -> dict[str, Any]:
+    """Run the E1 baseline over a testset and return the metrics payload.
+
+    ``on_unexpected`` (T-18c D2): "raise" aborts the batch on a non-platform
+    runner error (a code bug must surface); "count_fail" records it as
+    pass=0 in the denominator. The default for batch runs is count_fail -
+    a long batch dying on one question's bug wastes the whole run, and the
+    failed observation stays honestly in the denominator either way.
+    """
     data = json.loads(Path(testset_path).read_text(encoding="utf-8"))
     questions = data.get("questions") or []
     if limit:
@@ -551,6 +740,7 @@ async def evaluate(testset_path: Path, runs: int = 3, top_k: int = 5,
         },
         "pace_seconds": MIN_CALL_INTERVAL_SECONDS,
         "runs_per_question": runs,
+        "on_unexpected": on_unexpected,
         "testset": Path(testset_path).name,
     }
 
@@ -559,11 +749,13 @@ async def evaluate(testset_path: Path, runs: int = 3, top_k: int = 5,
     for i, item in enumerate(questions, start=1):
         logger.info("[%d/%d] %s", i, len(questions), item.get("id"))
         per_run, detail = await run_question(
-            router, item, retriever, runs=runs, top_k=top_k, lang=lang)
+            router, item, retriever, runs=runs, top_k=top_k, lang=lang,
+            on_unexpected=on_unexpected)
         all_runs.extend(per_run)
         details.append(detail)
 
-    metrics = summarize(all_runs, details, config)
+    metrics = summarize(all_runs, details, config,
+                        n_expected=len(questions) * runs)
     metrics["details"] = details
     metrics["runs"] = all_runs
     return metrics
@@ -582,6 +774,11 @@ def main(argv=None) -> int:
                         help="skip the eval_run_t insert and cost-ledger row")
     parser.add_argument("--pace", type=float, default=None,
                         help="min seconds between LLM calls (default 8; 0 off)")
+    parser.add_argument("--on-unexpected", default="count_fail",
+                        choices=["count_fail", "raise"],
+                        help="non-platform runner error handling (T-18c D2): "
+                             "count_fail records pass=0 in the denominator "
+                             "(default), raise aborts the batch")
     parser.add_argument("--out", default=None, help="write the full JSON here")
     args = parser.parse_args(argv)
 
@@ -594,7 +791,8 @@ def main(argv=None) -> int:
 
     metrics = asyncio.run(evaluate(
         Path(args.testset), runs=args.runs, top_k=args.top_k,
-        limit=args.limit, tenant_id=args.tenant, lang=args.lang))
+        limit=args.limit, tenant_id=args.tenant, lang=args.lang,
+        on_unexpected=args.on_unexpected))
 
     run_id = None
     if not args.no_persist:
@@ -605,6 +803,7 @@ def main(argv=None) -> int:
             metrics, run_id,
             f"E1 纯RAG 基线 {metrics['n_questions']}题×{args.runs} runs; "
             f"acc={metrics['acc']} pass2={metrics['pass2']} "
+            f"n_judged={metrics['n_judged']}/{metrics['n_expected']} "
             f"trace={metrics['trace_machine']}")
 
     # The full run record (per-question answers, evidence and verdicts) goes
@@ -624,11 +823,16 @@ def main(argv=None) -> int:
         "pass3": metrics["pass3"],
         "n_questions": metrics["n_questions"],
         "n_runs": metrics["n_runs"],
+        "n_judged": metrics["n_judged"],
+        "n_expected": metrics["n_expected"],
+        "integrity_warning": metrics["integrity_warning"],
         "trace_machine": metrics["trace_machine"],
+        "trace_answer_cite": metrics["trace_answer_cite"],
         "p95_latency_s": metrics["p95_latency_s"],
         "tokens_in": metrics["tokens_in"],
         "tokens_out": metrics["tokens_out"],
         "judge_parse_errors": metrics["judge_parse_errors"],
+        "runner_errors": metrics["runner_errors"],
         "platform_faults": metrics["platform_faults"],
         "by_type": metrics["by_type"],
     }, ensure_ascii=False, indent=2))
