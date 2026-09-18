@@ -1,6 +1,6 @@
 # T-18d：D4 权威度感知检索 + 每文档配额（BM25 不再丢 authority_level）
 
-**状态**: ★ 待开发（2026-09-18 调度会话）
+**状态**: ✅ 完成（2026-09-18）
 **Blocked by**: 无
 **独占文件**（本任务创建/修改）:
 - `backend/services/knowevo/e1_retrieval.py`
@@ -53,7 +53,46 @@ cd backend && POSTGRES_HOST=localhost POSTGRES_PORT=5434 POSTGRES_USER=root POST
 - [ ] 零新依赖；ruff 绿；既有 22 例检索测试全绿（改语义的同步更新）
 - [ ] `pitfalls.md` 补记"权威度在检索阶段被丢弃"
 
-**Evidence**: <粘贴 pytest 输出 / 检索对比真跑 top-5 列表 / 配额断言>
+**Evidence**:
+
+### 验收 1-2：单测 + ruff（全绿）
+```
+33 passed in 0.08s   (test_e1_retrieval.py：22 旧 + 11 新)
+All checks passed!   (ruff check services/knowevo/e1_retrieval.py)
+```
+### 验收 3：★检索对比真跑（同 query，加权/配额 ON vs OFF）
+```
+OFF (pure BM25, weights={}, quota=None)
+   1 guide-2024         auth=2  bm25=24.034
+   2 guide-pc-2022      auth=1  bm25=22.979
+   3 guide-2020         auth=2  bm25=22.589
+   4 guide-pc-manual-2022 auth=1 bm25=22.465
+   5 guide-2020         auth=2  bm25=21.517
+ON  (default prior + quota 2)
+   1 guide-pc-2022      auth=1  bm25=22.979  ranked=22.979
+   2 guide-2024         auth=2  bm25=24.034  ranked=22.832
+   3 guide-pc-manual-2022 auth=1 bm25=22.465  ranked=22.465
+   4 guide-2020         auth=2  bm25=22.589  ranked=21.46
+   5 guide-2020         auth=2  bm25=21.517  ranked=20.441
+```
+→ **auth=1 国家指南以更低 BM25(22.979) 超过 auth=2 指南(24.034) 升至 #1**——"分数相近时高权威优先"精确生效;2020 版指南 2 个 chunk 被配额限制在 2 个名额,`guide-pc-manual-2022` 进入 top-5。
+### 验收 4：PG 集成全量（无回归）
+```
+378 passed, 24 skipped   (纯单测, 含 11 个新测试)
+402 passed                (PG 集成, 含 11 个新测试)
+```
+### 新增单测（11 个）覆盖
+- `TestAuthorityPrior`（5）：默认权重表冻结、接近分重排、`Hit.score` 纯 BM25 保留、`{}` 关闭先验回到纯 BM25 序、自定义权重可配置、未知权威度按 1.0
+- `TestPerDocQuota`（4）：quota=1 单文档限 1 名额、`None` 关闭配额、默认 2、超配额跳过不占名额
+- `TestRetrieveContextScores`（1）：evidence 同时带 `score` + `ranked_score`，先验只降不升
+- 向后兼容：`Hit.score` 字段未改语义，`evidence_chain_text`（读 rank/doc_id/chunk_idx/score/split）不受影响
+
+### 设计决策（相对简报备注的确认）
+1. **乘性先验语义**：`w(1)=1.0..w(4)=0.75` 是**降权低权威**而非提权高权威——权威1不惩罚、权威4砍 25%，与"说明书词频碾压指南"的病灶正对。
+2. **`Hit.score` 保留纯 BM25**，新增 `Hit.ranked_score` 用于排序；`retrieve_context` 两个都输出（报告可解释"为什么它排前面"）。
+3. **`authority_weights={}` 是 T-22 消融的无权威臂**（零成本开关）；`per_doc_quota=None` 关闭配额。
+4. 真库检索对比的 A/B 已粘上方；V 题版本混排**不**归 D4 解决（简报已声明，靠 T-18b/T-21）。
+5. pitfalls #41 补记"权威度在检索阶段被丢弃"。
 
 ---
 

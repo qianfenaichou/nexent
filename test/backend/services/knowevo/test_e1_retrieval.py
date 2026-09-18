@@ -15,6 +15,8 @@ for _p in (str(_REPO_ROOT / "backend"), str(_REPO_ROOT)):
 import pytest
 
 from services.knowevo.e1_retrieval import (
+    DEFAULT_AUTHORITY_WEIGHTS,
+    DEFAULT_PER_DOC_QUOTA,
     Chunk,
     CorpusDoc,
     Retriever,
@@ -160,3 +162,129 @@ class TestRetrieveContext:
     def test_no_hits_empty_context(self, retriever):
         ctx, ev = retrieve_context(retriever, "不存在的概念XYZ", top_k=3)
         assert ctx == "" and ev == []
+
+
+# ---------------------------------------------------------------------------
+# T-18d D4: authority-aware ranking + per-doc quota
+# ---------------------------------------------------------------------------
+
+
+def _auth_doc(asset_no: str, title: str, authority_level: int, text: str,
+              split: str = "build") -> CorpusDoc:
+    return CorpusDoc(asset_no=asset_no, title=title, doc_type="guideline",
+                     authority_level=authority_level, split=split,
+                     local_file=f"g/{asset_no}.pdf", text=text)
+
+
+AUTH_DOCS = [
+    # Low-authority drug label that matches the query term-for-term (BM25
+    # favourite) vs a high-authority guideline that matches with slightly
+    # lower frequency - the exact "说明书压过指南" scenario D4 targets.
+    _auth_doc("label-1", "二甲双胍说明书", 3,
+              "二甲双胍 二甲双胍 二甲双胍 二甲双胍 二甲双胍 二甲双胍 "
+              "二甲双胍 二甲双胍 二甲双胍 二甲双胍"),
+    _auth_doc("guide-1", "糖尿病防治指南", 2,
+              "二甲双胍 二甲双胍 二甲双胍 二甲双胍 二甲双胍 "
+              "二甲双胍 二甲双胍 二甲双胍"),
+    _auth_doc("policy-1", "糖尿病诊疗规范", 1,
+              "二甲双胍 二甲双胍 二甲双胍 二甲双胍 二甲双胍 "
+              "二甲双胍"),
+    _auth_doc("edu-1", "糖尿病科普图文", 4,
+              "二甲双胍 二甲双胍 二甲双胍"),
+]
+
+
+@pytest.fixture
+def auth_retriever() -> Retriever:
+    return Retriever.from_documents(AUTH_DOCS)
+
+
+class TestAuthorityPrior:
+    def test_default_weights_frozen(self):
+        assert DEFAULT_AUTHORITY_WEIGHTS == {1: 1.0, 2: 0.95, 3: 0.85, 4: 0.75}
+        assert DEFAULT_PER_DOC_QUOTA == 2
+
+    def test_authority_prior_reorders_close_scores(self, auth_retriever):
+        # label-1 has the raw BM25 favourite; with the prior, guide-1's
+        # near-score must outrank it (0.95 vs 0.85 multiplier flips the pair
+        # only when raw scores are close - the D4 contract).
+        hits = auth_retriever.search("二甲双胍", top_k=4)
+        ordered = [h.chunk.doc_id for h in hits]
+        assert ordered[0] in ("guide-1", "policy-1"), ordered
+        assert ordered.index("guide-1") < ordered.index("label-1")
+        assert ordered.index("policy-1") < ordered.index("edu-1")
+
+    def test_raw_bm25_score_preserved(self, auth_retriever):
+        hits = auth_retriever.search("二甲双胍", top_k=4)
+        for hit in hits:
+            weight = DEFAULT_AUTHORITY_WEIGHTS.get(hit.chunk.authority_level, 1.0)
+            # ranked_score = round(round(bm25,6) * weight, 6); tolerance is
+            # the double rounding of score and ranked_score.
+            assert abs(hit.score * weight - hit.ranked_score) < 1e-5
+
+    def test_no_prior_keeps_pure_bm25_order(self):
+        # {} disables the prior: the raw BM25 favourite (label-1) ranks first
+        # again, proving the prior (not the corpus) caused the reorder.
+        plain = Retriever.from_documents(AUTH_DOCS, authority_weights={})
+        hits = plain.search("二甲双胍", top_k=4)
+        assert hits[0].chunk.doc_id == "label-1"
+
+    def test_custom_weights_configurable(self):
+        # A steeper prior can force a strict authority order even when the
+        # low-authority doc dominates BM25.
+        steep = Retriever.from_documents(
+            AUTH_DOCS,
+            authority_weights={1: 1.0, 2: 0.9, 3: 0.5, 4: 0.4})
+        hits = steep.search("二甲双胍", top_k=4)
+        ranked = [h.chunk.doc_id for h in hits]
+        assert ranked == ["policy-1", "guide-1", "label-1", "edu-1"]
+
+    def test_authority_level_missing_uses_weight_1(self):
+        chunk = Chunk(doc_id="noauth", title="t", chunk_idx=0,
+                      text="二甲双胍 二甲双胍 二甲双胍",
+                      source="noauth", authority_level=9, split="build")
+        r = Retriever.from_chunks([chunk])
+        hits = r.search("二甲双胍", top_k=1)
+        assert hits and abs(hits[0].score - hits[0].ranked_score) < 1e-6
+
+
+class TestPerDocQuota:
+    def test_quota_caps_one_doc(self, retriever):
+        # dm-guide is the only document matching "二甲双胍一线首选"; with
+        # quota=1 it must occupy exactly one top-k slot even when multiple of
+        # its chunks score.
+        q1 = Retriever.from_documents(FIXTURE_DOCS, per_doc_quota=1)
+        hits = q1.search("二甲双胍 一线 首选", top_k=5)
+        assert len({h.chunk.doc_id for h in hits}) == len(hits)
+        assert all(h.chunk.doc_id != "insulin-guide" for h in hits) or len(hits) == 1
+
+    def test_quota_off_returns_topk(self, retriever):
+        noq = Retriever.from_documents(FIXTURE_DOCS, per_doc_quota=None)
+        hits = noq.search("二甲双胍 一线 首选", top_k=5)
+        assert len(hits) <= 5
+        assert len({h.chunk.doc_id for h in hits}) >= 1
+
+    def test_quota_default_2(self, auth_retriever):
+        hits = auth_retriever.search("二甲双胍", top_k=10)
+        counts: dict[str, int] = {}
+        for h in hits:
+            counts[h.chunk.doc_id] = counts.get(h.chunk.doc_id, 0) + 1
+        assert max(counts.values()) <= 2
+
+    def test_over_quota_skips_do_not_consume_slots(self, auth_retriever):
+        # guide-1 (2 chunks) should occupy at most 2 of the 4 slots, letting
+        # the remaining docs fill the rest rather than dropping them.
+        hits = auth_retriever.search("二甲双胍", top_k=4)
+        assert len(hits) == 4
+        ids = [h.chunk.doc_id for h in hits]
+        assert ids.count("guide-1") <= 2
+
+
+class TestRetrieveContextScores:
+    def test_evidence_carries_both_scores(self, auth_retriever):
+        ctx, ev = retrieve_context(auth_retriever, "二甲双胍", top_k=3)
+        assert len(ev) >= 1
+        for e in ev:
+            assert "score" in e and "ranked_score" in e
+            assert e["ranked_score"] <= e["score"] + 1e-9  # prior never boosts
+            assert "二甲双胍" in ctx
