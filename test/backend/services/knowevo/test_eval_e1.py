@@ -29,6 +29,7 @@ from services.knowevo.pipeline.eval_e1 import (
     render_answer_prompt,
     render_judge_prompt,
     summarize,
+    trace_answer_cite,
     trace_completeness,
 )
 
@@ -196,7 +197,9 @@ class TestPlatformFaultDetection:
 class TestSummarizePlatformFaults:
     def test_faults_excluded_from_denominator(self):
         # 2 judged runs for F-001 (1 pass), 1 platform fault for M-001: the
-        # fault must not appear as a wrong answer.
+        # fault must not appear as a wrong answer, and M must be reported as
+        # insufficient_data instead of vanishing (D2: silent omission used
+        # to inflate by_type accuracy).
         runs = [
             {"question_id": "F-001", "pass": 1, "type": "F"},
             {"question_id": "F-001", "pass": 0, "type": "F"},
@@ -205,19 +208,28 @@ class TestSummarizePlatformFaults:
         ]
         details = [{"question_id": "F-001", "type": "F", "p50_latency_s": 4.0,
                     "trace_completeness": 1.0, "tokens_in": 10, "tokens_out": 5}]
-        m = summarize(runs, details, {"ablation_level": "A1_pure_rag"})
+        m = summarize(runs, details, {"ablation_level": "A1_pure_rag"},
+                      n_expected=3)
         assert m["acc"] == 0.5  # 1 pass / 2 judged, fault excluded
         assert m["n_runs"] == 2
+        assert m["n_judged"] == 2 and m["n_expected"] == 3
         assert m["platform_faults"]["n"] == 1
         assert m["platform_faults"]["judge"] == 1
-        assert "M" not in m["by_type"]  # M had no judged run
+        # D2: the M type is explicitly flagged, never silently dropped.
+        assert m["by_type"]["M"] == {
+            "n": 0, "n_judged": 0, "acc": None, "insufficient_data": True}
+        # The shortfall is fully explained by the platform fault -> no
+        # integrity warning.
+        assert m["integrity_warning"] is False
 
     def test_all_faults_yields_zero_metrics(self):
         runs = [{"question_id": "F-001", "pass": None, "type": "F",
                  "platform_fault": True, "error": "generation_failed"}]
-        m = summarize(runs, [], {})
+        m = summarize(runs, [], {}, n_expected=1)
         assert m["acc"] == 0.0 and m["n_runs"] == 0
+        assert m["n_judged"] == 0
         assert m["platform_faults"]["generation"] == 1
+        assert m["integrity_warning"] is False  # fully explained by faults
 
     def test_generation_fault_not_counted_as_wrong(self):
         # A generation outage carries pass=None, never pass=0: with one real
@@ -227,10 +239,38 @@ class TestSummarizePlatformFaults:
             {"question_id": "F-002", "pass": None, "type": "F",
              "platform_fault": True, "error": "generation_failed"},
         ]
-        m = summarize(runs, [], {})
+        m = summarize(runs, [], {}, n_expected=2)
         assert m["acc"] == 1.0
         assert m["n_runs"] == 1
         assert m["platform_faults"]["n"] == 1
+
+    def test_runner_error_counts_fail_and_warns(self):
+        # D2: a count_fail run stays in the denominator as pass=0 and flips
+        # integrity_warning - the old code swept it out as platform_fault.
+        runs = [
+            {"question_id": "F-001", "pass": 1, "type": "F"},
+            {"question_id": "F-001", "pass": 0, "type": "F",
+             "error": "runner_error", "platform_fault": False},
+        ]
+        m = summarize(runs, [], {}, n_expected=2)
+        assert m["acc"] == 0.5  # the error run is IN the denominator
+        assert m["n_judged"] == 2
+        assert m["runner_errors"] == 1
+        assert m["integrity_warning"] is True
+
+    def test_unexplained_shortfall_warns(self):
+        # A judged shortfall the platform faults cannot account for must
+        # raise the flag (the old silent-shrink behaviour hid this).
+        runs = [{"question_id": "F-001", "pass": 1, "type": "F"}]
+        m = summarize(runs, [], {}, n_expected=3)
+        assert m["integrity_warning"] is True
+
+    def test_by_type_all_four_types_present(self):
+        runs = [{"question_id": f"{t}-1", "pass": 1, "type": t}
+                for t in ("F", "M", "V", "X")]
+        m = summarize(runs, [], {}, n_expected=4)
+        assert set(m["by_type"]) == {"F", "M", "V", "X"}
+        assert all(v["acc"] == 1.0 for v in m["by_type"].values())
 
 
 class TestCallWithRetry:
@@ -266,12 +306,44 @@ class TestCallWithRetry:
         assert usage["input_tokens"] == 5
         assert router.calls == 2  # retried exactly once
 
-    def test_non_platform_error_abandons_without_retry(self):
+    def test_non_platform_error_re_raises_by_default(self):
+        # D2: a code bug must crash loudly, never masquerade as flaky infra.
+        router = self._FakeRouter([ValueError("prompt template broken")])
+        with pytest.raises(ValueError, match="prompt template broken"):
+            asyncio.run(eval_e1._call_with_retry(
+                router, "p", kind="k", tier="mid", qid="F-1", run_idx=0,
+                label="gen"))
+        assert router.calls == 1  # not retried as if it were a 429
+
+    def test_non_platform_error_count_fail_returns_none(self):
+        # D2 opt-in: count_fail hands the error back to the caller so the
+        # run is recorded as pass=0 IN the denominator.
         router = self._FakeRouter([ValueError("prompt template broken")])
         content, usage = asyncio.run(eval_e1._call_with_retry(
-            router, "p", kind="k", tier="mid", qid="F-1", run_idx=0, label="gen"))
+            router, "p", kind="k", tier="mid", qid="F-1", run_idx=0,
+            label="gen", on_unexpected="count_fail"))
         assert content is None and usage is None
-        assert router.calls == 1  # a code bug must not be retried as flaky infra
+        assert router.calls == 1
+
+    def test_code_bug_with_incidental_marker_is_not_a_platform_fault(self):
+        # D2: "502" appearing in a code bug's message (a line number, an id)
+        # must not reclassify it - the frame requirement ("error code: 502")
+        # keeps the transport reading.
+        router = self._FakeRouter([
+            ValueError("row 502 mismatch in span_hash")])
+        with pytest.raises(ValueError):
+            asyncio.run(eval_e1._call_with_retry(
+                router, "p", kind="k", tier="mid", qid="F-1", run_idx=0,
+                label="gen"))
+        # The same message via a transport-shaped frame IS a platform fault.
+        assert not eval_e1._is_platform_fault(
+            ValueError("row 502 mismatch in span_hash"))
+        assert eval_e1._is_platform_fault(RuntimeError("error code: 502"))
+
+    def test_timeout_type_is_platform_fault_without_marker(self):
+        # Type-first classification: a TimeoutError with an opaque message
+        # (no marker substring) is still a platform fault.
+        assert eval_e1._is_platform_fault(TimeoutError("elapsed"))
 
     def test_timeout_is_retried_then_abandoned(self):
         router = self._FakeRouter([RuntimeError("Read timed out")] * 6)
@@ -333,3 +405,57 @@ class TestSummarize:
         assert m["by_type"]["F"]["acc"] == 1.0
         assert m["by_type"]["M"]["acc"] == 0.0
         assert m["config"] is config  # config carried through
+
+class TestTraceAnswerCite:
+    """D3 answer-level citation trace (deterministic layer, zero LLM)."""
+
+    EV = ({"rank": 1, "doc_id": "g1"}, {"rank": 2, "doc_id": "g2"})
+
+    def test_all_citations_in_range(self):
+        out = trace_answer_cite("q", list(self.EV),
+                                "一线首选二甲双胍[1]，注意肝肾功能[2]。")
+        assert out == {"citations": 2, "out_of_range": 0,
+                       "no_citation": False, "n_evidence": 2}
+
+    def test_out_of_range_citation_counted(self):
+        out = trace_answer_cite("q", list(self.EV), "根据文献[5]……[1]")
+        assert out["out_of_range"] == 1
+        assert out["citations"] == 1
+
+    def test_no_citation_is_explicit_not_one(self):
+        out = trace_answer_cite("q", list(self.EV), "二甲双胍是一线药物。")
+        assert out["no_citation"] is True and out["citations"] == 0
+
+    def test_no_answer_records_zero_signal(self):
+        out = trace_answer_cite("q", list(self.EV), None)
+        assert out["no_citation"] is True
+
+    def test_no_evidence_any_citation_is_out_of_range(self):
+        out = trace_answer_cite("q", [], "答案[1]")
+        assert out["out_of_range"] == 1 and out["citations"] == 0
+
+    def test_aggregate_shape_via_summarize(self):
+        runs = [{"question_id": "F-1", "pass": 1, "type": "F"}]
+        details = [
+            {"question_id": "F-1", "type": "F", "p50_latency_s": 1.0,
+             "trace_completeness": 1.0, "tokens_in": 1, "tokens_out": 1,
+             "trace_answer_cite": {"citations": 3, "out_of_range": 1,
+                                   "rate": 0.75, "no_citation_run": False}},
+        ]
+        m = summarize(runs, details, {}, n_expected=1)
+        assert m["trace_answer_cite"]["citations"] == 3
+        assert m["trace_answer_cite"]["out_of_range"] == 1
+        assert m["trace_answer_cite"]["rate"] == 0.75
+        assert m["trace_machine"] == 1.0
+
+    def test_trace_answer_is_not_constant_one(self):
+        # The D3 judgement criterion: the three distinguishable states
+        # (all-cited / out-of-range / none) must produce different values,
+        # unlike the old field-completeness metric that was structurally 1.0.
+        full = trace_answer_cite("q", list(self.EV), "a[1] b[2]")
+        broken = trace_answer_cite("q", list(self.EV), "a[1] b[9]")
+        none = trace_answer_cite("q", list(self.EV), "no refs")
+        assert full["out_of_range"] == 0
+        assert broken["out_of_range"] == 1
+        assert none["no_citation"] is True
+        assert full["citations"] != broken["citations"]

@@ -1,6 +1,6 @@
 # T-18c：D2 诚实分母（非平台异常必须计入失败或 re-raise）+ D3 答案级溯源
 
-**状态**: ★ 待开发（2026-09-18 调度会话）
+**状态**: ◐ 代码+单测+小样本真跑完成（2026-09-18）；★全量 E1 重跑后台进行中（sensenova 限流下预计 1-6h，落库后回填本简报；旧口径 acc=0.7692=52/60 判定已如实标注为被污染分母产物）
 **Blocked by**: 无
 **独占文件**（本任务创建/修改）:
 - `backend/services/knowevo/pipeline/eval_e1.py`
@@ -62,7 +62,40 @@ cd backend && POSTGRES_HOST=localhost POSTGRES_PORT=5434 POSTGRES_USER=root POST
 - [ ] 零新依赖、零新增 env、`eval_run_t` 只 INSERT
 - [ ] `pitfalls.md` 补记"分母洗白"这一坑
 
-**Evidence**: <粘贴 pytest 输出 / 重跑报告的 acc+n_judged / by_type 四型 / integrity_warning 值>
+**Evidence**:
+
+### 已完成（2026-09-18）
+1. **D2 re-raise/count_fail 契约**：`_call_with_retry` 签名从 `raise_on_fault: bool` 改为 `on_unexpected: str`（"raise" 默认炸出 / "count_fail" 计 pass=0 进分母）；`run_question` 生成与 judge 两路都透传，count_fail 记 `error="runner_error"`、`platform_fault=False`。
+2. **`_is_platform_fault` 收紧**：类型优先（TimeoutError/ConnectionError 恒平台，无 marker 也算）；裸子串 marker 加传输帧约束——`"row 502 mismatch"`（代码异常）不再误判，`"error code: 502"`（传输）仍判平台；`timeout` 裸词从 marker 表移除（`timed out` 保留 + TimeoutError 类型覆盖）。
+3. **summarize 诚实口径**：恒报 `n_judged`/`n_expected`；by_type 四型齐全，零判定题型 `{n:0, n_judged:0, acc:null, insufficient_data:true}` 不再消失；`runner_errors` 单独计数；`integrity_warning = runner_errors>0 or 未被平台故障解释的分母缺口>0`。
+4. **D3 双口径**：`trace_completeness` 语义注释改为"检索定位符完整率"（报告键 `trace_machine`）；新增 `trace_answer_cite`（确定性层，零 LLM）：答案里每个 `[n]` 必须 ∈ 1..len(evidence)，`citations/out_of_range/no_citation` 三态可区分；无引用记录零信号而非伪造 1.0。**LLM 支撑层（trace_answer_support）登记到 T-22 随消融 LLM 预算做**——本期不改冻结的 judge prompt（保持与 E1 基线可比）。
+5. **CLI**：`--on-unexpected {count_fail,raise}`（batch 默认 count_fail——长跑不死于单题 bug 且分母诚实）；汇总输出加 `n_judged/n_expected/integrity_warning/trace_answer_cite/runner_errors`。
+
+### 验收 1-2：单测 + ruff（全绿）
+```
+test_eval_e1 + test_eval_v1: 63 passed   (47 + 16; +20 新测试/更新)
+ruff: All checks passed!
+全量: 391 passed, 24 skipped (纯单测)
+```
+### 验收 3：★D2 回归护栏（单测注入 ValueError）
+- `test_non_platform_error_re_raises_by_default`：注入 `ValueError("prompt template broken")` → `pytest.raises(ValueError)`，且只调 1 次（不按 429 重试）
+- `test_non_platform_error_count_fail_returns_none`：同注入 + count_fail → `(None,None)`，上层记 pass=0 进分母
+- `test_runner_error_counts_fail_and_warns`：acc 把 error run 计入分母（0.5 而非 1.0）+ `integrity_warning=True`
+- `test_code_bug_with_incidental_marker_is_not_a_platform_fault`：`"row 502 mismatch"` 不误判；`"error code: 502"` 判平台
+- `test_by_type_all_four_types_present` / `test_unexplained_shortfall_warns`：四型齐全 + 分母缺口告警
+### 验收 4'：小样本真跑（2 题 × 1 run，全量重跑后台进行）
+```
+n_judged=2 n_expected=2 acc=0.5 integrity_warning=False trace_machine=1.0
+trace_answer_cite={citations:1, out_of_range:0, rate:1.0, no_citation_run:False}
+by_type: F={n:2,n_judged:2,acc:0.5}  M/V/X={n:0,n_judged:0,acc:null,insufficient_data:true}
+F-001 pass=1 cite=[1]在界内;  F-002 pass=0 no_citation=true
+```
+→ F-002 无引用被显式记录（旧口径 trace 恒 1.0 看不见此状态）；M/V/X 零判定显式 insufficient_data 而非消失。
+
+### 待回填（全量重跑完成后）
+- [ ] 全量 E1 重跑数字（acc + n_judged + by_type 四型 + integrity_warning）——后台运行中，完成后覆盖 `competition/deliverables/e1-baseline-report.json` 并在此回填
+- 旧口径说明：acc=0.7692 基于 60 run 中排除 8 次的污染分母（M 型 15 run 只判 8、M-003 整题消失）；新口径把非平台异常计 pass=0 进分母,若 acc 下降那是修正而非回归
+- [ ] cost-ledger.md 重跑行
 
 ---
 
