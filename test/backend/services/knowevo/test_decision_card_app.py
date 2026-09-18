@@ -532,3 +532,75 @@ class TestPostgresDecisionCardPersistence:
                 "a RECOMMEND card is not queued for the rerun ledger")
         finally:
             _clean()
+
+
+class TestSkillTemplateListHttp:
+    """T-20 pending-wiring closure: GET /api/knowevo/skill-template/list.
+
+    The /skillTemplate panel shipped against this contract with the route
+    deliberately unwired (the T-20 brief authorized no HTTP surface);
+    these tests pin the read-only listing behavior at this boundary.
+    """
+
+    ROWS = [{"name": "reasoning_decision-general",
+             "task_type": "reasoning_decision", "version": "1.0.0",
+             "body_md": "# 职责", "variables": {"domain": "general"},
+             "reuse_count": 2, "reuse_success": 1.0}]
+
+    def _fake_svc(self, monkeypatch, rows):
+        captured = {}
+
+        class FakeSvc:
+            def __init__(self, tenant_id):
+                captured["tenant_id"] = tenant_id
+
+            async def list_templates(self, limit=50):
+                captured["limit"] = limit
+                return rows
+
+        monkeypatch.setattr(knowledge_graph_app,
+                            "_skill_template_service", FakeSvc)
+        return captured
+
+    def test_lists_templates_for_session_tenant(self, monkeypatch):
+        captured = self._fake_svc(monkeypatch, self.ROWS)
+        _auth_as(monkeypatch, tenant_id=TENANT_A)
+        out = _run(knowledge_graph_app.list_skill_templates(
+            limit=50, authorization="Bearer t"))
+        assert out["count"] == 1
+        assert out["templates"][0]["name"] == "reasoning_decision-general"
+        assert captured["tenant_id"] == TENANT_A
+        assert captured["limit"] == 50
+
+    def test_limit_is_passed_through(self, monkeypatch):
+        captured = self._fake_svc(monkeypatch, [])
+        _auth_as(monkeypatch)
+        _run(knowledge_graph_app.list_skill_templates(
+            limit=7, authorization="Bearer t"))
+        assert captured["limit"] == 7
+
+    def test_no_workbench_permission_maps_to_403(self, monkeypatch):
+        self._fake_svc(monkeypatch, [])
+        _auth_as(monkeypatch, kb_manage=False, graph_manage=False)
+        with pytest.raises(HTTPException) as ei:
+            _run(knowledge_graph_app.list_skill_templates(
+                limit=50, authorization="Bearer t"))
+        assert ei.value.status_code == 403
+
+    def test_store_failure_is_502_not_fake_empty(self, monkeypatch):
+        # A broken store must not masquerade as "no templates exist" -
+        # the panel would render an empty state over an outage.
+        class BoomSvc:
+            def __init__(self, tenant_id):
+                pass
+
+            async def list_templates(self, limit=50):
+                raise RuntimeError("db down")
+
+        monkeypatch.setattr(knowledge_graph_app,
+                            "_skill_template_service", BoomSvc)
+        _auth_as(monkeypatch)
+        with pytest.raises(HTTPException) as ei:
+            _run(knowledge_graph_app.list_skill_templates(
+                limit=50, authorization="Bearer t"))
+        assert ei.value.status_code == 502
