@@ -49,6 +49,8 @@
 
 ## ⑤ D1 前置校验现状
 
+> **2026-09-19 05:0x 更新（主智能体）：D1 已关闭。** T-18b 闭环并提交（commit 21f9e8ad6，feat/kw-T18b-fact-time）：代码接缝全部落库提交；判别性护栏=单测 `TestDiscriminativeVersionPin` + PG 集成 `test_discriminative_version_pin_on_real_db`（真库播种：t_v=2022 纳入 1 / t_v=2025 纳入 2）；`evolution-log.md` 已登记 T-18b 机制段；30 份 registry-dated 文档业务日期已回填真库。**诚实口径保留**：SQL 级三 count 分化（t_v=2022: 0 / t_v=2025: 1 / all: 369）未变——现存 369 行关系全部无证据链（eval 夹具/合成数据，见 T-18b-brief Evidence「数据现实」与 pitfalls #43），E8 的 Δ 在真实语料摄取前由集成测试承载机制证明。T-22 动工时按 §⑥ 步骤 1 复跑判别性 SQL 并引用本节即可，无需再做"关闭 D1"的前置。
+
 - 代码接缝已就位（工作区，未提交）：`version_pin.resolve_version_clock` 支持 fact_cutoff（`version_pin.py:110-144`）；写入点 `ontology_service.commit_version`（`ontology_service.py:634,653-655`）；读取点 `decision_service.py:652-658`。backend 多文件 diff 为 T-18b/T-18c 实现会话产出（git status 可见，非本检查会话所改）。
 - **未找到完成证据**：`tasks/T-18b-brief.md:3` 状态仍为"待开发"；`competition/docs/evolution-log.md` 与 `docs/verification-reports/*.md` 中 grep `T-18b|fact_cutoff` 零命中；无 T-18b receipt 文件；真库 294 条 `kg_relation_t.valid_at` 是否已回填业务出版时间——未找到证据，无法确认；T-22 简报要求的"判别性 SQL"（`T-18b-brief.md:79`，t_v 两个取值下纳入事实数不同）未见运行记录。
 - 结论：**D1 视为未关闭**。T-22 动工前必须：跑判别性 SQL → 把结果登记进 evolution-log → 才允许跑 E8。

@@ -23,3 +23,16 @@ T-11 起每轮演进登记时，请附：本轮 `knowledge_stamp`（ontology_ver
 - **机制证明（判别性护栏）**：单测 `TestDiscriminativeVersionPin`（同组边、两个 t_v、纳入集合不同）+ PG 集成 `test_discriminative_version_pin_on_real_db`（真库播种：t_v=2022-01-01 纳入 1 条 / t_v=2025-06-01 纳入 2 条）。
 - **真库现状（诚实口径）**：现存 369 行关系全部无证据链（eval 夹具/合成 PoC 数据），回填脚本按 `no_evidence_link` 如实保留原值，SQL 级三 count 分化待 T-19/T-22 真实语料摄取后复跑验收命令 5；30 份 registry-dated 文档的业务日期已回填进 `doc_asset_t.metadata`，后续 `commit_version` 可直接取到 fact_cutoff。
 - **对 A4 消融的意义**：t_v 与 valid_at 分轴后，"关掉版本钉住会多纳入哪些事实"第一次成为可测量的 Δ；T-22 的 A4 臂执行顺序见 `docs/verification-reports/t22-readiness.md` §⑥。
+
+## T-20 模板沉淀首次真实落库（2026-09-19，能力沉淀台账）
+
+`mine_skill_templates.py` 首次真跑成功，从 `decision_card_t` 真实历史卡（100 张 / 75 租户，显式 `--cross-tenant` 汇聚）归纳出 **2 个参数化 SKILL.md 模板**，落 `skill_template_t`（租户 6756b0ab，构建租户）：
+
+| 模板 | task_type | support | induced_by | 来源 |
+|---|---|---|---|---|
+| reasoning_decision-general | reasoning_decision | 50 | llm | 100 卡中 50 张推理决策卡的模式（mine-66f9eddc） |
+| refusal-general | refusal | 50 | llm | 100 卡中 50 张拒答卡的诚实降级模式 |
+
+- **LLM 通道**：mid=deepseek-v4-flash / large=glm-5.2（sensenova），2 次调用 1652+9096 tokens，cost-ledger 行 mine-66f9eddc；首次尝试因管线默认租户无 LLM 配置诚实降级为确定性骨架（0 次调用，行 mine-d3f9b505）——模型配置是**租户作用域**的（pitfalls #44）。
+- **复用闭环已验证**：`apply_template` 实例化 reasoning_decision-general（domain=t2dm）成功渲染 SKILL.md，`reuse_count=1`、`reuse_success=1`（真库 psql 为证）。
+- **待集成轮**：`skill_template_apply` MCP 注册、kw_007 RBAC、前端 /skillTemplate 页、SKILL.md 原生上传验证（spike 结论见 `docs/skill-mechanism.md`，frontmatter 白名单 name/description/allowed-tools/tags/script_outputs）。
