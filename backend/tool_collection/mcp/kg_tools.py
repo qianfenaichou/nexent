@@ -1,6 +1,7 @@
 """
-KnowEvo Local-MCP inner registration - kg_search + kg_stats (T-07b) and
-kg_multi_hop (T-09).
+KnowEvo Local-MCP inner registration - kg_search + kg_stats (T-07b),
+kg_multi_hop (T-09), decision_card_render (T-19) and skill_template_apply
+(T-20).
 
 This is the second registration surface of the same tool handlers: the
 standalone FastMCP server (mcp_servers/knowevo_mcp/server.py) serves them
@@ -34,6 +35,7 @@ from mcp_servers.knowevo_mcp.schemas import (
     KGSearchOutput,
     KGStatsInput,
     KGStatsOutput,
+    SkillTemplateApplyInput,
 )
 from mcp_servers.knowevo_mcp.server import (
     configure as knowevo_configure,
@@ -43,11 +45,13 @@ from mcp_servers.knowevo_mcp.server import (
     kg_multi_hop_handler,
     kg_search_handler,
     kg_stats_handler,
+    skill_template_apply_handler,
 )
 
 SERVICE_NAME = "knowevo"
 KG_MCP_TOOL_NAMES = (
-    "kg_search", "kg_stats", "kg_multi_hop", "decision_card_render")
+    "kg_search", "kg_stats", "kg_multi_hop", "decision_card_render",
+    "skill_template_apply")
 
 # Reuse the standalone app as the mountable unit: the same FastMCP instance
 # can be mounted into local_mcp_service.py via ``local_mcp_service.mount``,
@@ -62,6 +66,7 @@ def tool_schemas() -> dict[str, dict]:
         "kg_stats": KGStatsInput.model_json_schema(),
         "kg_multi_hop": KGMultiHopInput.model_json_schema(),
         "decision_card_render": DecisionCardInput.model_json_schema(),
+        "skill_template_apply": SkillTemplateApplyInput.model_json_schema(),
     }
 
 
@@ -72,6 +77,7 @@ def handlers() -> dict[str, object]:
         "kg_stats": kg_stats_handler,
         "kg_multi_hop": kg_multi_hop_handler,
         "decision_card_render": decision_card_render_handler,
+        "skill_template_apply": skill_template_apply_handler,
     }
 
 
@@ -94,6 +100,7 @@ __all__ = [
     "KGSearchOutput",
     "KGStatsInput",
     "KGStatsOutput",
+    "SkillTemplateApplyInput",
     "handlers",
     "tool_schemas",
     "wire",

@@ -1,6 +1,6 @@
 # T-20：Skill 分层编排 + SKILL.md 模板库（D6）
 
-**状态**: ★ 待开发（2026-09-18 调度会话）
+**状态**: ✅ 完成（2026-09-19 域内轮 3ca491f66 + 集成轮闭环；唯一遗留=模板列表 HTTP 路由未接线（简报未授权路由，见 Evidence 待接线声明））
 **Blocked by**: T-18a（导航接线模式复用）
 **独占文件**（本任务创建/修改）:
 - `competition/skills/`（**新建目录**：三个 SKILL.md 模板 + config，域内自包含）
@@ -87,7 +87,35 @@ cd backend && POSTGRES_HOST=localhost POSTGRES_PORT=5434 POSTGRES_USER=root POST
 - [ ] 零新依赖；零新增 env；未改上游 skill 服务
 - [ ] `pitfalls.md` 补记 skill 机制摸索坑；`evolution-log.md` 记录模板沉淀（能力沉淀台账）
 
-**Evidence**: <粘贴 spike 文档路径 / pytest 输出 / 挖掘结果（模板名+来源卡数）/ 复用统计 psql 查询 / SKILL.md 上传响应 / 前端截图>
+**Evidence**（2026-09-19 两轮闭环实测，细节见 `.task_b_status/t20-domain.status.json` / `t20-integration.status.json`）:
+
+```text
+[spike] competition/docs/skill-mechanism.md：与简报背景核验一致（±1 行号）；要点=frontmatter
+        白名单五键（其余键静默丢弃）、allowed-tools 未注册名静默过滤、config/config.yaml 与
+        schema.yaml 双通道——三条静默过滤陷阱记 pitfalls #44
+[域内]  4 个 SKILL.md（入口/检索路/推理路/证据组装）+ skill_template_service.py +
+        mine_skill_templates.py + knowevo_skill_induce_{zh,en}.yaml；35 单测全绿
+[挖掘]  真跑 --cross-tenant --tenant 6756b0ab（LLM 配置租户作用域，pitfalls #44）：
+        2 模板 LLM 归纳落库 reasoning_decision-general / refusal-general（各 support=50），
+        source={pattern, mined_from, induced_at, cross_tenant:true}；cost-ledger 行
+        mine-b64f1858（dry-run）/ mine-66f9eddc（真跑 1652+9096 tokens）
+[复用]  MCP apply 真跑 reuse_count 1→2（真库为证）；apply 不调 record_reuse_outcome、
+        不虚构成功率（诚实契约，payload 无 reuse_success 键）
+[集成]  skill_template_apply 双注册（server.py handler + @mcp.tool / kg_tools.py 第 5 工具）；
+        template_not_found 结构化错误不泄内部
+[kw_007] 真库应用（幂等）后查询：role_permission_t 1520=SU / 1521=ADMIN '/skillTemplate' 两行
+[加载]  栈未起（如实记录）→ 简报后备路径：create_skill_from_file 进程内验证 4 个 SKILL.md
+        全部通过原生解析加载（ag_skill_info_t 落 4 行，tags 全解析；allowed-tools 映射与
+        spike §1 预测一致）
+[验收]  单测 57 passed（35 服务 + 22 MCP）/ ruff 全绿 / type-check 通过 /
+        PG 集成全量 516 passed（494 基线 + 22 新增，零回归）
+```
+
+**待接线声明（诚实）**：模板列表 HTTP 路由未建——T-20 简报未授权任何 HTTP 路由，而
+knowledge_graph_app.py 属 T-19 已提交领地，集成轮拒绝越权。交付为"前端页 + 类型 + 服务层
+就绪"（页面 catch 后渲染"数据源待接线" Alert，不编造数据）；下一轮在 knowledge_graph_app.py
+加只读 GET 路由（约定 GET /api/knowevo/skill-template/list）即激活完整列表 UI。
+pitfalls #46 记录：进程内真跑必须带完整 DB env 配方。
 
 ---
 

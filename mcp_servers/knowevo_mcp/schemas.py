@@ -163,3 +163,32 @@ class DecisionCardInput(BaseModel):
     question: str = Field(min_length=1, max_length=500)
     ontology_version: str | None = None
     mode: str = Field("full", pattern="^(full|lite)$")
+
+
+# ---------------------------------------------------------------------------
+# skill_template_apply (T-20, additive 9th tool beyond the frozen 8) -
+# instantiate a mined SKILL.md template from skill_template_t
+# ---------------------------------------------------------------------------
+
+class SkillTemplateApplyInput(BaseModel):
+    """Input of the skill-template apply tool (T-20).
+
+    ``template_name`` bound mirrors the skill_template_t.name column
+    (String(64), unique per tenant) so an impossible name is rejected by
+    the MCP layer before any DB round-trip (SPEC discipline 3).
+    ``variables`` are injection overrides on top of the template's stored
+    defaults ({domain, task_type, relation_template, domain_rules}); the
+    service stringifies the values and merges them, unknown {placeholders}
+    in the markdown survive untouched.
+
+    Like DecisionCardInput, the output is NOT re-modeled here: the apply
+    payload (``name``/``skill_md``/``variables``/``reuse_count``) is owned
+    by ``services.knowevo.skill_template_service.SkillTemplateService.
+    apply_template``; the handler returns it as a JSON-safe dict with the
+    SPEC cost fields (``used_tokens``, ``elapsed_ms``) added, or a
+    structured ``{error_code, hint}`` dict (``template_not_found`` /
+    ``skill_template_apply_failed``).
+    """
+
+    template_name: str = Field(min_length=1, max_length=64)
+    variables: dict[str, str] = Field(default_factory=dict, max_length=16)
