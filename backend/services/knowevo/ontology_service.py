@@ -210,6 +210,36 @@ class PgStore:
                 return {"classes": [], "rel_types": []}
             return row.snapshot
 
+    async def load_active_version_row(self, tenant_id):
+        """Latest published version row, or None when nothing is published.
+
+        Additive companion to ``load_active_snapshot``: the workbench tree
+        panel needs the version label, status and metrics alongside the
+        snapshot, while the T-04 snapshot-only contract stays frozen. The
+        ordering matches ``load_active_snapshot`` (newest created_at first)
+        so both read the same active version.
+        """
+        from database.knowevo_db import OntologyVersion, _get_db_session
+        with _get_db_session() as session:
+            row = (
+                session.query(OntologyVersion)
+                .filter(OntologyVersion.tenant_id == tenant_id,
+                        OntologyVersion.status == "published")
+                .order_by(OntologyVersion.created_at.desc())
+                .first()
+            )
+            if row is None:
+                return None
+            return {
+                "version": row.version,
+                "status": row.status,
+                "snapshot": row.snapshot,
+                "applied_ops": row.applied_ops,
+                "metrics": row.metrics,
+                "created_at": (row.created_at.isoformat()
+                               if row.created_at is not None else None),
+            }
+
     async def save_version(self, tenant_id, version_row):
         from database.knowevo_db import OntologyVersion, create_row
         create_row(OntologyVersion, tenant_id=tenant_id, **version_row)
@@ -230,7 +260,13 @@ class PgStore:
             return [r.target for r in rows]
 
     async def list_versions(self, tenant_id):
-        """Version rows (with applied_ops) for diff; latest last."""
+        """Version rows (with applied_ops) for diff; latest last.
+
+        ``created_at`` is included so version-clock resolution (version_pin)
+        can fall back to a version's creation instant when no explicit
+        ``fact_cutoff`` is recorded - without it the fallback would silently
+        degrade to ``now()`` and the pin would stop discriminating.
+        """
         from database.knowevo_db import OntologyVersion, _get_db_session
         with _get_db_session() as session:
             rows = (
@@ -241,7 +277,8 @@ class PgStore:
             )
             return [
                 {"version": r.version, "status": r.status,
-                 "applied_ops": r.applied_ops, "snapshot": r.snapshot}
+                 "applied_ops": r.applied_ops, "snapshot": r.snapshot,
+                 "created_at": r.created_at}
                 for r in rows
             ]
 
@@ -626,6 +663,19 @@ class OntologyService:
 
     async def get_active(self, tenant_id) -> dict[str, Any]:
         return await self.store.load_active_snapshot(tenant_id)
+
+    async def get_active_row(self, tenant_id) -> dict[str, Any] | None:
+        """Active version row (label + snapshot + metrics), or None.
+
+        The workbench's ``GET /ontology/versions/active`` serves this; None
+        maps to HTTP 404 so the client can tell "no version committed yet"
+        from "here is an empty ontology". Falls back to None when the store
+        has no row-level surface (unit fakes), keeping the app layer free
+        of store-capability probing.
+        """
+        if not hasattr(self.store, "load_active_version_row"):
+            return None
+        return await self.store.load_active_version_row(tenant_id)
 
     async def quality_metrics(self, snapshot: dict[str, Any],
                               seed_terms: list[str] | None = None,
