@@ -19,6 +19,7 @@ test_ontology_service.py (pitfalls #14 template).
 import os
 import sys
 import uuid as uuid_mod
+from datetime import UTC, datetime
 from pathlib import Path
 
 # Upstream convention: repo backend/ on sys.path, import via the
@@ -750,6 +751,69 @@ class TestMergeDelta:
         assert len(store.edges) == 1
 
     @pytest.mark.asyncio
+    async def test_edge_valid_at_is_source_doc_business_time(self):
+        # T-18b D1: the edge's valid_at is its source document's business
+        # publication date - not the merge wall clock, which is what made
+        # version pinning always-true before the fix.
+        store = FakeStore()
+        doc_id = uuid_mod.uuid4()
+        published = datetime(2021, 4, 1, tzinfo=UTC)
+        store.published[str(doc_id)] = published
+        svc = _svc(store=store)
+        ev = (await store.save_evidence(TENANT_A, {
+            "doc_id": doc_id, "span_text": "a", "entity_refs": [],
+            "edge_ids": [], "tag": "EXTRACTED", "modality": "text"}))["id"]
+        ext = ExtractionResult(
+            entities=[_entity("二甲双胍", "Drug"),
+                      _entity("2型糖尿病", "Disease")],
+            edges=[Relation(src="二甲双胍", dst="2型糖尿病",
+                            rel_type="indicated_for", claim="一线用药",
+                            evidence_id=ev)])
+        report = await svc.merge_delta([ext])
+        assert store.edges[0]["valid_at"] == published
+        assert report.dated_edges == 1
+        assert report.undated_edges == 0
+
+    @pytest.mark.asyncio
+    async def test_edge_without_traceable_date_counts_undated(self):
+        # "We only know when we filed it" stays distinct from "we know
+        # when it was published": no doc date -> no valid_at override (the
+        # column default supplies the wall clock) and the report says so
+        # instead of silently absorbing the gap.
+        store = FakeStore()
+        svc = _svc(store=store)
+        ext = ExtractionResult(
+            entities=[_entity("二甲双胍", "Drug"),
+                      _entity("2型糖尿病", "Disease")],
+            edges=[Relation(src="二甲双胍", dst="2型糖尿病",
+                            rel_type="indicated_for", claim="一线用药")])
+        report = await svc.merge_delta([ext])
+        assert "valid_at" not in store.edges[0]
+        assert report.undated_edges == 1
+        assert report.dated_edges == 0
+
+    @pytest.mark.asyncio
+    async def test_edge_with_unknown_doc_is_undated_not_epoch(self):
+        # doc_published_at's epoch sentinel means "document unknown"; the
+        # business-time resolver must treat that as undated, never stamp
+        # 1970-01-01 as a publication date.
+        store = FakeStore()
+        doc_id = uuid_mod.uuid4()  # no authority/published entry: unknown
+        svc = _svc(store=store)
+        ev = (await store.save_evidence(TENANT_A, {
+            "doc_id": doc_id, "span_text": "a", "entity_refs": [],
+            "edge_ids": [], "tag": "EXTRACTED", "modality": "text"}))["id"]
+        ext = ExtractionResult(
+            entities=[_entity("二甲双胍", "Drug"),
+                      _entity("2型糖尿病", "Disease")],
+            edges=[Relation(src="二甲双胍", dst="2型糖尿病",
+                            rel_type="indicated_for", claim="一线用药",
+                            evidence_id=ev)])
+        report = await svc.merge_delta([ext])
+        assert "valid_at" not in store.edges[0]
+        assert report.undated_edges == 1
+
+    @pytest.mark.asyncio
     async def test_contra_higher_authority_supersedes_old(self):
         """Newer/higher-authority guideline wins; old fact keeps a stamp."""
         store = FakeStore()
@@ -1266,3 +1330,91 @@ class TestPgIntegration:
         await store.add_pending(tenant, "未知概念", None, "NewClass")
         summary = await svc.update_pending_pool()
         assert summary.high_frequency[0]["name"] == "未知概念"
+
+    @pytest.mark.asyncio
+    async def test_discriminative_version_pin_on_real_db(self):
+        """T-18b D1 acceptance #4, on the real database.
+
+        Seeds two dated documents through the real model layer, merges one
+        edge per document through the real merge path, and shows the SAME
+        edge set splits differently under two business-time pins - the
+        observable criterion that valid_at now carries business time (the
+        wall-clock bug made ``valid_at <= t_v`` always true for fresh
+        facts). Throwaway tenant; rows are removed afterwards.
+        """
+        from datetime import UTC, datetime
+
+        from database.knowevo_db import (
+            DocAsset,
+            KgEvidence,
+            KgRelation,
+            _get_db_session,
+        )
+        from services.knowevo.kg_service import KGService, PgStore
+        from services.knowevo.version_pin import edge_in_version
+
+        tenant = str(uuid_mod.uuid4())
+        doc_2021, doc_2025 = uuid_mod.uuid4(), uuid_mod.uuid4()
+        pub_2021 = datetime(2021, 4, 1, tzinfo=UTC)
+        pub_2025 = datetime(2025, 1, 1, tzinfo=UTC)
+        store = PgStore()
+        try:
+            with _get_db_session() as session:
+                session.add(DocAsset(
+                    id=doc_2021, tenant_id=tenant, asset_no="T18B-G-2020",
+                    title="T-18b 判别性验证 2020 指南", modality="text",
+                    doc_type="guideline", meta_data={
+                        "published_at": "2021-04-01"}))
+                session.add(DocAsset(
+                    id=doc_2025, tenant_id=tenant, asset_no="T18B-G-2024",
+                    title="T-18b 判别性验证 2024 指南", modality="text",
+                    doc_type="guideline", meta_data={
+                        "published_at": "2025-01-01"}))
+                session.flush()
+            ev_2021 = (await store.save_evidence(tenant, {
+                "doc_id": doc_2021, "span_loc": {"chunk_idx": 0},
+                "span_text": "a", "entity_refs": [], "edge_ids": [],
+                "tag": "EXTRACTED", "modality": "text"}))["id"]
+            ev_2025 = (await store.save_evidence(tenant, {
+                "doc_id": doc_2025, "span_loc": {"chunk_idx": 0},
+                "span_text": "b", "entity_refs": [], "edge_ids": [],
+                "tag": "EXTRACTED", "modality": "text"}))["id"]
+            svc = KGService(store=store, ontology=ONTOLOGY,
+                            tenant_id=tenant)
+            report = await svc.merge_delta([ExtractionResult(
+                entities=[_entity("二甲双胍", "Drug"),
+                          _entity("2型糖尿病", "Disease"),
+                          _entity("吡格列酮", "Drug")],
+                edges=[
+                    Relation(src="二甲双胍", dst="2型糖尿病",
+                             rel_type="indicated_for", claim="二线用药",
+                             evidence_id=ev_2021),
+                    Relation(src="吡格列酮", dst="2型糖尿病",
+                             rel_type="indicated_for", claim="三线用药",
+                             evidence_id=ev_2025),
+                ])])
+            assert report.errors == []
+            assert report.dated_edges == 2
+            assert report.undated_edges == 0
+            with _get_db_session() as session:
+                rows = session.query(KgRelation).filter(
+                    KgRelation.tenant_id == tenant).all()
+                windows = sorted(
+                    (r.valid_at, r.invalid_at) for r in rows)
+            assert windows == [(pub_2021, None), (pub_2025, None)]
+            # The same two facts under two pins: the 2022 pin admits only
+            # the 2021 guideline's fact; the 2025 pin admits both.
+            in_2022 = [edge_in_version(v, i, datetime(2022, 1, 1,
+                                                      tzinfo=UTC))
+                       for (v, i) in windows]
+            in_2025 = [edge_in_version(v, i, datetime(2025, 6, 1,
+                                                      tzinfo=UTC))
+                       for (v, i) in windows]
+            assert sum(in_2022) == 1
+            assert sum(in_2025) == 2
+        finally:
+            with _get_db_session() as session:
+                for model in (KgRelation, KgEvidence, DocAsset):
+                    session.query(model).filter(
+                        model.tenant_id == tenant).delete()
+                session.flush()

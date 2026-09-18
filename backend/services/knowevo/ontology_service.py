@@ -210,6 +210,30 @@ class PgStore:
                 return {"classes": [], "rel_types": []}
             return row.snapshot
 
+    async def max_doc_published_at(self, tenant_id):
+        """Latest business publication date among the tenant's documents.
+
+        Reads ``doc_asset_t.meta_data.published_at`` (T-18b) in Python
+        rather than SQL: the JSONB extraction would be dialect-specific and
+        the per-tenant document count is small (tens), so a scan is simpler
+        and testable. Returns None when no document carries a date - the
+        caller falls back to the commit instant instead of inventing one.
+        """
+        from database.knowevo_db import DocAsset, _get_db_session
+        with _get_db_session() as session:
+            rows = session.query(DocAsset.meta_data).filter(
+                DocAsset.tenant_id == tenant_id,
+            ).all()
+        latest = None
+        for (meta,) in rows:
+            published = (meta or {}).get("published_at")
+            if not published:
+                continue
+            parsed = _parse_iso_date(str(published))
+            if parsed is not None and (latest is None or parsed > latest):
+                latest = parsed
+        return latest
+
     async def load_active_version_row(self, tenant_id):
         """Latest published version row, or None when nothing is published.
 
@@ -278,7 +302,11 @@ class PgStore:
             return [
                 {"version": r.version, "status": r.status,
                  "applied_ops": r.applied_ops, "snapshot": r.snapshot,
-                 "created_at": r.created_at}
+                 "created_at": r.created_at,
+                 # T-18b D1: the version's fact cutoff travels with the row
+                 # so version-clock resolution can pin against the facts'
+                 # business time instead of the commit wall clock.
+                 "fact_cutoff": (r.metrics or {}).get("fact_cutoff")}
                 for r in rows
             ]
 
@@ -366,6 +394,19 @@ def _proposal_target(p: Any) -> str:
     if isinstance(p, dict):
         return p.get("target", "")
     return getattr(p, "target", "")
+
+
+def _parse_iso_date(value: str) -> Any | None:
+    """Parse a YYYY-MM-DD business date into a tz-aware datetime (UTC).
+
+    Returns None on malformed input so a bad date degrades to "no business
+    clock" (honest) rather than raising inside a commit path.
+    """
+    from datetime import UTC, datetime
+    try:
+        return datetime.strptime(value, "%Y-%m-%d").replace(tzinfo=UTC)
+    except ValueError:
+        return None
 
 
 def _proposal_op(p: Any) -> str:
@@ -590,14 +631,28 @@ class OntologyService:
     async def commit_version(self, round_id, applied_ops: list[dict[str, Any]],
                              base_version: str | None = None,
                              tenant_id: str | None = None,
+                             fact_cutoff: str | None = None,
                              ) -> dict[str, Any]:
         """Apply the op log onto the parent snapshot, persist a new row in
         ontology_version_t, bump semver (minor for additions, major for
-        deprecations), and compute K0 metrics into the row."""
+        deprecations), and compute K0 metrics into the row.
+
+        T-18b D1: ``fact_cutoff`` is the business-time upper bound of the
+        facts this version covers - the instant version pinning tests every
+        edge window against. It is stored in ``metrics`` (existing JSONB,
+        zero DDL) as an ISO-8601 string so it survives the JSONB round trip.
+        Callers that know their round's documents pass it explicitly; when
+        omitted, the latest traceable publication date across the tenant's
+        documents is used, and failing that the commit instant (``now()``)
+        with the honest "we had no business clock" reading.
+        """
         base = await self.store.load_active_snapshot(tenant_id or "")
         snapshot = _apply_ops(base, applied_ops)
         version = _bump_semver(base_version, applied_ops)
         metrics = _k0_metrics_from_snapshot(snapshot)
+        cutoff = fact_cutoff or await self._latest_fact_time(tenant_id)
+        if cutoff is not None:
+            metrics["fact_cutoff"] = cutoff
         row = {
             "id": uuid.uuid4(),
             "version": version,
@@ -611,6 +666,25 @@ class OntologyService:
         if self.store is not None:
             await self.store.save_version(tenant_id or "", row)
         return row
+
+    async def _latest_fact_time(self, tenant_id: str | None) -> str | None:
+        """Latest traceable business publication date among tenant docs.
+
+        Returns an ISO-8601 string (JSONB-safe) or None when no document
+        carries one - the caller then falls back to the commit instant. The
+        store may not implement the lookup (FakeStore in unit tests); that
+        degrades to None rather than inventing a date.
+        """
+        if self.store is None or not hasattr(self.store,
+                                             "max_doc_published_at"):
+            return None
+        try:
+            latest = await self.store.max_doc_published_at(tenant_id or "")
+        except Exception as exc:  # noqa: BLE001 - cutoff is best-effort
+            logger.info("fact cutoff lookup failed, using commit instant: %s",
+                        exc)
+            return None
+        return latest.isoformat() if latest is not None else None
 
     async def deprecate(self, class_stable_id: str, reason: str,
                         ) -> dict[str, Any]:

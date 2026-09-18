@@ -130,6 +130,12 @@ class IngestReport:
     pending: int = 0
     tokens_spent: int = 0
     wall_seconds: float = 0.0
+    # T-18b D1: how this batch's edges were time-stamped - business time
+    # (traceable publication date) vs the ingest wall clock fallback. The
+    # split is reported, never silently absorbed: undated facts must not
+    # masquerade as business-time facts.
+    dated_edges: int = 0
+    undated_edges: int = 0
     errors: list[str] = field(default_factory=list)
 
 

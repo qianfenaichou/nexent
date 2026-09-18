@@ -1,0 +1,62 @@
+-- Knowevo fact-time repair archive (T-18b D1). Documentation-only migration:
+-- it intentionally contains NO DDL and NO DML (the 12 domain tables are
+-- schema-frozen, 03-development-plan 3.3). The actual repair is a one-shot
+-- idempotent Python script; this file exists so the migration chain records
+-- that the data semantics changed and how to reproduce/audit the repair.
+-- Comments are valid SQL: the runner executes this file as a no-op and
+-- records its checksum in nexent.schema_migrations.
+--
+-- Problem (D1): kg_relation_t.valid_at (and kg_entity_t.valid_at) were
+-- never written explicitly, so every fact inherited the ingest wall clock
+-- (server_default now()). ontology_version_t.created_at sits on the same
+-- wall clock, which made the version-pinning predicate
+--   valid_at <= t_v AND (invalid_at IS NULL OR invalid_at > t_v)
+-- constant true - version-pinned traversal could never separate facts by
+-- knowledge time, and the A4 ablation was unmeasurable.
+--
+-- Repair semantics: valid_at = the source document's business publication
+-- date; the version's fact cutoff lives in ontology_version_t.metrics JSONB
+-- (existing column, zero DDL). Applied by the script, never by this file:
+--
+--   python -m services.knowevo.pipeline.repair_fact_time
+--
+-- Three phases (each idempotent, each row lands in exactly one reported
+-- bucket, nothing is ever re-timestamped with an invented date):
+--   1. docs      competition/corpus/registry.csv published_at ->
+--                doc_asset_t.metadata.published_at (read-modify-write of
+--                the whole JSONB) for rows matched on (tenant_id, asset_no)
+--                whose metadata lacks the key. Assets absent from the
+--                registry (eval fixtures G20/G24/M1, stray test tenants)
+--                are left untouched and counted as not_in_registry.
+--   2. versions  ontology_version_t rows whose metrics lacks fact_cutoff
+--                get the tenant's max document published_at as an ISO-8601
+--                string; sibling metric keys (cov/red/dep/align) survive.
+--                No traceable date -> kept and counted.
+--   3. relations kg_relation_t.valid_at <- the source doc's publication
+--                date, resolved forward (props.evidence_id ->
+--                kg_evidence_t.doc_id -> doc_asset_t.metadata) or reverse
+--                (the relation id appears in kg_evidence_t.edge_ids).
+--                Phase 3 depends on the evidence chain: the eval fixture
+--                graph has no evidence links, so those rows are honestly
+--                counted as no_evidence_link and keep their seeded dates
+--                (including the synthetic PoC 2024/2026-01-01 rows) - that
+--                is the expected outcome, not a failure.
+--
+-- Execution (from backend/):
+--   POSTGRES_HOST=localhost POSTGRES_PORT=5434 POSTGRES_USER=root \
+--   POSTGRES_DB=nexent NEXENT_POSTGRES_PASSWORD=<pw> \
+--   uv run python -m services.knowevo.pipeline.repair_fact_time --dry-run
+-- Review the per-phase report, then re-run with --write.
+--
+-- Back up before the real run (the script prints this reminder too):
+--   CREATE TABLE nexent.kg_relation_t_bak_t18b AS SELECT * FROM nexent.kg_relation_t;
+--
+-- Idempotency: docs already carrying published_at, versions already
+-- carrying fact_cutoff, and relations whose valid_at already equals the
+-- traced date are counted as no-ops, so a second --write run changes
+-- nothing.
+--
+-- Why no new index: the version-pinned predicate above is already covered
+-- by ix_kr_valid (kw_001) on (valid_at, invalid_at); the backfill changes
+-- values, not the query path, so another index on the frozen tables would
+-- be pure duplication.

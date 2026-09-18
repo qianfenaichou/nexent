@@ -30,10 +30,17 @@ logger = logging.getLogger(__name__)
 # Column contract for registry.csv. Extra columns are preserved into
 # meta_data but never required; source_url and license_note may be empty
 # for offline-provided files (recorded honestly as null, never invented).
+# T-18b: published_at (business publication date, "YYYY-MM-DD") is the
+# document's *fact* time - it drives kg_relation_t.valid_at so version
+# pinning can separate versions. It is optional per row but when present it
+# must be a valid ISO date; blank means "not traceable" and is recorded as
+# absent rather than guessed.
 REGISTRY_COLUMNS = [
     "asset_no", "title", "doc_type", "modality", "authority_level",
-    "source_url", "license_note", "local_file", "split",
+    "source_url", "license_note", "local_file", "split", "published_at",
 ]
+
+PUBLISHED_AT_FORMAT = "%Y-%m-%d"
 
 DOC_TYPES = {
     "guideline", "drug_label", "lab_report", "policy", "material_list",
@@ -56,11 +63,21 @@ class RegistryRow:
     license_note: str | None
     local_file: str
     split: str
+    published_at: str | None = None
     row_number: int = 0
     errors: list[str] = field(default_factory=list)
 
     def to_doc_asset_values(self, tenant_id: str) -> dict[str, Any]:
         """Column mapping into doc_asset_t (knowevo_db.py DocAsset)."""
+        meta_data: dict[str, Any] = {
+            "split": self.split,
+            "row_number": self.row_number,
+        }
+        if self.published_at:
+            # Business publication date in the existing JSONB column: zero
+            # DDL (the table schema is frozen), and the value is absent -
+            # not null-defaulted - when the source had no traceable date.
+            meta_data["published_at"] = self.published_at
         return {
             "tenant_id": tenant_id,
             "asset_no": self.asset_no,
@@ -71,11 +88,23 @@ class RegistryRow:
             "source_url": self.source_url or None,
             "source_note": self.license_note or None,
             "parse_status": "pending",
-            "meta_data": {
-                "split": self.split,
-                "row_number": self.row_number,
-            },
+            "meta_data": meta_data,
         }
+
+
+def _valid_iso_date(value: str) -> bool:
+    """True when ``value`` parses as YYYY-MM-DD (no loose formats).
+
+    The parsed datetime is discarded (only validity matters here); tzinfo
+    is attached to satisfy the ruff timezone lint and to document that a
+    business date is an instant, not a local wall time.
+    """
+    from datetime import UTC, datetime
+    try:
+        datetime.strptime(value, PUBLISHED_AT_FORMAT).replace(tzinfo=UTC)
+        return True
+    except ValueError:
+        return False
 
 
 def _clean(value: str | None) -> str:
@@ -111,6 +140,7 @@ def parse_registry(path: Path) -> list[RegistryRow]:
                 license_note=_clean(raw.get("license_note")) or None,
                 local_file=_clean(raw.get("local_file")),
                 split=_clean(raw.get("split") or "build"),
+                published_at=_clean(raw.get("published_at")) or None,
                 row_number=i,
             )
             try:
@@ -132,6 +162,13 @@ def parse_registry(path: Path) -> list[RegistryRow]:
                 row.errors.append(f"split '{row.split}' not in {sorted(SPLITS)}")
             if not row.local_file:
                 row.errors.append("local_file empty (no corpus file to ingest)")
+            # T-18b: a malformed business date must be an explicit error, not
+            # silently dropped - a wrong valid_at poisons version pinning and
+            # would only surface much later.
+            if row.published_at and not _valid_iso_date(row.published_at):
+                row.errors.append(
+                    f"published_at '{row.published_at}' is not YYYY-MM-DD")
+                row.published_at = None
             rows.append(row)
     return rows
 
