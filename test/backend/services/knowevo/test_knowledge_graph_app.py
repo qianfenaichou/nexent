@@ -111,6 +111,15 @@ class FakeReviewStore:
                         "applied_ops": v["applied_ops"]}
         return None
 
+    async def load_active_version_row(self, tenant_id):
+        """Newest committed version row, or None (T-18a active endpoint)."""
+        if not self.versions:
+            return None
+        v = self.versions[-1]
+        return {"version": v["version"], "status": "published",
+                "snapshot": v["snapshot"], "applied_ops": v["applied_ops"],
+                "metrics": v.get("metrics"), "created_at": None}
+
 
 def _seed_proposal(store, tenant_id=TENANT_A, target="cls:Metformin",
                    op="CLS_ADD", name="Metformin", parent=None,
@@ -416,6 +425,70 @@ def test_commit_with_no_confirmed_ids_folds_whole_session(monkeypatch):
     assert res["folded"] == 1  # only the confirmed one, pending stays queued
 
 
+# ── GET /ontology/versions/active (T-18a) ─────────────────────────────
+
+
+def test_active_version_404_before_first_commit(monkeypatch):
+    """No published version answers 404 so the client renders "none yet"
+    rather than an empty ontology (frontend maps 404 -> null)."""
+    import pytest
+    _auth_as(monkeypatch)
+    store = FakeReviewStore()
+    monkeypatch.setattr(
+        knowledge_graph_app, "_ontology_service",
+        lambda: OntologyService(store=store))
+    with pytest.raises(HTTPException) as err:
+        _run(knowledge_graph_app.active_version(authorization="Bearer t"))
+    assert err.value.status_code == 404
+
+
+def test_active_version_returns_latest_row_after_commit(monkeypatch):
+    """After a commit the endpoint serves the row the tree panel needs:
+    version label + snapshot + metrics (not just the bare snapshot)."""
+    _auth_as(monkeypatch)
+    store, _confirmed = _confirmed_store()
+    monkeypatch.setattr(
+        knowledge_graph_app, "_ontology_service",
+        lambda: OntologyService(store=store))
+    _run(knowledge_graph_app.commit_version(
+        knowledge_graph_app.VersionCommitRequest(), authorization="Bearer t"))
+    row = _run(knowledge_graph_app.active_version(authorization="Bearer t"))
+    assert row["version"] == "v1.0.0"
+    assert row["status"] == "published"
+    assert row["snapshot"]["classes"]  # the committed class is present
+    assert "metrics" in row
+
+
+def test_active_version_requires_workbench_permission(monkeypatch):
+    import pytest
+    _auth_as(monkeypatch, kb_manage=False, graph_manage=False)
+    with pytest.raises(HTTPException) as err:
+        _run(knowledge_graph_app.active_version(authorization="Bearer t"))
+    assert err.value.status_code == 403
+
+
+def test_active_version_scopes_to_session_tenant(monkeypatch):
+    """The endpoint asks the store for the *session* tenant, never a
+    caller-supplied one - the tenant-isolation seam for the active view."""
+    _auth_as(monkeypatch, tenant_id=TENANT_B)
+    store = FakeReviewStore()
+    seen = {}
+
+    async def _record(tenant_id):
+        seen["tenant_id"] = tenant_id
+        return None
+
+    store.load_active_version_row = _record
+    monkeypatch.setattr(
+        knowledge_graph_app, "_ontology_service",
+        lambda: OntologyService(store=store))
+    import pytest
+    with pytest.raises(HTTPException) as err:
+        _run(knowledge_graph_app.active_version(authorization="Bearer t"))
+    assert err.value.status_code == 404
+    assert seen["tenant_id"] == TENANT_B
+
+
 class TestPostgresReviewLoop:
     """Layer 2 (RUN_POSTGRES_INTEGRATION=1): the T-05 confirm loop against
     the real schema - queue listing, batch review with reparent cycle
@@ -494,3 +567,60 @@ class TestPostgresReviewLoop:
         assert row["version"] == "v1.0.0"
         m = await svc.version_metrics(TENANT_A, "v1.0.0")
         assert m is not None and set(m) == {"cov", "red", "dep", "align"}
+
+    @pytest.mark.asyncio
+    @pytest.mark.skipif(
+        os.environ.get("RUN_POSTGRES_INTEGRATION") != "1",
+        reason="set RUN_POSTGRES_INTEGRATION=1 with a reachable PG",
+    )
+    async def test_active_version_endpoint_lands_in_pg(self):
+        """GET /ontology/versions/active against the real schema: 404 for a
+        tenant with no version, then the committed row for the tenant that
+        committed one - the row-level read PgStore actually serves."""
+        from uuid import uuid4
+
+        from database.knowevo_db import (
+            OntologyChangeProposal as OCP,
+        )
+        from database.knowevo_db import (
+            OntologyVersion as OV,
+        )
+        from database.knowevo_db import (
+            _get_db_session,
+        )
+        from services.knowevo.ontology_service import ConceptProposal, PgStore
+
+        with _get_db_session() as session:
+            session.query(OCP).filter(
+                OCP.tenant_id.in_([TENANT_A, TENANT_B])).delete(
+                synchronize_session=False)
+            session.query(OV).filter(
+                OV.tenant_id.in_([TENANT_A, TENANT_B])).delete(
+                synchronize_session=False)
+
+        svc = OntologyService(store=PgStore())
+        assert await svc.get_active_row(TENANT_B) is None
+
+        rid = uuid4()
+        await svc.store.save_proposals(TENANT_A, [ConceptProposal(
+            name="Metformin", parent_stable_id="Drug",
+            evidence_spans=[{"doc": "d1"}],
+            confidence=0.9, novelty=0.3, impact=0.6,
+        )], rid, "seed_bootstrap")
+        queue = await svc.list_review_queue(TENANT_A)
+        pid = next(i["id"] for i in queue["items"]
+                   if i["payload"].get("name") == "Metformin")
+        await svc.review_proposals(TENANT_A, [pid], "confirm",
+                                   reviewed_by="admin@knowevo.com")
+        await svc.commit_from_queue(TENANT_A)
+
+        row = await svc.get_active_row(TENANT_A)
+        assert row is not None
+        assert row["version"] == "v1.0.0"
+        assert row["status"] == "published"
+        assert row["snapshot"]["classes"]
+        # created_at is real (not None) on the row-level read - the pin
+        # fallback depends on it
+        assert row["created_at"]
+        # tenant B still sees nothing
+        assert await svc.get_active_row(TENANT_B) is None

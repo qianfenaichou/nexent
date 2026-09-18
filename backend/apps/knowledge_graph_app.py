@@ -137,6 +137,27 @@ async def commit_version(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
+@router.get("/ontology/versions/active")
+async def active_version(
+    authorization: str | None = Header(None),
+):
+    """Latest published ontology version (label + snapshot + metrics).
+
+    The workbench tree panel calls this to show the active version stamp.
+    No published version answers 404 - the client maps that to ``null``
+    (see frontend/services/knowledgeGraphService.ts) and renders "no
+    version committed yet", which is different from an empty ontology.
+    Declared before ``/ontology/versions/{version}/metrics`` so the static
+    segment is unambiguous even if routing ever becomes order-sensitive.
+    """
+    _, tenant_id, _ = _require_workbench_context(authorization)
+    svc = _ontology_service()
+    row = await svc.get_active_row(tenant_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="no published ontology version")
+    return row
+
+
 @router.get("/ontology/versions/{version}/metrics")
 async def version_metrics(
     version: str,
