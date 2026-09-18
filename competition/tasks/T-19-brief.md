@@ -1,6 +1,6 @@
 # T-19：决策卡生产入口 + 对话/面板渲染
 
-**状态**: ★ 待开发（2026-09-18 调度会话）
+**状态**: ✅ 完成（2026-09-19 闭环：HTTP+MCP+面板+RBAC 全落地；聊天渲染走降级路径、HTTP 冒烟因栈未起未做，见 Evidence）
 **Blocked by**: T-18a（导航接线模式复用）
 **独占文件**（本任务创建/修改）:
 - `backend/apps/knowledge_graph_app.py`（**自包含**：新增决策卡 HTTP 路由）
@@ -70,7 +70,38 @@ cd backend && POSTGRES_HOST=localhost POSTGRES_PORT=5434 POSTGRES_USER=root POST
 - [ ] `npm run type-check` 通过；零新依赖；零新增 env
 - [ ] 42crunch API 安全检查清单过一遍（新端点：输入校验、错误不泄内部、鉴权）
 
-**Evidence**: <粘贴 pytest 输出 / MCP 真跑卡片 JSON 片段 / 前端截图路径 / psql RBAC 查询 / thread.tsx diff 行数>
+**Evidence**（2026-09-19 闭环实测）:
+
+```text
+[验收1] test_decision_card_app.py + test_kg_multi_hop_mcp.py → 47 passed, 1 skipped
+[验收2] ruff（apps/knowledge_graph_app.py + decision_service + mcp_servers/knowevo_mcp/ + kg_tools）
+        → All checks passed!（注意：mcp_servers 在仓库根，简报里的相对路径需 ../ 前缀，记入 pitfalls #45）
+[验收3] cd frontend && npm run type-check → 通过（零输出）
+[验收4] MCP 真跑（进程内三分支）：
+        a) "eGFR 45 的 2 型糖尿病患者如何选药?" → 诚实拒绝卡 decision=INSUFFICIENT_EVIDENCE，
+           knowledge_stamp{ontology_version:null, kg_cutoff:now, clock_source:"now"}，
+           disclaimer 常驻，persisted=true，card_id=32c98cff…（真库 decision_card_t 可查）
+        b) 有证据无 LLM 租户 → {"error_code":"llm_unavailable"}（不出卡，T-09 契约保持）
+        c) 播种边走真实 LLM → 提供商 403（环境凭据无 glm-5.3-free 权限，非代码问题）→
+           {"error_code":"decision_card_render_failed"}（不泄内部）；完整卡路径由
+           fake-LLM 单测 + PG 集成测试覆盖（test_full_card_with_pinned_provenance 等）
+[验收5] HTTP 冒烟：docker ps 仅 nexent-postgresql 在跑，后端栈未起 → 未做（如实记录）；
+        路由挂载性由 test_route_registered_on_router + 既有 test_t08_wiring 挂载模式保证
+[验收6] PG 集成全量 → 494 passed（基线 434 + T-20 35 + T-19 新增 25，零回归）
+[kw_006] 真库应用（INSERT 幂等 ×2）后查询：
+        role_permission_t 1518=SU / 1519=ADMIN，permission_subtype='/decisionCard' 两行在
+[thread.tsx] case "data" 新增 decision-card 分支：git diff --numstat = 18 insertions / 0 deletions（≤30 达标）
+```
+
+**聊天渲染实际路径（简报实现备注 2 要求写明）**：降级路径。核验结论是 `decision-card` data part
+无法从后端自然产生——adapter（remote-chat-model-adapter.ts）每个 data part 名绑定显式 SSE chunk
+类型，新增 chunk 需改禁改的 runtime_app.py 与上游 adapter。thread.tsx 分支已接线（18 行纯新增）
+作为前向兼容扩展点（当前惰性，fall through 到 dataRendererUI 兜底）；现阶段对话内决策卡 =
+MCP 工具结果观察 + 回答内 markdown，富交互卡在 `/decisionCard` 独立面板。
+
+**其他诚实声明**：卡片证据通道目前仅 KG（文档通道 ES 写路径属上游未接线，未假装接通）；
+冒烟卡 32c98cff 有意保留作落库证据；MCP 冒烟播种的测试边已清理（CLEANUP-DONE）；
+pitfalls #45 记录了简报命令 4 的两处环境不可行点与解法。
 
 ---
 

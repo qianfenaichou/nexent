@@ -19,20 +19,13 @@ Errors are structured {error_code, hint} (SPEC discipline 4) so the skill
 layer can choose downgrade over blind retry. ``tenant_id`` is a server-level
 setting in v0; request-scoped tenant comes with the T-08 wiring.
 """
+import logging
 import time
 from datetime import UTC, datetime
 
 from fastmcp import FastMCP
 from mcp_servers.knowevo_mcp.schemas import (
-    EdgeCard as _EdgeCard,
-)
-from mcp_servers.knowevo_mcp.schemas import (
-    EntityCard as _EntityCard,
-)
-from mcp_servers.knowevo_mcp.schemas import (
-    HopStep as HopStepSchema,
-)
-from mcp_servers.knowevo_mcp.schemas import (
+    DecisionCardInput,
     KGMultiHopInput,
     KGMultiHopOutput,
     KGMultiHopPath,
@@ -42,8 +35,19 @@ from mcp_servers.knowevo_mcp.schemas import (
     KGStatsOutput,
     ToolError,
 )
+from mcp_servers.knowevo_mcp.schemas import (
+    EdgeCard as _EdgeCard,
+)
+from mcp_servers.knowevo_mcp.schemas import (
+    EntityCard as _EntityCard,
+)
+from mcp_servers.knowevo_mcp.schemas import (
+    HopStep as HopStepSchema,
+)
 
 SERVICE_NAME = "knowevo"
+
+logger = logging.getLogger(__name__)
 
 mcp = FastMCP(SERVICE_NAME)
 
@@ -90,6 +94,31 @@ def _service(store=None, tenant_id: str = ""):
 def _resolve(store=None, tenant_id: str = ""):
     """(store, tenant) from explicit args or server-level settings."""
     return store or _store(), tenant_id or _default_tenant
+
+
+def _card_service(store=None, tenant_id: str = ""):
+    """An LLM-bound decision service for card rendering (T-19).
+
+    Deliberately not the ``_service()`` instance the walk tool uses: the
+    card render needs the three-tier LLM chain (KW_LLM_*, 02-tech-plan
+    3.1), while kg_multi_hop must stay LLM-free for callers that only
+    want paths. Building the callable is cheap (model resolution happens
+    at call time); when the backend-side LLM wiring is unreachable the
+    service degrades to llm=None and the handler reports
+    ``llm_unavailable`` for evidence-backed questions instead of
+    pretending to render.
+    """
+    from services.knowevo.decision_service import DecisionService
+
+    llm = None
+    try:
+        from services.knowevo.llm_client import build_llm_callable
+
+        llm = build_llm_callable(tenant_id or _default_tenant)
+    except Exception as exc:  # noqa: BLE001 - degrade, handler reports it
+        logger.warning("decision-card llm wiring unavailable: %s", exc)
+    return DecisionService(store=store or _store(),
+                           tenant_id=tenant_id or _default_tenant, llm=llm)
 
 
 def _err(code: str, hint: str) -> dict:
@@ -226,6 +255,81 @@ async def kg_multi_hop_handler(inputs: KGMultiHopInput,
                     f"pinned walk failed: {type(exc).__name__}")
 
 
+async def _card_evidence(svc, tenant: str, inputs: DecisionCardInput):
+    """Seeds -> version-pinned walk -> fused evidence chain.
+
+    Seeds come from the store's lexical entity lookup over the question
+    itself; a store without that seam (or an empty graph) yields no
+    seeds, the walk returns an empty PathSet and the chain stays empty -
+    which render_card turns into the deterministic INSUFFICIENT_EVIDENCE
+    refusal without a single LLM call (T-09 honest degradation, kept
+    intact here). The document channel is not wired in production yet
+    (the ES write path is upstream-owned), so the card is assembled from
+    the graph channel only - claimed as such, not silently narrowed.
+    """
+    seeds: list[str] = []
+    lookup = getattr(svc.store, "entity_lookup", None)
+    if lookup is not None:
+        hits = await lookup(tenant, inputs.question, 5)
+        seeds = [h.stable_id for h in hits]
+    result = await svc.multi_hop(inputs.question, seeds=seeds,
+                                 version=inputs.ontology_version)
+    chain = await svc.assemble_evidence(result)
+    return chain, result.clock
+
+
+async def decision_card_render_handler(inputs: DecisionCardInput,
+                                       store=None,
+                                       tenant_id: str = "",
+                                       service=None) -> dict:
+    """Question -> decision card (T-19): seeds -> pinned walk -> evidence
+    chain -> rendered card, persisted to decision_card_t.
+
+    Returns the card payload dict (``DecisionCardContract`` shape plus
+    ``persisted``/``card_id``) or a structured error dict - never raises
+    into the MCP runtime. An evidence-backed question with no LLM wired
+    answers ``llm_unavailable`` rather than rendering a card it cannot
+    ground; an evidence-free question keeps the T-09 refusal contract
+    (INSUFFICIENT_EVIDENCE, zero LLM calls) and still persists, so the
+    rerun ledger (needs_rerun) sees the refusal.
+    """
+    t0 = time.monotonic()
+    store, tenant = _resolve(store, tenant_id)
+    try:
+        svc = service or _card_service(store, tenant)
+        chain, clock = await _card_evidence(svc, tenant, inputs)
+        if chain.has_evidence() and getattr(svc, "llm", None) is None:
+            return _err("llm_unavailable",
+                        "decision card rendering needs a configured LLM; "
+                        "set KW_LLM_SMALL/MID/LARGE_MODEL_ID or the tenant "
+                        "default LLM")
+        card = await svc.render_card(inputs.question, chain,
+                                     mode=inputs.mode, clock=clock)
+        card.elapsed_ms = int((time.monotonic() - t0) * 1000)
+        card_id = None
+        persisted = False
+        try:
+            card_id = await svc.persist(card)
+            persisted = True
+        except Exception as exc:  # noqa: BLE001 - persist is best-effort
+            logger.warning("decision card persist failed: %s", exc)
+        payload = card.to_payload()
+        payload["persisted"] = persisted
+        if card_id is not None:
+            payload["card_id"] = str(card_id)
+        return payload
+    except Exception as exc:  # noqa: BLE001 - structured error boundary
+        from services.knowevo.llm_client import LLMConfigurationError
+
+        if isinstance(exc, LLMConfigurationError):
+            return _err("llm_unavailable",
+                        "no LLM configured for decision card rendering; "
+                        "set KW_LLM_SMALL/MID/LARGE_MODEL_ID or the tenant "
+                        "default LLM")
+        return _err("decision_card_render_failed",
+                    f"card render failed: {type(exc).__name__}")
+
+
 # ---------------------------------------------------------------------------
 # FastMCP registration (standalone form). Tool signatures ARE the Pydantic
 # models - one field source, no decorator/schema drift (SPEC discipline 1).
@@ -249,6 +353,16 @@ async def kg_stats(inputs: KGStatsInput) -> dict:
 async def kg_multi_hop(inputs: KGMultiHopInput) -> dict:
     out = await kg_multi_hop_handler(inputs)
     return out.model_dump(mode="json") if not isinstance(out, dict) else out
+
+
+@mcp.tool(name="decision_card_render",
+          description="Render a decision card for one question: candidates "
+          "with evidence chains, confidence, risks, counterfactual, "
+          "knowledge-version stamp and conflict adjudications. Refuses with "
+          "INSUFFICIENT_EVIDENCE when no evidence supports the question.")
+async def decision_card_render(inputs: DecisionCardInput) -> dict:
+    out = await decision_card_render_handler(inputs)
+    return out if isinstance(out, dict) else out.model_dump(mode="json")
 
 
 def main() -> None:

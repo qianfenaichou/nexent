@@ -16,6 +16,7 @@ import {
   Building2,
   Zap,
   CalendarClock,
+  ClipboardList,
   LineChart,
   Network,
 } from "lucide-react";
@@ -159,6 +160,17 @@ const ROUTE_CONFIG: RouteConfig[] = [
     Icon: Network,
     labelKey: "sidebar.knowledgeGraph",
     order: 13,
+    parentKey: "/resource-space",
+  },
+  {
+    // KnowEvo decision card (T-19). Visible only when the role holds
+    // VISIBILITY.LEFT_NAV_MENU /decisionCard (seeded in
+    // deploy/sql/migrations/v2.5.5_kw_006_decision_card_rbac.sql); the
+    // page's HTTP route shares the workbench permission gate.
+    path: "/decisionCard",
+    Icon: ClipboardList,
+    labelKey: "sidebar.decisionCard",
+    order: 14,
     parentKey: "/resource-space",
   },
   // Management menus

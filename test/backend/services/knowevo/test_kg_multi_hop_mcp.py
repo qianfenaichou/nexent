@@ -75,7 +75,11 @@ class FakeStore:
 class TestDualRegistration:
     def test_tool_names_include_multi_hop(self):
         from tool_collection.mcp.kg_tools import KG_MCP_TOOL_NAMES
-        assert KG_MCP_TOOL_NAMES == ("kg_search", "kg_stats", "kg_multi_hop")
+        # T-19 added decision_card_render to the vocabulary; the walk trio
+        # stays a required subset rather than an exact equality so the
+        # manifest can grow additively.
+        assert {"kg_search", "kg_stats", "kg_multi_hop"} <= set(
+            KG_MCP_TOOL_NAMES)
 
     def test_handlers_map_matches_tool_names(self):
         from tool_collection.mcp.kg_tools import KG_MCP_TOOL_NAMES, handlers

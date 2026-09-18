@@ -69,6 +69,8 @@ import { useModelList } from "@/hooks/model/useModelList";
 import type { ModelOption } from "../ui/model-selector";
 import AutomationProposalMessage from "@/features/agentAutomation/components/AutomationProposalMessage";
 import type { AgentAutomationProposalData } from "@/types/agentAutomation";
+import { DecisionCardMessage } from "@/features/decisionCard/DecisionCardMessage";
+import type { DecisionCardPayload } from "@/types/decisionCard";
 import {
   AssistantMessageAttachments,
   UserMessageAttachments,
@@ -1575,6 +1577,22 @@ const AssistantMessage: FC<{
                       proposal={
                         (part as typeof part & { data?: unknown })
                           .data as AgentAutomationProposalData
+                      }
+                    />
+                  );
+                }
+                // KnowEvo decision card (T-19). Pure-additive branch: fires
+                // only for a data part named "decision-card"; until the chat
+                // adapter emits one it falls through untouched.
+                if (
+                  (part as typeof part & { name?: string }).name ===
+                  "decision-card"
+                ) {
+                  return (
+                    <DecisionCardMessage
+                      card={
+                        (part as typeof part & { data?: unknown })
+                          .data as DecisionCardPayload
                       }
                     />
                   );
