@@ -305,3 +305,41 @@ async def render_decision_card(
     if card_id is not None:
         payload["card_id"] = str(card_id)
     return payload
+
+
+def _skill_template_service(tenant_id: str):
+    """Read-only SkillTemplateService for the list route (T-20 wiring).
+
+    Same lazy-import discipline as _decision_service: the service opens
+    a DB session pool on first use, which must not happen at app-import
+    time. No LLM is bound - listing never needs one.
+    """
+    from services.knowevo.skill_template_service import SkillTemplateService
+
+    return SkillTemplateService(tenant_id=tenant_id)
+
+
+@router.get("/skill-template/list")
+async def list_skill_templates(
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    authorization: str | None = Header(None),
+):
+    """Read-only skill-template listing for the /skillTemplate panel.
+
+    Closes T-20's pending-wiring item: the integration round shipped the
+    frontend against exactly this contract but could not add the route
+    itself (the T-20 brief authorized no HTTP surface and this file was
+    T-19's territory then). Read-only by design - skill_template_t is
+    only mutated by the mining pipeline and the apply path, never from
+    this boundary. A store failure is a 502, not a fake empty list.
+    """
+    _, tenant_id, _ = _require_workbench_context(authorization)
+    svc = _skill_template_service(tenant_id)
+    try:
+        rows = await svc.list_templates(limit=limit)
+    except Exception as exc:
+        logger.warning("skill template listing failed: %s", exc)
+        raise HTTPException(
+            status_code=502,
+            detail="skill template store unavailable") from exc
+    return {"templates": rows, "count": len(rows)}

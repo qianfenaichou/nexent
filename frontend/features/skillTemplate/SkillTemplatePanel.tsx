@@ -5,13 +5,12 @@
 // task type / version / reuse count / success rate), preview the raw
 // pre-render body_md, copy to clipboard.
 //
-// DATA-SOURCE STATUS (honest): the list is served by
-// GET /api/knowevo/skill-template/list, a read-only route the T-20 brief
-// did NOT authorize (the only backend exposure this round is the
-// skill_template_apply MCP tool, and knowledge_graph_app.py is T-19
-// territory). Until that route is wired the page shows the pending-wiring
-// notice - never fabricated rows. Instantiation itself is reachable today
-// through the skill_template_apply MCP tool.
+// DATA-SOURCE STATUS: the list is served by
+// GET /api/knowevo/skill-template/list (read-only, workbench RBAC) -
+// wired after the T-20 integration round deferred it (its brief
+// authorized no HTTP route). The pending-wiring Alert below is the
+// fetch-failure state, never fabricated rows. Instantiation itself is
+// reachable today through the skill_template_apply MCP tool.
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -58,8 +57,8 @@ export default function SkillTemplatePanel() {
         if (!cancelled) setTemplates(rows);
       })
       .catch(() => {
-        // Route not wired yet (see header note): render the pending-wiring
-        // state, not an error crash and not fake data.
+        // Fetch failure (outage / 403 / route gone): render the
+        // pending-wiring state, not an error crash and not fake data.
         if (!cancelled) setTemplates(null);
       })
       .finally(() => {
