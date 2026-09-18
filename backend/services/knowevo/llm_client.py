@@ -112,6 +112,11 @@ class LlmRouter:
                 ssl_verify=config.get("ssl_verify", True),
                 display_name=config.get("display_name") or None,
                 timeout_seconds=config.get("timeout_seconds"),
+                # Bounded output for offline evaluation: without an explicit
+                # cap the provider default left reasoning-heavy judges
+                # truncated mid-JSON (observed as unparseable judge output).
+                # None keeps the provider default for other callers.
+                max_output_tokens=config.get("max_output_tokens"),
             )
             self._models[key] = model
             return model
@@ -125,6 +130,28 @@ class LlmRouter:
         temperature: float = 0.0,
     ) -> str:
         """Run one completion; the prompt already carries system+user."""
+        content, _usage = await self.call_with_usage(
+            prompt, kind=kind, tier=tier, temperature=temperature)
+        return content
+
+    async def call_with_usage(
+        self,
+        prompt: str,
+        *,
+        kind: str,
+        tier: str = TIER_MID,
+        temperature: float = 0.0,
+    ) -> tuple[str, dict[str, int]]:
+        """Like ``__call__`` but also return the token counters.
+
+        Additive sibling of the frozen ``(prompt, *, kind, tier,
+        temperature) -> str`` contract: ``__call__`` stays byte-for-byte
+        compatible for every existing caller, while the offline evaluation
+        runner (T-10a-2) needs per-call tokens for the cost ledger and the
+        p95/token metrics. Counters come from ``ChatMessage.token_usage``,
+        which the SDK fills from the provider response (0 when the provider
+        omitted usage - reported as measured, never estimated).
+        """
         model = self._get_model(tier, temperature)
         messages = [{"role": "user", "content": prompt}]
         result = await asyncio.to_thread(model.generate, messages)
@@ -133,7 +160,17 @@ class LlmRouter:
             content = "".join(
                 part.get("text", "") for part in content
                 if isinstance(part, dict))
-        return content if isinstance(content, str) else str(content)
+        text = content if isinstance(content, str) else str(content)
+        # Token counters live on the ChatMessage returned by generate
+        # (``message.token_usage``); the model's own last_* attrs are only
+        # set when usage reaches the stream-assembly path, so read the
+        # message - the single source both paths write to.
+        tu = getattr(result, "token_usage", None)
+        usage = {
+            "input_tokens": int(getattr(tu, "input_tokens", 0) or 0),
+            "output_tokens": int(getattr(tu, "output_tokens", 0) or 0),
+        }
+        return text, usage
 
 
 def build_llm_callable(tenant_id: str) -> LlmRouter:
