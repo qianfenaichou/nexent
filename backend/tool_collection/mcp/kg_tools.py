@@ -27,6 +27,7 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from mcp_servers.knowevo_mcp.schemas import (
+    DecisionCardInput,
     KGMultiHopInput,
     KGMultiHopOutput,
     KGSearchInput,
@@ -38,13 +39,15 @@ from mcp_servers.knowevo_mcp.server import (
     configure as knowevo_configure,
 )
 from mcp_servers.knowevo_mcp.server import (
+    decision_card_render_handler,
     kg_multi_hop_handler,
     kg_search_handler,
     kg_stats_handler,
 )
 
 SERVICE_NAME = "knowevo"
-KG_MCP_TOOL_NAMES = ("kg_search", "kg_stats", "kg_multi_hop")
+KG_MCP_TOOL_NAMES = (
+    "kg_search", "kg_stats", "kg_multi_hop", "decision_card_render")
 
 # Reuse the standalone app as the mountable unit: the same FastMCP instance
 # can be mounted into local_mcp_service.py via ``local_mcp_service.mount``,
@@ -58,6 +61,7 @@ def tool_schemas() -> dict[str, dict]:
         "kg_search": KGSearchInput.model_json_schema(),
         "kg_stats": KGStatsInput.model_json_schema(),
         "kg_multi_hop": KGMultiHopInput.model_json_schema(),
+        "decision_card_render": DecisionCardInput.model_json_schema(),
     }
 
 
@@ -67,6 +71,7 @@ def handlers() -> dict[str, object]:
         "kg_search": kg_search_handler,
         "kg_stats": kg_stats_handler,
         "kg_multi_hop": kg_multi_hop_handler,
+        "decision_card_render": decision_card_render_handler,
     }
 
 
@@ -82,6 +87,7 @@ def wire(tenant_id: str = "") -> FastMCP:
 __all__ = [
     "KG_MCP_TOOL_NAMES",
     "SERVICE_NAME",
+    "DecisionCardInput",
     "KGMultiHopInput",
     "KGMultiHopOutput",
     "KGSearchInput",

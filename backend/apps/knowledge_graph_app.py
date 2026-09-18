@@ -7,6 +7,7 @@ always comes from the session via utils.auth_utils, never from the
 request body, so the service layer stays free of request context.
 """
 import logging
+import time
 from typing import Annotated
 from uuid import UUID
 
@@ -26,11 +27,35 @@ router = APIRouter(prefix="/knowevo", tags=["knowevo"])
 
 REVIEW_ACTIONS = {"confirm", "reject", "reparent"}
 
+# Decision-card seed lookup width (T-19): the same bound the MCP tool
+# uses - entity_lookup over the question text, then the pinned walk.
+DECISION_SEED_TOP_K = 5
+
 
 def _ontology_service() -> OntologyService:
     """One service instance per request; PgStore wiring stays lazy so the
     app imports cleanly in unit tests without a live database client."""
     return OntologyService(store=None)
+
+
+def _decision_service(tenant_id: str):
+    """One LLM-bound DecisionService per request (T-19 card route).
+
+    Lazy imports on purpose: PgJsonbGraphStore opens a DB session pool
+    and build_llm_callable pulls the OpenAI-model wiring, and neither
+    may run at app-import time (the module must stay importable in unit
+    tests with no database and no model config). Model resolution itself
+    happens at call time inside the LlmRouter, so constructing the
+    service is cheap even on tenants with no LLM configured - the card
+    route maps that to a clean 503 below instead of leaking internals.
+    """
+    from services.knowevo.decision_service import DecisionService
+    from services.knowevo.graph_store import PgJsonbGraphStore
+    from services.knowevo.llm_client import build_llm_callable
+
+    return DecisionService(store=PgJsonbGraphStore(),
+                           llm=build_llm_callable(tenant_id),
+                           tenant_id=tenant_id)
 
 
 def _require_workbench_context(authorization: str | None) -> tuple[str, str, str]:
@@ -184,3 +209,99 @@ async def ontology_diff(
     svc = _ontology_service()
     ops = await svc.diff(from_version, to_version, tenant_id=tenant_id)
     return {"from": from_version, "to": to_version, "ops": ops}
+
+
+# ── decision card (T-19) ──────────────────────────────────────────────
+
+
+class DecisionCardRequest(BaseModel):
+    """Body of POST /decision/card.
+
+    The bounds mirror the MCP tool's ``DecisionCardInput`` (single
+    guardrail source for the card surface): one question per call,
+    500 chars, full|lite mode. ``tenant_id`` is deliberately absent -
+    it comes from the session (see _require_workbench_context), never
+    from the body, so a caller cannot read another tenant's knowledge.
+    """
+
+    question: str = Field(min_length=1, max_length=500)
+    ontology_version: str | None = Field(
+        default=None,
+        description="Pin the card to this knowledge version; None = latest",
+    )
+    mode: str = Field(
+        "full", pattern="^(full|lite)$",
+        description="full carries risks + counterfactual; lite skips them",
+    )
+
+
+@router.post("/decision/card")
+async def render_decision_card(
+    request: DecisionCardRequest,
+    authorization: str | None = Header(None),
+):
+    """Render and persist one decision card for the session's tenant.
+
+    Same pipeline the MCP tool runs (seeds -> version-pinned walk ->
+    fused evidence chain -> render), so the panel, the evaluation harness
+    and the Agent see byte-identical cards. Honest-degradation contract
+    (T-09) is preserved at this boundary: no evidence means the
+    deterministic INSUFFICIENT_EVIDENCE card with zero LLM calls, never
+    a rendered guess; a graph failure is a 5xx, not a fake refusal.
+
+    The response is the card payload (DecisionCardContract shape) plus
+    ``persisted``/``card_id`` - generation always writes decision_card_t
+    (needs_rerun marks the refusals for the rerun ledger).
+    """
+    _, tenant_id, _ = _require_workbench_context(authorization)
+    svc = _decision_service(tenant_id)
+    t0 = time.monotonic()
+
+    # Evidence collection: a store failure must not masquerade as "no
+    # knowledge exists" - that distinction is the whole point of the
+    # refusal discipline, so a broken store answers 502 instead of a card.
+    try:
+        lookup = svc.store.entity_lookup
+        hits = await lookup(tenant_id, request.question, DECISION_SEED_TOP_K)
+        result = await svc.multi_hop(
+            request.question, seeds=[h.stable_id for h in hits],
+            version=request.ontology_version)
+        chain = await svc.assemble_evidence(result)
+    except Exception as exc:
+        logger.warning("decision card evidence collection failed: %s", exc)
+        raise HTTPException(
+            status_code=502,
+            detail="knowledge graph query failed") from exc
+
+    if chain.has_evidence() and svc.llm is None:
+        raise HTTPException(
+            status_code=503,
+            detail="decision card rendering requires a configured LLM")
+    try:
+        card = await svc.render_card(request.question, chain,
+                                     mode=request.mode, clock=result.clock)
+    except Exception as exc:
+        from services.knowevo.llm_client import LLMConfigurationError
+        if isinstance(exc, LLMConfigurationError):
+            raise HTTPException(
+                status_code=503,
+                detail="no LLM configured for decision card rendering"
+            ) from exc
+        logger.warning("decision card render failed: %s", exc)
+        raise HTTPException(
+            status_code=500,
+            detail="decision card rendering failed") from exc
+
+    card.elapsed_ms = int((time.monotonic() - t0) * 1000)
+    card_id = None
+    persisted = False
+    try:
+        card_id = await svc.persist(card)
+        persisted = True
+    except Exception as exc:  # noqa: BLE001 - persist failure is surfaced
+        logger.warning("decision card persist failed: %s", exc)
+    payload = card.to_payload()
+    payload["persisted"] = persisted
+    if card_id is not None:
+        payload["card_id"] = str(card_id)
+    return payload

@@ -137,3 +137,29 @@ class KGMultiHopOutput(BaseModel):
     valid_view: datetime
     used_tokens: int = 0
     elapsed_ms: int = 0
+
+
+# ---------------------------------------------------------------------------
+# decision_card_render (T-19) - the decision-card production tool
+# ---------------------------------------------------------------------------
+
+class DecisionCardInput(BaseModel):
+    """Input of the decision-card tool (one of the 8 frozen SPEC tools).
+
+    ``mode`` maps 1:1 onto ``DecisionService.render_card``: ``full``
+    carries risks + counterfactual, ``lite`` skips them for
+    latency-bound callers. The question bound is the hard guardrail
+    (SPEC discipline 3): one card per call, never a batch.
+
+    The output is deliberately NOT re-modeled here: the card payload is
+    owned by ``services.knowevo.schemas.DecisionCardContract`` (wire
+    format of decision_card_t.payload) and re-declaring it would be a
+    second schema source - the drift this module exists to prevent. The
+    handler returns that payload as a JSON-safe dict with two extra
+    keys (``persisted``, ``card_id``; the contract is extra="allow") or
+    a structured ``{error_code, hint}`` dict on failure.
+    """
+
+    question: str = Field(min_length=1, max_length=500)
+    ontology_version: str | None = None
+    mode: str = Field("full", pattern="^(full|lite)$")
