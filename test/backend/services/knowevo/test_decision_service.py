@@ -440,6 +440,81 @@ class TestVersionPinnedWalk:
         assert result.version_pinned is False
         assert result.clock.ontology_version is None
 
+    @pytest.mark.asyncio
+    async def test_whole_path_pruned_when_second_hop_leaves_the_version(self):
+        """The per-hop predicate composed at depth 2 (properties 1 + 3).
+
+        The wrapper here cannot push ``as_of`` into SQL, so every edge
+        reaches the walk and the service's own path-level re-verification
+        is the only thing between the out-of-version second hop and the
+        result: a first hop inside the version must not launder a second
+        hop that only became valid after the cutoff, and the pruned route
+        must survive as a failed entry whose reason quotes the version and
+        the offending edge's own window.
+        """
+        store = FakeStore([
+            ("Drug:a", "Disease:b", "treats", "第一跳：a 关联 b", BEFORE, None),
+            ("Disease:b", "Drug:c", "treats", "第二跳：b 关联 c", AFTER, None),
+        ])
+
+        class OldStore:
+            def __init__(self, inner):
+                self.inner = inner
+
+            async def neighbors(self, tenant_id, entity_ids,
+                                rel_types=None, hop=1, valid_view=True):
+                return await self.inner.neighbors(
+                    tenant_id, entity_ids, rel_types=rel_types, hop=hop,
+                    valid_view=valid_view, as_of=None)
+
+        svc = DecisionService(store=OldStore(store), tenant_id=TENANT)
+        result = await svc.multi_hop("zzz", seeds=["Drug:a"],
+                                     version="v9.9.9", as_of=T_V, depth=2)
+        assert result.paths == [], (
+            "a valid first hop cannot carry a second hop that only became "
+            "true after the cutoff")
+        two_hop = [f for f in result.failed if len(f.path.entities) == 3]
+        assert two_hop, "the pruned route must survive as a failed entry"
+        reason = two_hop[0].invalid_edge_reason
+        assert "v9.9.9" in reason
+        assert "2026" in reason, (
+            "the reason must quote the excluded edge's own window (valid "
+            "2026), not just the cutoff (2025)")
+
+    @pytest.mark.asyncio
+    async def test_edge_superseded_mid_walk_is_reported_not_swallowed(self):
+        """Property 2 composed across hops, with property 5's full reason.
+
+        The second hop's edge is superseded exactly at the cutoff (the
+        boundary), so the store drops it mid-walk: the in-version prefix
+        must survive, and the boundary probe must surface the removed edge
+        with a reason quoting the version AND the edge's own time window -
+        the quote that lets a card say "the evidence exists, but not in the
+        version you asked about".
+        """
+        store = FakeStore([
+            ("Drug:a", "Disease:b", "treats", "第一跳：a 关联 b", BEFORE, None),
+            ("Disease:b", "Drug:c", "treats", "第二跳：b 关联 c", BEFORE, T_V),
+        ])
+        svc = DecisionService(store=store, tenant_id=TENANT)
+        result = await svc.multi_hop("zzz", seeds=["Drug:a"],
+                                     version="v1.0.0", as_of=T_V, depth=2)
+        assert [p.claims for p in result.paths] == [["第一跳：a 关联 b"]], (
+            "exactly the in-version prefix survives the walk")
+        reported = [f for f in result.failed
+                    if any("第二跳" in c for c in (f.path.claims or []))]
+        assert reported, (
+            "an edge the cutoff removed must be reported, not silently "
+            "swallowed by the store-side filter")
+        reason = reported[0].invalid_edge_reason
+        assert "v1.0.0" in reason
+        assert "2024" in reason, (
+            "the reason must carry the edge's own window (valid 2024), "
+            "not just the version label and the cutoff")
+        # Anti-hallucination, service side: a returned multi-entity path
+        # always carries the edge evidence it was verified against.
+        assert result.edges_by_path[id(result.paths[0])]
+
 
 class TestHopPlanning:
     """plan_hops is what makes the walk follow the question, and every

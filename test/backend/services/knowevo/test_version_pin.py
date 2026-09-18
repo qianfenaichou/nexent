@@ -135,6 +135,63 @@ class TestResolveVersionClock:
         clock = resolve_version_clock(None)
         assert clock.ontology_version is None and clock.source == "now"
 
+    def test_fact_cutoff_beats_created_at(self):
+        # T-18b D1: the version row's business-time upper bound is the
+        # correct t_v; created_at is only the fallback for rows committed
+        # before fact_cutoff existed. The value arrives as an ISO string
+        # out of the metrics JSONB, so the string round trip is the case.
+        clock = resolve_version_clock(
+            "v1.0.0",
+            versions=[{"version": "v1.0.0", "created_at": AFTER,
+                       "fact_cutoff": "2025-01-01T00:00:00+00:00"}])
+        assert clock.as_of == T_V and clock.source == "fact_cutoff"
+
+    def test_fact_cutoff_accepts_datetime_rows_too(self):
+        # In-memory rows (tests, FakeStore) carry a real datetime.
+        clock = resolve_version_clock(
+            "v1.0.0",
+            versions=[{"version": "v1.0.0", "created_at": AFTER,
+                       "fact_cutoff": T_V}])
+        assert clock.as_of == T_V and clock.source == "fact_cutoff"
+
+    def test_malformed_fact_cutoff_falls_back_to_created_at(self):
+        # A corrupt JSONB value must degrade to the next source rather
+        # than pin the card against garbage.
+        clock = resolve_version_clock(
+            "v1.0.0",
+            versions=[{"version": "v1.0.0", "created_at": T_V,
+                       "fact_cutoff": "not-a-date"}])
+        assert clock.as_of == T_V and clock.source == "version_created_at"
+
+    def test_explicit_as_of_still_beats_fact_cutoff(self):
+        clock = resolve_version_clock(
+            "v1.0.0", as_of=AFTER,
+            versions=[{"version": "v1.0.0", "fact_cutoff": T_V}])
+        assert clock.as_of == AFTER and clock.source == "explicit"
+
+
+class TestDiscriminativeVersionPin:
+    def test_two_business_cutoffs_admit_different_facts(self):
+        # The D1 regression guard (T-18b acceptance #6): with valid_at on
+        # the facts' own business-time axis, the SAME edge set must split
+        # differently under two different t_v values. While valid_at was
+        # the ingest wall clock this predicate was always-true and version
+        # pinning could not separate anything.
+        guide_2020 = datetime(2021, 4, 1, tzinfo=UTC)
+        guide_2024 = datetime(2025, 1, 1, tzinfo=UTC)
+        t_v_2022 = datetime(2022, 1, 1, tzinfo=UTC)
+        t_v_2025 = datetime(2025, 6, 1, tzinfo=UTC)
+        # Both guidelines' facts are inside the newer pin...
+        assert edge_in_version(guide_2020, None, t_v_2025) is True
+        assert edge_in_version(guide_2024, None, t_v_2025) is True
+        # ...but the 2024 guideline's facts are OUT of the 2022 one.
+        assert edge_in_version(guide_2020, None, t_v_2022) is True
+        assert edge_in_version(guide_2024, None, t_v_2022) is False
+        assert {edge_in_version(guide_2020, None, t_v_2022),
+                edge_in_version(guide_2024, None, t_v_2022)} != \
+               {edge_in_version(guide_2020, None, t_v_2025),
+                edge_in_version(guide_2024, None, t_v_2025)}
+
 
 class TestPathVersionValid:
     def test_all_edges_in_version_passes(self):
@@ -162,6 +219,13 @@ class TestPathVersionValid:
             invalid_at = None
         assert path_version_valid([Row()], CLOCK) is True
 
+    def test_one_invalidated_edge_fails_the_whole_path(self):
+        # The test above covers the "not yet valid" way a hop leaves the
+        # version; an edge superseded at or before the cutoff is the other
+        # way, and it fails the route just as hard.
+        assert path_version_valid(
+            [edge(BEFORE), edge(BEFORE, T_V)], CLOCK) is False
+
 
 class TestFilterPathsByVersion:
     def test_keeps_only_pinned_paths(self):
@@ -179,6 +243,46 @@ class TestFilterPathsByVersion:
         # (never claim pinned provenance for a path we cannot check).
         orphan = Path(entities=["a", "b"], claims=["c"])
         assert filter_paths_by_version([orphan], {}, CLOCK) == []
+
+    def test_edge_invalidated_exactly_at_cutoff_fails_the_whole_path(self):
+        # invalid_at == t_v is already out (a supersede stamped at the
+        # version boundary does not leak into it), and one such second hop
+        # must sink a route that is otherwise entirely inside the version.
+        good = Path(entities=["a", "b", "c"], claims=["c1", "c2"])
+        expiring = Path(entities=["a", "b", "c"], claims=["c1", "c2"])
+        edges = {
+            id(good): [edge(BEFORE), edge(BEFORE)],
+            id(expiring): [edge(BEFORE), edge(BEFORE, T_V)],
+        }
+        assert filter_paths_by_version(
+            [good, expiring], edges, CLOCK) == [good]
+
+    def test_path_with_empty_edge_mapping_is_dropped(self):
+        # Property 4 has two shapes of "no evidence": the path missing from
+        # the mapping entirely, and the mapping resolving to nothing. Both
+        # claim hops they cannot back, so both are dropped.
+        orphan = Path(entities=["a", "b"], claims=["c"])
+        assert filter_paths_by_version(
+            [orphan], {id(orphan): []}, CLOCK) == []
+
+    def test_seed_only_path_without_edges_is_kept(self):
+        # The drop rule is scoped to paths that *claim hops*: a single
+        # entity asserts nothing, so it must survive the filter rather than
+        # be mistaken for a hallucinated route.
+        seed = Path(entities=["a"], claims=[])
+        assert filter_paths_by_version([seed], {}, CLOCK) == [seed]
+
+    def test_accepts_plain_dict_edge_windows(self):
+        # The ablation harness replays dict rows out of the eval set, not
+        # EdgeCards, so the filter must read the same windows out of both
+        # shapes and reach the same verdict.
+        good = Path(entities=["a", "b"], claims=["c1"])
+        bad = Path(entities=["a", "c"], claims=["c2"])
+        edges = {
+            id(good): [{"valid_at": BEFORE, "invalid_at": None}],
+            id(bad): [{"valid_at": AFTER, "invalid_at": None}],
+        }
+        assert filter_paths_by_version([good, bad], edges, CLOCK) == [good]
 
 
 class TestPinPredicate:

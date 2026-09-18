@@ -649,10 +649,16 @@ class DecisionService:
             try:
                 from database.knowevo_db import OntologyVersion, _get_db_session
                 with _get_db_session() as session:
-                    rows = [{"version": r.version, "created_at": r.created_at}
-                            for r in session.query(OntologyVersion).filter(
-                                OntologyVersion.tenant_id
-                                == self.tenant_id).all()]
+                    # T-18b D1: the version's fact_cutoff (business-time
+                    # upper bound of its facts) travels alongside created_at
+                    # so the pin resolves against the facts' own clock.
+                    rows = [
+                        {"version": r.version,
+                         "created_at": r.created_at,
+                         "fact_cutoff": (r.metrics or {}).get("fact_cutoff")}
+                        for r in session.query(OntologyVersion).filter(
+                            OntologyVersion.tenant_id
+                            == self.tenant_id).all()]
             except Exception as exc:  # noqa: BLE001 - fallback clock is valid
                 logger.info("version rows unavailable for pinning: %s", exc)
                 rows = None

@@ -273,6 +273,20 @@ def _iso(value: Any) -> str | None:
     return str(value)
 
 
+def _parse_iso_date(value: str) -> Any | None:
+    """Parse a YYYY-MM-DD business date into a tz-aware datetime (UTC).
+
+    Returns None on any malformed input so callers can fall back without
+    crashing; a bad business date is surfaced by the registry validator at
+    ingest time, not silently here.
+    """
+    from datetime import UTC, datetime
+    try:
+        return datetime.strptime(value, "%Y-%m-%d").replace(tzinfo=UTC)
+    except ValueError:
+        return None
+
+
 class PgStore:
     """Real-Postgres adapter over database.knowevo_db helpers."""
 
@@ -555,17 +569,28 @@ class PgStore:
             return row.authority_level if row is not None else 3
 
     async def doc_published_at(self, tenant_id, doc_id):
-        """Publication moment for time-sensitive conflict resolution
-        (doc_asset_t.created_at; unknown docs fall back to epoch so they
-        never win a recency tie)."""
+        """Business publication moment of a source document (T-18b D1).
+
+        Reads ``doc_asset_t.meta_data.published_at`` - the registry's
+        traceable business date (journal issue / official release). A
+        document without one falls back to its ingest ``created_at`` (the
+        honest "we only know when we recorded it" case); unknown docs keep
+        the epoch so they never win a recency conflict.
+        """
         from database.knowevo_db import DocAsset, _get_db_session
         with _get_db_session() as session:
             row = session.query(DocAsset).filter(
                 DocAsset.tenant_id == tenant_id,
                 DocAsset.id == doc_id,
             ).first()
-            if row is not None and row.created_at is not None:
-                return row.created_at
+            if row is not None:
+                published = (row.meta_data or {}).get("published_at")
+                if published:
+                    parsed = _parse_iso_date(str(published))
+                    if parsed is not None:
+                        return parsed
+                if row.created_at is not None:
+                    return row.created_at
             from datetime import UTC, datetime
             return datetime(1970, 1, 1, tzinfo=UTC)
 
@@ -1160,10 +1185,24 @@ class KGService:
         props: dict[str, Any] = {}
         if edge.evidence_id is not None:
             props["evidence_id"] = str(edge.evidence_id)
-        edge_id = (await self.store.insert_relation(self.tenant_id, {
+        # T-18b D1: the edge's business time is its source document's
+        # publication date, not the ingest wall clock. Without an explicit
+        # valid_at the column default (now()) makes every fact look like it
+        # became true at ingestion, which is exactly what made version
+        # pinning a no-op (valid_at <= t_v always true).
+        valid_at, dated = await self._edge_business_time(edge.evidence_id)
+        values: dict[str, Any] = {
             "src": src_sid, "dst": dst_sid, "rel_type": edge.rel_type,
             "claim": edge.claim, "props": props,
-        }))["id"]
+        }
+        if valid_at is not None:
+            values["valid_at"] = valid_at
+        if dated:
+            report.dated_edges += 1
+        else:
+            report.undated_edges += 1
+        edge_id = (await self.store.insert_relation(self.tenant_id,
+                                                    values))["id"]
         if existing:
             new_authority, new_time = await self._edge_provenance(
                 edge.evidence_id)
@@ -1186,6 +1225,35 @@ class KGService:
                 await self.store.supersede_relation(self.tenant_id, edge_id)
                 report.superseded += 1
         return edge_id
+
+    async def _edge_business_time(self, evidence_id: Any
+                                  ) -> tuple[Any | None, bool]:
+        """Business valid_at for one edge: ``(datetime|None, is_dated)``.
+
+        ``is_dated`` is False when the source document had no traceable
+        publication date (the caller counts these on the report; the column
+        default then supplies the wall clock). This keeps "we know when it
+        was published" strictly separate from "we only know when we filed
+        it" - the distinction D1 exists to preserve.
+        """
+        if not evidence_id or not hasattr(self.store, "doc_published_at"):
+            return None, False
+        try:
+            ev = await self.store.get_evidence(
+                self.tenant_id, uuid.UUID(str(evidence_id)))
+        except (ValueError, AttributeError):
+            ev = await self.store.get_evidence(self.tenant_id, evidence_id)
+        if ev is None:
+            return None, False
+        published = await self.store.doc_published_at(
+            self.tenant_id, ev["doc_id"])
+        if published is None:
+            return None, False
+        from datetime import UTC, datetime
+        epoch = datetime(1970, 1, 1, tzinfo=UTC)
+        if published == epoch:
+            return None, False  # unknown document: no business time
+        return published, True
 
     async def _edge_provenance(self, evidence_id: Any) -> tuple[int, Any]:
         """(authority_level, published_at) for one edge's source document.

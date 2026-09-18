@@ -52,8 +52,9 @@ class VersionClock:
     ``ontology_version`` is the label that lands in the decision card's
     knowledge_stamp; ``as_of`` is t_v, the instant against which every
     edge's validity window is tested. ``source`` records how t_v was
-    derived ("explicit" | "version_created_at" | "now") so the card can be
-    honest about it instead of implying a precision it does not have.
+    derived ("explicit" | "fact_cutoff" | "version_created_at" | "now") so
+    the card can be honest about it instead of implying a precision it
+    does not have.
     """
 
     def __init__(self, ontology_version: str | None, as_of: datetime,
@@ -86,19 +87,42 @@ def _ensure_aware(dt: datetime) -> datetime:
     return dt
 
 
+def _coerce_datetime(value: Any) -> datetime | None:
+    """Accept a datetime or an ISO-8601 string (JSONB round trip).
+
+    A version row's ``fact_cutoff`` lives in the ``metrics`` JSONB column,
+    so it comes back as a string; an in-memory row (tests, FakeStore) may
+    carry a real datetime. Both must resolve to the same t_v. Malformed
+    input returns None so the caller falls through to the next source
+    rather than pinning against garbage.
+    """
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return _ensure_aware(value)
+    try:
+        parsed = datetime.fromisoformat(str(value))
+    except ValueError:
+        return None
+    return _ensure_aware(parsed)
+
+
 def resolve_version_clock(ontology_version: str | None,
                           as_of: datetime | None = None,
                           versions: Sequence[dict[str, Any]] | None = None,
                           ) -> VersionClock:
     """Resolve a version label into a concrete fact cutoff t_v.
 
-    Resolution order, most specific first:
+    Resolution order, most specific first (T-18b D1 added step 2):
       1. an explicit ``as_of`` wins outright (deterministic demos/tests);
-      2. the ``created_at`` of the matching row in ``versions`` - the
-         moment that knowledge version came into being, which is exactly
-         the right t_v: facts that only became valid after that instant
-         were not part of that version;
-      3. ``now()`` as the honest fallback (``source="now"``) - callers must
+      2. the version row's ``fact_cutoff`` - the business-time upper bound
+         of the facts that version covered, recorded when the version was
+         committed (T-18b). This is the *correct* t_v: it is the facts'
+         own time axis, not the wall-clock moment we published the version;
+      3. the ``created_at`` of the matching row in ``versions`` - the
+         moment that knowledge version came into being. Kept as the
+         fallback for versions committed before fact_cutoff existed;
+      4. ``now()`` as the honest fallback (``source="now"``) - callers must
          surface this, because a card claiming version pinning while
          having no version is worse than one admitting it.
     """
@@ -108,7 +132,11 @@ def resolve_version_clock(ontology_version: str | None,
         for row in versions:
             if row.get("version") != ontology_version:
                 continue
-            created = row.get("created_at")
+            cutoff = _coerce_datetime(row.get("fact_cutoff"))
+            if cutoff is not None:
+                return VersionClock(ontology_version, cutoff,
+                                    source="fact_cutoff")
+            created = _coerce_datetime(row.get("created_at"))
             if created is not None:
                 return VersionClock(ontology_version, created,
                                     source="version_created_at")

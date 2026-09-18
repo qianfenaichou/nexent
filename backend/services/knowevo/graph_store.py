@@ -205,8 +205,11 @@ class PgJsonbGraphStore(GraphStore):
     async def upsert_entities(self, tenant_id: str,
                               ents: list[dict[str, Any]]) -> None:
         """Insert-or-update by (tenant_id, stable_id). Existing rows get
-        props merged (incoming keys win) and aliases appended; the
-        bi-temporal window is never touched here."""
+        props merged (incoming keys win) and aliases appended.
+
+        T-18b D1: an explicit ``valid_at`` in the entity dict is honoured on
+        insert (business time); the bi-temporal window of an existing row is
+        still never touched here (supersede is the service layer's job)."""
         for e in ents:
             sid = e["stable_id"]
             with _get_db_session() as session:
@@ -215,15 +218,18 @@ class PgJsonbGraphStore(GraphStore):
                     KgEntity.stable_id == sid,
                 ).first()
                 if existing is None:
-                    session.add(KgEntity(
-                        tenant_id=tenant_id, stable_id=sid,
-                        name=e.get("name", sid),
-                        aliases=e.get("aliases") or [],
-                        class_ref=e.get("class_ref") or "Unknown",
-                        props=e.get("props") or {},
-                        embedding=e.get("embedding"),
-                        status=e.get("status") or "active",
-                    ))
+                    values: dict[str, Any] = {
+                        "tenant_id": tenant_id, "stable_id": sid,
+                        "name": e.get("name", sid),
+                        "aliases": e.get("aliases") or [],
+                        "class_ref": e.get("class_ref") or "Unknown",
+                        "props": e.get("props") or {},
+                        "embedding": e.get("embedding"),
+                        "status": e.get("status") or "active",
+                    }
+                    if e.get("valid_at") is not None:
+                        values["valid_at"] = e["valid_at"]
+                    session.add(KgEntity(**values))
                 else:
                     merged = dict(existing.props or {})
                     merged.update(e.get("props") or {})
@@ -239,7 +245,11 @@ class PgJsonbGraphStore(GraphStore):
                                rels: list[dict[str, Any]]) -> None:
         """Insert-or-update by (tenant_id, src, dst, rel_type). Same claim
         is a no-op (idempotent rerun); a different claim inserts a new row
-        (conflict resolution is the service layer's job, not the store's)."""
+        (conflict resolution is the service layer's job, not the store's).
+
+        T-18b D1: an explicit ``valid_at`` in the relation dict is honoured
+        on insert, so a fact's business time is the source document's
+        publication date rather than the ingest wall clock."""
         for r in rels:
             with _get_db_session() as session:
                 existing = session.query(KgRelation).filter(
@@ -251,11 +261,14 @@ class PgJsonbGraphStore(GraphStore):
                 ).first()
                 if existing is not None and existing.claim == r.get("claim"):
                     continue
-                session.add(KgRelation(
-                    tenant_id=tenant_id, src=r["src"], dst=r["dst"],
-                    rel_type=r["rel_type"], claim=r.get("claim", ""),
-                    props=r.get("props") or {},
-                ))
+                values: dict[str, Any] = {
+                    "tenant_id": tenant_id, "src": r["src"], "dst": r["dst"],
+                    "rel_type": r["rel_type"], "claim": r.get("claim", ""),
+                    "props": r.get("props") or {},
+                }
+                if r.get("valid_at") is not None:
+                    values["valid_at"] = r["valid_at"]
+                session.add(KgRelation(**values))
                 session.flush()
 
     # ── queries ────────────────────────────────────────────────────────

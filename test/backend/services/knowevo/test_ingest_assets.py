@@ -107,6 +107,46 @@ class TestParseRegistry:
         # local_file with spaces trimmed
         assert row.local_file == "g2.pdf"
 
+    @staticmethod
+    def _write_with_published_at(tmp_path, body):
+        header = ("asset_no,title,doc_type,modality,authority_level,"
+                  "source_url,license_note,local_file,split,published_at")
+        p = tmp_path / "registry.csv"
+        p.write_text(header + "\n" + "\n".join(body) + "\n",
+                     encoding="utf-8")
+        return p
+
+    def test_published_at_valid_and_blank(self, tmp_path):
+        # T-18b: the business publication date is optional per row; blank
+        # means "not traceable" and is recorded as absent, never guessed.
+        p = self._write_with_published_at(tmp_path, [
+            "G-1,指南,guideline,text,2,,,g.pdf,build,2021-04-01",
+            "G-2,旧档,guideline,text,2,,,g2.pdf,build,",
+        ])
+        rows = parse_registry(p)
+        assert rows[0].published_at == "2021-04-01"
+        assert rows[0].errors == []
+        assert rows[1].published_at is None
+        assert rows[1].errors == []
+
+    def test_published_at_malformed_is_error_not_silent(self, tmp_path):
+        # A wrong business date poisons version pinning downstream, so a
+        # non-ISO value is a loud row error, never a silent drop.
+        p = self._write_with_published_at(tmp_path, [
+            "G-1,指南,guideline,text,2,,,g.pdf,build,2021/04/01",
+        ])
+        rows = parse_registry(p)
+        assert rows[0].published_at is None
+        assert any("published_at" in e for e in rows[0].errors)
+
+    def test_published_at_lands_in_meta_data(self, tmp_path):
+        # Zero DDL: the date travels into doc_asset_t.meta_data (JSONB).
+        p = self._write_with_published_at(tmp_path, [
+            "G-1,指南,guideline,text,2,,,g.pdf,build,2021-04-01",
+        ])
+        vals = parse_registry(p)[0].to_doc_asset_values(TENANT_A)
+        assert vals["meta_data"]["published_at"] == "2021-04-01"
+
 
 # ---------------------------------------------------------------------------
 # Layer 1: lineage pairing
