@@ -1,6 +1,6 @@
 # T-18a：D5 三件套 —— 本体工作台导航 + `GET /ontology/versions/active` + g6 依赖声明
 
-**状态**: ★ 待开发（2026-09-18 调度会话）
+**状态**: ✅ **完成**（2026-09-18，分支 `feat/kw-T18a-d5-wiring`）
 **Blocked by**: 无（波次 0，止血项）
 **独占文件**（本任务创建/修改）:
 - `frontend/components/navigation/SideNavigation.tsx`（**接线文件·独占**：新增本体工作台菜单项）
@@ -46,16 +46,55 @@ docker exec -e PGPASSWORD=<pw> nexent-postgresql psql -U root -d nexent -tAc \
 ```
 
 **验收标准**:
-- [ ] `GET /api/knowevo/ontology/versions/active`：无 published 版本 → 404；有 → 返回 `{version, status, snapshot, applied_ops, metrics, created_at}`（字段对齐前端 `OntologyVersionRow`）
-- [ ] 端点走 `_require_workbench_context`（RBAC 复用，不新开权限路径）；无授权 → 403
-- [ ] `OntologyService.get_active` 增强后**向后兼容**（既有调用点 `ontology_service.py:560/714` 仍工作）——新增 `get_active_row` 或让 `get_active` 返回版本行并同步改调用点（二选一，写明）
-- [ ] `list_versions` 补 `created_at` 字段（修 T-18b 依赖的 fallback 路径：`resolve_version_clock` 的 `version_created_at` 分支）
-- [ ] `ROUTE_CONFIG` 新增 `/knowledgeGraph`（parentKey `/resource-space`，Icon `Network`/`GitBranch` 之一），zh/en 两个 locale 均加 `sidebar.knowledgeGraph` 键
-- [ ] `v2.5.5_kw_004_nav_rbac.sql`：为 SU/ADMIN 种 `VISIBILITY.LEFT_NAV_MENU /knowledgeGraph`，`ON CONFLICT` 幂等
-- [ ] `package.json` 显式声明 `"@antv/g6": "^5.1.1"`；`npm run type-check` 通过
-- [ ] 无新增 env、无 ALTER 既有表、未改既有迁移文件
+- [x] `GET /api/knowevo/ontology/versions/active`：无 published 版本 → 404；有 → 返回 `{version, status, snapshot, applied_ops, metrics, created_at}`
+- [x] 端点走 `_require_workbench_context`（RBAC 复用）；无授权 → 403
+- [x] `get_active` 原契约未动；新增 `get_active_row`（无 row surface 的 store 降级返回 None→404），`load_active_snapshot` 契约保持 snapshot-only
+- [x] `list_versions` 补 `created_at` 字段（T-18b 的 `version_created_at` 回退路径前置）
+- [x] `ROUTE_CONFIG` 新增 `/knowledgeGraph`（parentKey `/resource-space`，Icon `Network`），zh/en locale 均加 `sidebar.knowledgeGraph`
+- [x] `v2.5.5_kw_004_workbench_nav.sql`：SU/ADMIN `VISIBILITY.LEFT_NAV_MENU /knowledgeGraph`，幂等（重跑 INSERT 0 2，计数仍 2）
+- [x] `package.json` 显式声明 `"@antv/g6": "^5.1.1"`；`npm run type-check` 通过；prettier check 通过
+- [x] 零新增 env、零 ALTER 既有表、未改既有迁移文件
+- [x] `pitfalls.md` 补记坑#40（"代码存在但不可达"的接线漏项 + 双闸门）
 
-**Evidence**: <完成后粘贴 pytest 输出关键行 / type-check 输出 / psql 查询结果>
+**Evidence**:
+```
+# 1. 单测（40 passed, 2 skipped；新增 8 例：active 404/200/403/租户 + service get_active_row/list_versions）
+$ uv run pytest ../test/backend/services/knowevo/test_knowledge_graph_app.py ../test/backend/services/knowevo/test_ontology_service.py -q --no-header
+40 passed, 2 skipped in 2.32s
+
+# 2. ruff
+$ uv run ruff check apps/knowledge_graph_app.py services/knowevo/ontology_service.py
+All checks passed!
+
+# 3. 前端
+$ npm run type-check
+> tsc --noEmit            （无错误）
+$ npx prettier --check components/navigation/SideNavigation.tsx public/locales/{zh,en}/common.json package.json
+All matched files use Prettier code style!
+
+# 4. PG 集成全量（含新增 active 端点真库测试）
+$ POSTGRES_* + RUN_POSTGRES_INTEGRATION=1 uv run pytest ../test/backend/services/knowevo/ -q --no-header
+391 passed, 5 warnings in 49.04s
+
+# 5. RBAC 导航种子真库验证（幂等）
+$ docker exec ... psql -f v2.5.5_kw_004_workbench_nav.sql
+INSERT 0 2        （重跑：INSERT 0 2，计数仍 2 → 幂等）
+$ select user_role, permission_type, permission_subtype from nexent.role_permission_t where permission_subtype='/knowledgeGraph'
+ADMIN|LEFT_NAV_MENU|/knowledgeGraph
+SU|LEFT_NAV_MENU|/knowledgeGraph
+
+# 6. active 端点真库验证（v1.0.0 有 / 未知租户 404）
+11111111-1111-1111-1111-111111111111 -> v1.0.0 published classes=1 created_at=2026-09-18T04:02:10.699515+00:00
+6756b0ab-...-... -> None (404)
+```
+
+**交付**:
+- `knowledge_graph_app.py`：新增 `GET /ontology/versions/active`（404 语义 + RBAC + 租户隔离）
+- `ontology_service.py`：`PgStore.load_active_version_row` + `OntologyService.get_active_row` + `list_versions` 补 `created_at`（全加性）
+- `SideNavigation.tsx` + zh/en locale：本体工作台导航项（`Network` 图标）
+- `v2.5.5_kw_004_workbench_nav.sql`：导航 RBAC 种子（幂等）
+- `package.json`：`@antv/g6@^5.1.1` 显式声明
+- 9 个新测试（8 单测 + 1 PG 集成）；坑#40
 
 ---
 

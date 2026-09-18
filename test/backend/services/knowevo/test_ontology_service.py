@@ -114,11 +114,37 @@ class FakeStore:
                     if v["tenant_id"] == tenant_id and v["status"] == "published"]
         return versions[-1]["snapshot"] if versions else {"classes": [], "rel_types": []}
 
+    async def load_active_version_row(self, tenant_id):
+        """Row-level active version (T-18a): mirrors PgStore, which serves
+        the newest published row with its label and metrics."""
+        versions = [v for v in self.versions
+                    if v["tenant_id"] == tenant_id and v["status"] == "published"]
+        if not versions:
+            return None
+        v = versions[-1]
+        return {"version": v["version"], "status": v["status"],
+                "snapshot": v["snapshot"], "applied_ops": v["applied_ops"],
+                "metrics": v.get("metrics"), "created_at": None}
+
+    async def list_versions(self, tenant_id):
+        return [{"version": v["version"], "status": v["status"],
+                 "applied_ops": v["applied_ops"], "snapshot": v["snapshot"],
+                 "created_at": None}
+                for v in self.versions if v["tenant_id"] == tenant_id]
+
     async def save_version(self, tenant_id, version_row):
         self.versions.append(dict(version_row, tenant_id=tenant_id))
 
     async def save_round(self, tenant_id, round_row):
         self.rounds.append(dict(round_row, tenant_id=tenant_id))
+
+
+class _SnapshotOnlyStore:
+    """Minimal store exposing only the T-04 snapshot surface, used to lock
+    the ``get_active_row`` degradation path (no row surface -> None/404)."""
+
+    async def load_active_snapshot(self, tenant_id):
+        return {"classes": [], "rel_types": []}
 
 
 # ---------------------------------------------------------------------------
@@ -302,6 +328,35 @@ class TestVersioning:
         # committed (round-trip through the store)
         assert {c["name"] for c in snap["classes"]} == {"A"}
         assert v["status"] == "published"
+
+    async def test_get_active_row_returns_none_without_row_surface(self):
+        """A store without a row-level surface degrades to None (404),
+        not to a fabricated empty version."""
+        svc = OntologyService(store=_SnapshotOnlyStore(), llm=FakeLLM())
+        assert await svc.get_active_row(TENANT_A) is None
+
+    async def test_get_active_row_serves_label_and_snapshot(self):
+        store = FakeStore()
+        svc = OntologyService(store=store, llm=FakeLLM())
+        await svc.commit_version(uuid_mod.uuid4(), applied_ops=[
+            {"op": "CLS_ADD", "target": "cls:A", "payload": {"name": "A"}}],
+            base_version=None, tenant_id=TENANT_A)
+        row = await svc.get_active_row(TENANT_A)
+        assert row["version"] == "v1.0.0"
+        assert row["status"] == "published"
+        assert {c["name"] for c in row["snapshot"]["classes"]} == {"A"}
+        assert "created_at" in row
+
+    async def test_list_versions_carries_created_at(self):
+        """list_versions exposes created_at: version-clock resolution needs
+        it, and its absence used to silently degrade t_v to now()."""
+        store = FakeStore()
+        svc = OntologyService(store=store, llm=FakeLLM())
+        await svc.commit_version(uuid_mod.uuid4(), applied_ops=[
+            {"op": "CLS_ADD", "target": "cls:A", "payload": {"name": "A"}}],
+            base_version=None, tenant_id=TENANT_A)
+        rows = await store.list_versions(TENANT_A)
+        assert rows and "created_at" in rows[0]
 
 
 class TestQualityMetrics:

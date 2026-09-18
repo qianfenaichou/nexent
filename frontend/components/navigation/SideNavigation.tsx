@@ -17,6 +17,7 @@ import {
   Zap,
   CalendarClock,
   LineChart,
+  Network,
 } from "lucide-react";
 import type { MenuProps } from "antd";
 import { useAuthorizationContext } from "@/components/providers/AuthorizationProvider";
@@ -149,19 +150,30 @@ const ROUTE_CONFIG: RouteConfig[] = [
     order: 12,
     parentKey: "/resource-space",
   },
+  {
+    // KnowEvo ontology workbench (T-18a). Visible only when the role holds
+    // VISIBILITY.LEFT_NAV_MENU /knowledgeGraph (seeded in
+    // deploy/sql/migrations/v2.5.5_kw_004_workbench_nav.sql); the page
+    // itself still requires RESOURCE.KNOWLEDGE_GRAPH.MANAGE.
+    path: "/knowledgeGraph",
+    Icon: Network,
+    labelKey: "sidebar.knowledgeGraph",
+    order: 13,
+    parentKey: "/resource-space",
+  },
   // Management menus
   {
     path: "/resource-manage",
     Icon: Building2,
     labelKey: "sidebar.resourceManage",
-    order: 13,
+    order: 14,
     parentKey: null,
   },
   {
     path: "/owner-manage",
     Icon: Building2,
     labelKey: "sidebar.ownerManage",
-    order: 14,
+    order: 15,
     parentKey: null,
   },
 ];

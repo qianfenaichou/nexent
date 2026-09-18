@@ -2152,6 +2152,7 @@
   "sidebar.agentSpace": "Agent Space",
   "sidebar.mcpSpace": "MCP Space",
   "sidebar.skillSpace": "Skill Space",
+  "sidebar.knowledgeGraph": "Ontology Workbench",
   "sidebar.agentMarket": "Agent Market",
   "sidebar.agentRepository": "Agent Repository",
   "sidebar.agentDev": "Agent Development",
