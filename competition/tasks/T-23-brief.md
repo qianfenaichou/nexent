@@ -37,7 +37,7 @@
 - **官方原文**（01-总纲附录A）：初赛提交 ①开发设计文档 Word（六节）②Nexent 平台智能体设计思路及详细说明（含 Agent 配置完整细节、模型/工具/知识库信息、调用关系图、调试迭代经验、**示例问答截图**、json/知识库/MCP 文件说明）。
 - **初赛交文档不交代码**（01-总纲 §1.3）——文档质量 = 分数。
 - 栈当前状态（2026-09-18）：`nexent-postgresql` 已启动（5434）；web/config/runtime/mcp 等容器 **Exited**——截图前需重新起栈（`deploy/deploy.sh`，见 pitfalls #2 的 mainland 源）。
-- 三台账：`pitfalls.md`（39 条）、`evolution-log.md`、`cost-ledger.md`——是"调试迭代经验"节的现成素材。
+- 三台账：`pitfalls.md`（42 条，以台账实数为准）、`evolution-log.md`、`cost-ledger.md`——是"调试迭代经验"节的现成素材。
 - vision agent 职责：审 `deliverables/` 每张截图，判"作为初赛示例问答截图够不够格"，不合格要求重拍。
 
 **验收命令**:

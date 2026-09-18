@@ -1,6 +1,6 @@
 # 作战波次与任务简报索引（2026-09-18 调度会话）
 
-> 依据：用户任务书「作战波次」节 + [01-总纲](../../../01-总纲.md) §4 评分映射 + [03-开发计划](../../../03-开发计划.md) §5 质量门禁。
+> 依据：用户任务书「作战波次」节 + [01-总纲](../../../../archive/已取代文档/01-总纲.md) §4 评分映射 + [03-开发计划](../../../03-开发计划.md) §5 质量门禁。
 > **本文件是波次执行的唯一索引**；每个任务的简报在 `competition/tasks/T-*.md`。
 > 铁律：不重构架构；新代码只在自包含目录；接线文件由专门任务独占；每个任务一条 `feat/kw-TNN-*` 分支，验收命令真实跑过才算完成；不得伪造数字。
 
@@ -15,7 +15,7 @@
 | 1 | **T-18b** | D1 事实业务时间（valid_at 显式写入） | knowevo_db.py、ingest_service.py、kg_service.py、graph_store.py、version_pin.py、registry.csv、kw_004 迁移 | T-18a（同迁移文件序） | 待 |
 | 1 | **T-18c** | D2 诚实分母 + D3 答案级溯源 | pipeline/eval_e1.py、pipeline/eval_v1.py | 无 | 待 |
 | 1 | **T-18d** | D4 权威度感知检索 + 每文档配额 | e1_retrieval.py | 无 | 待 |
-| 1 | **T-19** | 决策卡生产入口 + 对话渲染 | decisionCard feature、decision_app.py 路由、SideNavigation（决策卡项）、locales | T-18a | 待 |
+| 1 | **T-19** | 决策卡生产入口 + 对话渲染 | decisionCard feature、knowledge_graph_app.py 路由、SideNavigation（决策卡项）、locales | T-18a | 待 |
 | 2 | **T-20** | Skill 分层编排 + SKILL.md 模板库（D6） | skill 相关新服务/工具、skill_template 服务、frontend skillTemplate feature | T-18a | 待 |
 | 3 | **T-21** | 标准对齐器垂直切片（创新主轴） | alignment_service.py、pipeline/diff_guidelines.py、prompt 双语对 | T-18b | 待 |
 | 3 | **T-22** | 消融 A1-A4 × 题型（D1 前置） | pipeline/ablation.py、e1_retrieval 复用 | T-18b/c/d | 待 |

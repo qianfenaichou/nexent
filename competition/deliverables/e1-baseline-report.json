@@ -1,36 +1,50 @@
 {
-  "acc": 0.7692,
-  "pass2": 0.6842,
-  "pass3": 0.6316,
-  "n_questions": 19,
-  "n_runs": 52,
+  "acc": 0.6667,
+  "pass2": 0.65,
+  "pass3": 0.65,
+  "n_questions": 20,
+  "n_runs": 60,
+  "n_judged": 60,
+  "n_expected": 60,
   "trace_machine": 1.0,
-  "p95_latency_s": 75.7,
-  "tokens_in": 164022,
-  "tokens_out": 103118,
+  "trace_answer_cite": {
+    "citations": 171,
+    "out_of_range": 0,
+    "rate": 1.0,
+    "no_citation_run": false
+  },
+  "p95_latency_s": 82.13,
+  "tokens_in": 181819,
+  "tokens_out": 147219,
   "judge_parse_errors": 0,
+  "runner_errors": 0,
+  "integrity_warning": false,
   "platform_faults": {
-    "n": 8,
-    "generation": 4,
-    "judge": 4,
+    "n": 0,
+    "generation": 0,
+    "judge": 0,
     "judge_unparseable": 0
   },
   "by_type": {
     "F": {
       "n": 5,
+      "n_judged": 15,
       "acc": 0.8
     },
     "M": {
-      "n": 4,
-      "acc": 1.0
+      "n": 5,
+      "n_judged": 15,
+      "acc": 0.6667
     },
     "V": {
       "n": 5,
-      "acc": 0.8
+      "n_judged": 15,
+      "acc": 0.6
     },
     "X": {
       "n": 5,
-      "acc": 0.5714
+      "n_judged": 15,
+      "acc": 0.6
     }
   },
   "config": {
@@ -46,6 +60,7 @@
     },
     "pace_seconds": 8.0,
     "runs_per_question": 3,
+    "on_unexpected": "count_fail",
     "testset": "testset-v1-seed.json"
   },
   "details": [
@@ -54,72 +69,89 @@
       "type": "F",
       "question": "二甲双胍是哪一类降糖药？",
       "trace_completeness": 1.0,
+      "trace_answer_cite": {
+        "citations": 3,
+        "out_of_range": 0,
+        "rate": 1.0,
+        "no_citation_run": false
+      },
       "evidence": [
         {
           "rank": 1,
-          "doc_id": "guide-2024",
-          "title": "中国糖尿病防治指南（2024版）",
-          "source": "guidelines/dm_guideline_2024.pdf",
-          "chunk_idx": 62,
-          "score": 25.346193,
-          "authority_level": 2,
-          "split": "build",
-          "span_hash": "fab89665b9699df5"
-        },
-        {
-          "rank": 2,
-          "doc_id": "guide-elderly-2024",
-          "title": "中国老年糖尿病诊疗指南（2024版）",
-          "source": "guidelines/elderly_dm_2024.pdf",
-          "chunk_idx": 30,
-          "score": 25.290212,
-          "authority_level": 2,
-          "split": "build",
-          "span_hash": "dfe284f4f86bfa2d"
-        },
-        {
-          "rank": 3,
           "doc_id": "guide-pc-manual-2022",
           "title": "国家基层糖尿病防治管理手册（2022）",
           "source": "guidelines/primary_care_dm_manual_2022.pdf",
           "chunk_idx": 29,
           "score": 25.117129,
+          "ranked_score": 25.117129,
           "authority_level": 1,
           "split": "blind",
           "span_hash": "29eb0713caff277d"
         },
         {
-          "rank": 4,
-          "doc_id": "drug-metf-er-gxz",
-          "title": "盐酸二甲双胍缓释片（格华止）说明书",
-          "source": "drug_labels/metformin_hcl_er_gehuazhi.html",
-          "chunk_idx": 0,
-          "score": 22.771917,
-          "authority_level": 3,
+          "rank": 2,
+          "doc_id": "guide-2024",
+          "title": "中国糖尿病防治指南（2024版）",
+          "source": "guidelines/dm_guideline_2024.pdf",
+          "chunk_idx": 62,
+          "score": 25.346193,
+          "ranked_score": 24.078883,
+          "authority_level": 2,
           "split": "build",
-          "span_hash": "0959146985ce91da"
+          "span_hash": "fab89665b9699df5"
         },
         {
-          "rank": 5,
+          "rank": 3,
+          "doc_id": "guide-elderly-2024",
+          "title": "中国老年糖尿病诊疗指南（2024版）",
+          "source": "guidelines/elderly_dm_2024.pdf",
+          "chunk_idx": 30,
+          "score": 25.290212,
+          "ranked_score": 24.025702,
+          "authority_level": 2,
+          "split": "build",
+          "span_hash": "dfe284f4f86bfa2d"
+        },
+        {
+          "rank": 4,
           "doc_id": "guide-2020",
           "title": "中国2型糖尿病防治指南（2020年版）",
           "source": "guidelines/t2dm_guideline_2020.pdf",
           "chunk_idx": 55,
           "score": 22.693414,
+          "ranked_score": 21.558743,
           "authority_level": 2,
           "split": "build",
           "span_hash": "529e7259ae2c86bd"
+        },
+        {
+          "rank": 5,
+          "doc_id": "guide-2024",
+          "title": "中国糖尿病防治指南（2024版）",
+          "source": "guidelines/dm_guideline_2024.pdf",
+          "chunk_idx": 92,
+          "score": 21.882727,
+          "ranked_score": 20.78859,
+          "authority_level": 2,
+          "split": "build",
+          "span_hash": "3caf221db922ebfd"
         }
       ],
-      "p50_latency_s": 30.93,
-      "tokens_in": 9071,
-      "tokens_out": 3827
+      "p50_latency_s": 53.76,
+      "tokens_in": 9508,
+      "tokens_out": 4833
     },
     {
       "question_id": "F-002",
       "type": "F",
       "question": "糖化血红蛋白（HbA1c）反映多长时间的平均血糖水平？",
       "trace_completeness": 1.0,
+      "trace_answer_cite": {
+        "citations": 3,
+        "out_of_range": 0,
+        "rate": 1.0,
+        "no_citation_run": false
+      },
       "evidence": [
         {
           "rank": 1,
@@ -128,6 +160,7 @@
           "source": "guidelines/primary_care_dm_guide_2022.pdf",
           "chunk_idx": 13,
           "score": 46.328079,
+          "ranked_score": 46.328079,
           "authority_level": 1,
           "split": "build",
           "span_hash": "1e42ba185a3d42e4"
@@ -139,6 +172,7 @@
           "source": "guidelines/dm_guideline_2024.pdf",
           "chunk_idx": 127,
           "score": 45.611299,
+          "ranked_score": 43.330734,
           "authority_level": 2,
           "split": "build",
           "span_hash": "6a61faec75d55473"
@@ -150,6 +184,7 @@
           "source": "lab_standards/glucose_monitor_guide_2021.pdf",
           "chunk_idx": 22,
           "score": 41.988242,
+          "ranked_score": 39.88883,
           "authority_level": 2,
           "split": "build",
           "span_hash": "866af007f8bd80b0"
@@ -161,31 +196,39 @@
           "source": "lab_standards/glucose_monitor_guide_2021.pdf",
           "chunk_idx": 34,
           "score": 41.915015,
+          "ranked_score": 39.819264,
           "authority_level": 2,
           "split": "build",
           "span_hash": "cff6cea9e34e9007"
         },
         {
           "rank": 5,
-          "doc_id": "std-glucose-monitor-2021",
-          "title": "中国血糖监测临床应用指南（2021年版）",
-          "source": "lab_standards/glucose_monitor_guide_2021.pdf",
-          "chunk_idx": 13,
-          "score": 39.30493,
+          "doc_id": "guide-2020",
+          "title": "中国2型糖尿病防治指南（2020年版）",
+          "source": "guidelines/t2dm_guideline_2020.pdf",
+          "chunk_idx": 49,
+          "score": 38.239655,
+          "ranked_score": 36.327673,
           "authority_level": 2,
           "split": "build",
-          "span_hash": "cd9bd495fd4c2aa9"
+          "span_hash": "c2496d4d6884c8ca"
         }
       ],
-      "p50_latency_s": 56.53,
-      "tokens_in": 8157,
-      "tokens_out": 5877
+      "p50_latency_s": 37.87,
+      "tokens_in": 8161,
+      "tokens_out": 6304
     },
     {
       "question_id": "F-003",
       "type": "F",
       "question": "2型糖尿病患者的一线药物治疗首选是什么？",
       "trace_completeness": 1.0,
+      "trace_answer_cite": {
+        "citations": 8,
+        "out_of_range": 0,
+        "rate": 1.0,
+        "no_citation_run": false
+      },
       "evidence": [
         {
           "rank": 1,
@@ -194,6 +237,7 @@
           "source": "guidelines/dm_guideline_2024.pdf",
           "chunk_idx": 190,
           "score": 25.26453,
+          "ranked_score": 24.001303,
           "authority_level": 2,
           "split": "build",
           "span_hash": "f6a7ab42fcfdfada"
@@ -205,6 +249,7 @@
           "source": "guidelines/primary_care_dm_manual_2022.pdf",
           "chunk_idx": 16,
           "score": 21.553313,
+          "ranked_score": 21.553313,
           "authority_level": 1,
           "split": "blind",
           "span_hash": "420812bb540808bc"
@@ -216,6 +261,7 @@
           "source": "guidelines/primary_care_dm_guide_2022.pdf",
           "chunk_idx": 24,
           "score": 20.25274,
+          "ranked_score": 20.25274,
           "authority_level": 1,
           "split": "build",
           "span_hash": "0416301d17249953"
@@ -227,31 +273,39 @@
           "source": "guidelines/diabetic_foot_2024.pdf",
           "chunk_idx": 12,
           "score": 19.451079,
+          "ranked_score": 18.478525,
           "authority_level": 2,
           "split": "blind",
           "span_hash": "c5e3cc2e46c9c376"
         },
         {
           "rank": 5,
-          "doc_id": "drug-gliclazide",
-          "title": "格列齐特缓释片（达美康）说明书",
-          "source": "drug_labels/gliclazide_mr_diamicon.html",
-          "chunk_idx": 7,
-          "score": 19.06805,
-          "authority_level": 3,
+          "doc_id": "guide-2024",
+          "title": "中国糖尿病防治指南（2024版）",
+          "source": "guidelines/dm_guideline_2024.pdf",
+          "chunk_idx": 306,
+          "score": 18.385448,
+          "ranked_score": 17.466175,
+          "authority_level": 2,
           "split": "build",
-          "span_hash": "42634135a42ba686"
+          "span_hash": "afa38a612708dabd"
         }
       ],
-      "p50_latency_s": 24.56,
-      "tokens_in": 8775,
-      "tokens_out": 4007
+      "p50_latency_s": 38.22,
+      "tokens_in": 8767,
+      "tokens_out": 4758
     },
     {
       "question_id": "F-004",
       "type": "F",
       "question": "成人正常空腹血糖的正常参考范围是多少（mmol/L）？",
       "trace_completeness": 1.0,
+      "trace_answer_cite": {
+        "citations": 9,
+        "out_of_range": 0,
+        "rate": 1.0,
+        "no_citation_run": false
+      },
       "evidence": [
         {
           "rank": 1,
@@ -260,6 +314,7 @@
           "source": "guidelines/t2dm_guideline_2020.pdf",
           "chunk_idx": 17,
           "score": 45.747033,
+          "ranked_score": 43.459681,
           "authority_level": 2,
           "split": "build",
           "span_hash": "37e9de7d7731dd47"
@@ -271,6 +326,7 @@
           "source": "guidelines/dm_guideline_2024.pdf",
           "chunk_idx": 22,
           "score": 39.599797,
+          "ranked_score": 37.619807,
           "authority_level": 2,
           "split": "build",
           "span_hash": "f2f8f9be03191735"
@@ -282,6 +338,7 @@
           "source": "guidelines/t2dm_guideline_2020.pdf",
           "chunk_idx": 434,
           "score": 32.511674,
+          "ranked_score": 30.88609,
           "authority_level": 2,
           "split": "build",
           "span_hash": "19f5ed3dd6a07b11"
@@ -293,6 +350,7 @@
           "source": "lab_standards/glucose_monitor_guide_2021.pdf",
           "chunk_idx": 31,
           "score": 32.175335,
+          "ranked_score": 30.566569,
           "authority_level": 2,
           "split": "build",
           "span_hash": "63397a2a955a4f2c"
@@ -304,53 +362,63 @@
           "source": "guidelines/dm_guideline_2024.pdf",
           "chunk_idx": 484,
           "score": 31.623564,
+          "ranked_score": 30.042386,
           "authority_level": 2,
           "split": "build",
           "span_hash": "26af9608f2c59c3d"
         }
       ],
-      "p50_latency_s": 26.4,
-      "tokens_in": 7428,
-      "tokens_out": 4561
+      "p50_latency_s": 25.11,
+      "tokens_in": 7359,
+      "tokens_out": 6256
     },
     {
       "question_id": "F-005",
       "type": "F",
       "question": "糖尿病诊断标准中，口服葡萄糖耐量试验（OGTT）2小时血糖达到多少可诊断糖尿病？",
       "trace_completeness": 1.0,
+      "trace_answer_cite": {
+        "citations": 10,
+        "out_of_range": 0,
+        "rate": 1.0,
+        "no_citation_run": false
+      },
       "evidence": [
         {
           "rank": 1,
-          "doc_id": "guide-2024",
-          "title": "中国糖尿病防治指南（2024版）",
-          "source": "guidelines/dm_guideline_2024.pdf",
-          "chunk_idx": 20,
-          "score": 61.464554,
-          "authority_level": 2,
-          "split": "build",
-          "span_hash": "bfbcf84d8c64718e"
-        },
-        {
-          "rank": 2,
           "doc_id": "guide-pc-2022",
           "title": "国家基层糖尿病防治管理指南（2022）",
           "source": "guidelines/primary_care_dm_guide_2022.pdf",
           "chunk_idx": 12,
           "score": 59.118197,
+          "ranked_score": 59.118197,
           "authority_level": 1,
           "split": "build",
           "span_hash": "eefcf84427be54b9"
         },
         {
-          "rank": 3,
+          "rank": 2,
           "doc_id": "guide-pc-manual-2022",
           "title": "国家基层糖尿病防治管理手册（2022）",
           "source": "guidelines/primary_care_dm_manual_2022.pdf",
           "chunk_idx": 6,
           "score": 58.845386,
+          "ranked_score": 58.845386,
           "authority_level": 1,
           "split": "blind",
           "span_hash": "bc068da9772e3a55"
+        },
+        {
+          "rank": 3,
+          "doc_id": "guide-2024",
+          "title": "中国糖尿病防治指南（2024版）",
+          "source": "guidelines/dm_guideline_2024.pdf",
+          "chunk_idx": 20,
+          "score": 61.464554,
+          "ranked_score": 58.391327,
+          "authority_level": 2,
+          "split": "build",
+          "span_hash": "bfbcf84d8c64718e"
         },
         {
           "rank": 4,
@@ -359,6 +427,7 @@
           "source": "guidelines/t2dm_guideline_2020.pdf",
           "chunk_idx": 15,
           "score": 58.175903,
+          "ranked_score": 55.267107,
           "authority_level": 2,
           "split": "build",
           "span_hash": "df4c46e88c548053"
@@ -370,20 +439,27 @@
           "source": "guidelines/dm_guideline_2024.pdf",
           "chunk_idx": 12,
           "score": 58.077248,
+          "ranked_score": 55.173386,
           "authority_level": 2,
           "split": "build",
           "span_hash": "bf93841efe3e2cc8"
         }
       ],
-      "p50_latency_s": 54.78,
-      "tokens_in": 8317,
-      "tokens_out": 6622
+      "p50_latency_s": 39.5,
+      "tokens_in": 8417,
+      "tokens_out": 7244
     },
     {
       "question_id": "M-001",
       "type": "M",
       "question": "磺脲类药物的主要作用机制是什么，它通过促进哪个器官分泌什么物质降糖？",
       "trace_completeness": 1.0,
+      "trace_answer_cite": {
+        "citations": 4,
+        "out_of_range": 0,
+        "rate": 1.0,
+        "no_citation_run": false
+      },
       "evidence": [
         {
           "rank": 1,
@@ -392,6 +468,7 @@
           "source": "guidelines/t2dm_guideline_2020.pdf",
           "chunk_idx": 74,
           "score": 38.15328,
+          "ranked_score": 36.245616,
           "authority_level": 2,
           "split": "build",
           "span_hash": "8449f2ceabd95894"
@@ -403,53 +480,63 @@
           "source": "guidelines/dm_guideline_2024.pdf",
           "chunk_idx": 80,
           "score": 36.407768,
+          "ranked_score": 34.587379,
           "authority_level": 2,
           "split": "build",
           "span_hash": "f36972c8a686f7f3"
         },
         {
           "rank": 3,
-          "doc_id": "drug-gliclazide",
-          "title": "格列齐特缓释片（达美康）说明书",
-          "source": "drug_labels/gliclazide_mr_diamicon.html",
-          "chunk_idx": 7,
-          "score": 34.148149,
-          "authority_level": 3,
-          "split": "build",
-          "span_hash": "42634135a42ba686"
-        },
-        {
-          "rank": 4,
-          "doc_id": "drug-dapa-az",
-          "title": "达格列净片（安达唐）说明书",
-          "source": "drug_labels/dapagliflozin_forxiga.html",
-          "chunk_idx": 3,
-          "score": 33.582648,
-          "authority_level": 3,
-          "split": "blind",
-          "span_hash": "3d4ce4ab0397443d"
-        },
-        {
-          "rank": 5,
           "doc_id": "guide-foot-2019-p2",
           "title": "中国糖尿病足防治指南（2019版）第二部分",
           "source": "guidelines/diabetic_foot_2019_part2.pdf",
           "chunk_idx": 39,
           "score": 33.401424,
+          "ranked_score": 31.731353,
           "authority_level": 2,
           "split": "blind",
           "span_hash": "6afa59e087894810"
+        },
+        {
+          "rank": 4,
+          "doc_id": "drug-gliclazide",
+          "title": "格列齐特缓释片（达美康）说明书",
+          "source": "drug_labels/gliclazide_mr_diamicon.html",
+          "chunk_idx": 7,
+          "score": 34.148149,
+          "ranked_score": 29.025927,
+          "authority_level": 3,
+          "split": "build",
+          "span_hash": "42634135a42ba686"
+        },
+        {
+          "rank": 5,
+          "doc_id": "guide-2024",
+          "title": "中国糖尿病防治指南（2024版）",
+          "source": "guidelines/dm_guideline_2024.pdf",
+          "chunk_idx": 81,
+          "score": 30.191785,
+          "ranked_score": 28.682196,
+          "authority_level": 2,
+          "split": "build",
+          "span_hash": "ea4b27e17bf2c86c"
         }
       ],
-      "p50_latency_s": 37.98,
-      "tokens_in": 9151,
-      "tokens_out": 4915
+      "p50_latency_s": 29.4,
+      "tokens_in": 9104,
+      "tokens_out": 4983
     },
     {
       "question_id": "M-002",
       "type": "M",
       "question": "SGLT2抑制剂通过哪个器官排泄葡萄糖，长期使用需警惕哪类感染风险增加？",
       "trace_completeness": 1.0,
+      "trace_answer_cite": {
+        "citations": 7,
+        "out_of_range": 0,
+        "rate": 1.0,
+        "no_citation_run": false
+      },
       "evidence": [
         {
           "rank": 1,
@@ -458,6 +545,7 @@
           "source": "guidelines/elderly_dm_2021.pdf",
           "chunk_idx": 34,
           "score": 37.552643,
+          "ranked_score": 35.675011,
           "authority_level": 2,
           "split": "build",
           "span_hash": "182f05109c401869"
@@ -469,53 +557,63 @@
           "source": "drug_labels/empagliflozin_jardiance.html",
           "chunk_idx": 11,
           "score": 34.940148,
+          "ranked_score": 29.699126,
           "authority_level": 3,
           "split": "build",
           "span_hash": "a62bc2532912a9ea"
         },
         {
           "rank": 3,
+          "doc_id": "guide-elderly-2024",
+          "title": "中国老年糖尿病诊疗指南（2024版）",
+          "source": "guidelines/elderly_dm_2024.pdf",
+          "chunk_idx": 82,
+          "score": 28.305914,
+          "ranked_score": 26.890618,
+          "authority_level": 2,
+          "split": "build",
+          "span_hash": "1b4763f578cc2a80"
+        },
+        {
+          "rank": 4,
+          "doc_id": "guide-2024",
+          "title": "中国糖尿病防治指南（2024版）",
+          "source": "guidelines/dm_guideline_2024.pdf",
+          "chunk_idx": 81,
+          "score": 27.584522,
+          "ranked_score": 26.205296,
+          "authority_level": 2,
+          "split": "build",
+          "span_hash": "ea4b27e17bf2c86c"
+        },
+        {
+          "rank": 5,
           "doc_id": "drug-dapa-fld",
           "title": "达格列净片（孚来达）说明书",
           "source": "drug_labels/dapagliflozin_fulaida.pdf",
           "chunk_idx": 24,
           "score": 30.69928,
+          "ranked_score": 26.094388,
           "authority_level": 3,
           "split": "blind",
           "span_hash": "7609c6df568989bc"
-        },
-        {
-          "rank": 4,
-          "doc_id": "drug-cana",
-          "title": "卡格列净片（怡可安）说明书",
-          "source": "drug_labels/canagliflozin_invokana.html",
-          "chunk_idx": 28,
-          "score": 29.345881,
-          "authority_level": 3,
-          "split": "build",
-          "span_hash": "096b2405e74d1548"
-        },
-        {
-          "rank": 5,
-          "doc_id": "drug-cana",
-          "title": "卡格列净片（怡可安）说明书",
-          "source": "drug_labels/canagliflozin_invokana.html",
-          "chunk_idx": 24,
-          "score": 28.651499,
-          "authority_level": 3,
-          "split": "build",
-          "span_hash": "36b2f32b5b5f5c0f"
         }
       ],
-      "p50_latency_s": 92.55,
-      "tokens_in": 5197,
-      "tokens_out": 2426
+      "p50_latency_s": 50.24,
+      "tokens_in": 8954,
+      "tokens_out": 12183
     },
     {
       "question_id": "M-003",
       "type": "M",
       "question": "GLP-1受体激动剂常见胃肠道不良反应是什么，其主要降糖机制涉及哪种激素？",
       "trace_completeness": 1.0,
+      "trace_answer_cite": {
+        "citations": 9,
+        "out_of_range": 0,
+        "rate": 1.0,
+        "no_citation_run": false
+      },
       "evidence": [
         {
           "rank": 1,
@@ -524,6 +622,7 @@
           "source": "guidelines/elderly_dm_2021.pdf",
           "chunk_idx": 34,
           "score": 44.457439,
+          "ranked_score": 42.234567,
           "authority_level": 2,
           "split": "build",
           "span_hash": "182f05109c401869"
@@ -535,6 +634,7 @@
           "source": "drug_labels/semaglutide_ozempic.html",
           "chunk_idx": 5,
           "score": 43.00935,
+          "ranked_score": 36.557947,
           "authority_level": 3,
           "split": "build",
           "span_hash": "3e7decef51c15f9c"
@@ -546,6 +646,7 @@
           "source": "drug_labels/semaglutide_ozempic.html",
           "chunk_idx": 7,
           "score": 42.761145,
+          "ranked_score": 36.346973,
           "authority_level": 3,
           "split": "build",
           "span_hash": "e19bea526227f8e5"
@@ -557,31 +658,39 @@
           "source": "drug_labels/dulaglutide_trulicity.pdf",
           "chunk_idx": 12,
           "score": 40.217922,
+          "ranked_score": 34.185233,
           "authority_level": 3,
           "split": "build",
           "span_hash": "3fa480ac3ecd9496"
         },
         {
           "rank": 5,
-          "doc_id": "drug-lira",
-          "title": "利拉鲁肽注射液（诺和力）说明书",
-          "source": "drug_labels/liraglutide_victoza.html",
-          "chunk_idx": 2,
-          "score": 36.273659,
-          "authority_level": 3,
+          "doc_id": "guide-2024",
+          "title": "中国糖尿病防治指南（2024版）",
+          "source": "guidelines/dm_guideline_2024.pdf",
+          "chunk_idx": 81,
+          "score": 32.929354,
+          "ranked_score": 31.282886,
+          "authority_level": 2,
           "split": "build",
-          "span_hash": "af1f39e4bc41efab"
+          "span_hash": "ea4b27e17bf2c86c"
         }
       ],
-      "p50_latency_s": 0.0,
-      "tokens_in": 6699,
-      "tokens_out": 1899
+      "p50_latency_s": 94.11,
+      "tokens_in": 8870,
+      "tokens_out": 14296
     },
     {
       "question_id": "M-004",
       "type": "M",
       "question": "阿卡波糖应与食物如何同服才能发挥作用，其抑制的酶是什么？",
       "trace_completeness": 1.0,
+      "trace_answer_cite": {
+        "citations": 10,
+        "out_of_range": 0,
+        "rate": 1.0,
+        "no_citation_run": false
+      },
       "evidence": [
         {
           "rank": 1,
@@ -590,6 +699,7 @@
           "source": "drug_labels/acarbose_baitangping.html",
           "chunk_idx": 4,
           "score": 39.63109,
+          "ranked_score": 33.686427,
           "authority_level": 3,
           "split": "blind",
           "span_hash": "5697de0a97a42d3a"
@@ -601,53 +711,63 @@
           "source": "drug_labels/acarbose_baitangping.html",
           "chunk_idx": 5,
           "score": 38.075334,
+          "ranked_score": 32.364034,
           "authority_level": 3,
           "split": "blind",
           "span_hash": "fbf534abc70cb888"
         },
         {
           "rank": 3,
-          "doc_id": "drug-acarbose",
-          "title": "阿卡波糖片（拜唐苹）说明书",
-          "source": "drug_labels/acarbose_baitangping.html",
-          "chunk_idx": 2,
-          "score": 31.921548,
-          "authority_level": 3,
-          "split": "blind",
-          "span_hash": "25db36dc04cd674b"
-        },
-        {
-          "rank": 4,
-          "doc_id": "drug-acarbose",
-          "title": "阿卡波糖片（拜唐苹）说明书",
-          "source": "drug_labels/acarbose_baitangping.html",
-          "chunk_idx": 0,
-          "score": 29.839462,
-          "authority_level": 3,
-          "split": "blind",
-          "span_hash": "0947ad0f3cf10a35"
-        },
-        {
-          "rank": 5,
           "doc_id": "guide-2020",
           "title": "中国2型糖尿病防治指南（2020年版）",
           "source": "guidelines/t2dm_guideline_2020.pdf",
           "chunk_idx": 76,
           "score": 26.931268,
+          "ranked_score": 25.584705,
           "authority_level": 2,
           "split": "build",
           "span_hash": "31f79a70d9af0f21"
+        },
+        {
+          "rank": 4,
+          "doc_id": "guide-2020",
+          "title": "中国2型糖尿病防治指南（2020年版）",
+          "source": "guidelines/t2dm_guideline_2020.pdf",
+          "chunk_idx": 79,
+          "score": 23.902981,
+          "ranked_score": 22.707832,
+          "authority_level": 2,
+          "split": "build",
+          "span_hash": "12ed30bca9caf384"
+        },
+        {
+          "rank": 5,
+          "doc_id": "drug-miglitol",
+          "title": "米格列醇片说明书",
+          "source": "drug_labels/miglitol_tab.html",
+          "chunk_idx": 3,
+          "score": 26.136855,
+          "ranked_score": 22.216327,
+          "authority_level": 3,
+          "split": "build",
+          "span_hash": "376dea5a296fec7f"
         }
       ],
-      "p50_latency_s": 63.47,
-      "tokens_in": 2980,
-      "tokens_out": 2408
+      "p50_latency_s": 39.01,
+      "tokens_in": 9090,
+      "tokens_out": 6626
     },
     {
       "question_id": "M-005",
       "type": "M",
       "question": "糖尿病酮症酸中毒时，机体胰岛素不足导致哪类代谢紊乱，特征性实验室表现是什么？",
       "trace_completeness": 1.0,
+      "trace_answer_cite": {
+        "citations": 10,
+        "out_of_range": 0,
+        "rate": 1.0,
+        "no_citation_run": false
+      },
       "evidence": [
         {
           "rank": 1,
@@ -656,6 +776,7 @@
           "source": "guidelines/dm_guideline_2024.pdf",
           "chunk_idx": 134,
           "score": 49.667103,
+          "ranked_score": 47.183747,
           "authority_level": 2,
           "split": "build",
           "span_hash": "c427f81a2b23a830"
@@ -667,53 +788,63 @@
           "source": "guidelines/t2dm_guideline_2020.pdf",
           "chunk_idx": 116,
           "score": 37.866116,
+          "ranked_score": 35.97281,
           "authority_level": 2,
           "split": "build",
           "span_hash": "b7c0a8890e83a797"
         },
         {
           "rank": 3,
-          "doc_id": "drug-empa",
-          "title": "恩格列净片（欧唐静）说明书",
-          "source": "drug_labels/empagliflozin_jardiance.html",
-          "chunk_idx": 7,
-          "score": 37.387518,
-          "authority_level": 3,
-          "split": "build",
-          "span_hash": "9a8736602c3f68d2"
-        },
-        {
-          "rank": 4,
           "doc_id": "guide-2024",
           "title": "中国糖尿病防治指南（2024版）",
           "source": "guidelines/dm_guideline_2024.pdf",
           "chunk_idx": 263,
           "score": 37.3396,
+          "ranked_score": 35.47262,
           "authority_level": 2,
           "split": "build",
           "span_hash": "fbb30cad6d93ddbd"
         },
         {
+          "rank": 4,
+          "doc_id": "guide-pc-manual-2022",
+          "title": "国家基层糖尿病防治管理手册（2022）",
+          "source": "guidelines/primary_care_dm_manual_2022.pdf",
+          "chunk_idx": 37,
+          "score": 33.871061,
+          "ranked_score": 33.871061,
+          "authority_level": 1,
+          "split": "blind",
+          "span_hash": "4f800664477a3d96"
+        },
+        {
           "rank": 5,
-          "doc_id": "drug-cana",
-          "title": "卡格列净片（怡可安）说明书",
-          "source": "drug_labels/canagliflozin_invokana.html",
-          "chunk_idx": 22,
-          "score": 37.010461,
-          "authority_level": 3,
+          "doc_id": "guide-2020",
+          "title": "中国2型糖尿病防治指南（2020年版）",
+          "source": "guidelines/t2dm_guideline_2020.pdf",
+          "chunk_idx": 117,
+          "score": 35.419273,
+          "ranked_score": 33.648309,
+          "authority_level": 2,
           "split": "build",
-          "span_hash": "af413c058b8ba42f"
+          "span_hash": "97078b8c38cf4f18"
         }
       ],
-      "p50_latency_s": 31.56,
-      "tokens_in": 9120,
-      "tokens_out": 4733
+      "p50_latency_s": 44.44,
+      "tokens_in": 10451,
+      "tokens_out": 9655
     },
     {
       "question_id": "V-001",
       "type": "V",
       "question": "《中国2型糖尿病防治指南》最新版（2024）建议的 HbA1c 控制目标一般是多少？",
       "trace_completeness": 1.0,
+      "trace_answer_cite": {
+        "citations": 4,
+        "out_of_range": 0,
+        "rate": 1.0,
+        "no_citation_run": false
+      },
       "evidence": [
         {
           "rank": 1,
@@ -722,64 +853,75 @@
           "source": "guidelines/t2dm_guideline_2020.pdf",
           "chunk_idx": 249,
           "score": 23.117219,
+          "ranked_score": 21.961358,
           "authority_level": 2,
           "split": "build",
           "span_hash": "f31261cf8fc09656"
         },
         {
           "rank": 2,
-          "doc_id": "drug-pioglita",
-          "title": "盐酸吡格列酮片（可成）说明书",
-          "source": "drug_labels/pioglitazone_kecheng.html",
-          "chunk_idx": 8,
-          "score": 22.145755,
-          "authority_level": 3,
-          "split": "blind",
-          "span_hash": "fd80b3c91296e643"
+          "doc_id": "guide-2024",
+          "title": "中国糖尿病防治指南（2024版）",
+          "source": "guidelines/dm_guideline_2024.pdf",
+          "chunk_idx": 150,
+          "score": 21.802148,
+          "ranked_score": 20.712041,
+          "authority_level": 2,
+          "split": "build",
+          "span_hash": "897e6dcb3cc90ea7"
         },
         {
           "rank": 3,
           "doc_id": "guide-2024",
           "title": "中国糖尿病防治指南（2024版）",
           "source": "guidelines/dm_guideline_2024.pdf",
-          "chunk_idx": 150,
-          "score": 21.802148,
-          "authority_level": 2,
-          "split": "build",
-          "span_hash": "897e6dcb3cc90ea7"
-        },
-        {
-          "rank": 4,
-          "doc_id": "guide-2024",
-          "title": "中国糖尿病防治指南（2024版）",
-          "source": "guidelines/dm_guideline_2024.pdf",
           "chunk_idx": 262,
           "score": 21.362645,
+          "ranked_score": 20.294512,
           "authority_level": 2,
           "split": "build",
           "span_hash": "42f54f744fd19f21"
         },
         {
-          "rank": 5,
-          "doc_id": "guide-2024",
-          "title": "中国糖尿病防治指南（2024版）",
-          "source": "guidelines/dm_guideline_2024.pdf",
-          "chunk_idx": 254,
-          "score": 21.22132,
+          "rank": 4,
+          "doc_id": "guide-2020",
+          "title": "中国2型糖尿病防治指南（2020年版）",
+          "source": "guidelines/t2dm_guideline_2020.pdf",
+          "chunk_idx": 47,
+          "score": 19.987891,
+          "ranked_score": 18.988496,
           "authority_level": 2,
           "split": "build",
-          "span_hash": "f268a100361bfde4"
+          "span_hash": "317d8340f5056079"
+        },
+        {
+          "rank": 5,
+          "doc_id": "drug-pioglita",
+          "title": "盐酸吡格列酮片（可成）说明书",
+          "source": "drug_labels/pioglitazone_kecheng.html",
+          "chunk_idx": 8,
+          "score": 22.145755,
+          "ranked_score": 18.823892,
+          "authority_level": 3,
+          "split": "blind",
+          "span_hash": "fd80b3c91296e643"
         }
       ],
-      "p50_latency_s": 59.25,
-      "tokens_in": 8992,
-      "tokens_out": 8023
+      "p50_latency_s": 61.95,
+      "tokens_in": 10219,
+      "tokens_out": 7629
     },
     {
       "question_id": "V-002",
       "type": "V",
       "question": "2020版指南中，血压控制目标对糖尿病合并高血压患者推荐多少mmHg以下？",
       "trace_completeness": 1.0,
+      "trace_answer_cite": {
+        "citations": 6,
+        "out_of_range": 0,
+        "rate": 1.0,
+        "no_citation_run": false
+      },
       "evidence": [
         {
           "rank": 1,
@@ -788,6 +930,7 @@
           "source": "guidelines/dm_guideline_2024.pdf",
           "chunk_idx": 150,
           "score": 56.556257,
+          "ranked_score": 53.728445,
           "authority_level": 2,
           "split": "build",
           "span_hash": "897e6dcb3cc90ea7"
@@ -799,6 +942,7 @@
           "source": "guidelines/dm_guideline_2024.pdf",
           "chunk_idx": 151,
           "score": 54.373888,
+          "ranked_score": 51.655193,
           "authority_level": 2,
           "split": "build",
           "span_hash": "cff1dd957b021950"
@@ -810,6 +954,7 @@
           "source": "guidelines/t2dm_guideline_2020.pdf",
           "chunk_idx": 136,
           "score": 51.092175,
+          "ranked_score": 48.537567,
           "authority_level": 2,
           "split": "build",
           "span_hash": "3ee867f0c9352df2"
@@ -821,97 +966,116 @@
           "source": "guidelines/t2dm_guideline_2020.pdf",
           "chunk_idx": 144,
           "score": 51.092175,
+          "ranked_score": 48.537567,
           "authority_level": 2,
           "split": "build",
           "span_hash": "cd9408706ded4ba8"
         },
         {
           "rank": 5,
-          "doc_id": "guide-2020",
-          "title": "中国2型糖尿病防治指南（2020年版）",
-          "source": "guidelines/t2dm_guideline_2020.pdf",
-          "chunk_idx": 134,
-          "score": 46.912053,
+          "doc_id": "guide-elderly-2024",
+          "title": "中国老年糖尿病诊疗指南（2024版）",
+          "source": "guidelines/elderly_dm_2024.pdf",
+          "chunk_idx": 56,
+          "score": 37.715621,
+          "ranked_score": 35.82984,
           "authority_level": 2,
           "split": "build",
-          "span_hash": "f024ec9e1a709e4d"
+          "span_hash": "e47fc8e0f47663cb"
         }
       ],
-      "p50_latency_s": 24.36,
-      "tokens_in": 9125,
-      "tokens_out": 3461
+      "p50_latency_s": 27.53,
+      "tokens_in": 10982,
+      "tokens_out": 4431
     },
     {
       "question_id": "V-003",
       "type": "V",
       "question": "新诊断2型糖尿病患者若 HbA1c≥9% 且症状明显，指南建议起始什么治疗？",
       "trace_completeness": 1.0,
+      "trace_answer_cite": {
+        "citations": 10,
+        "out_of_range": 0,
+        "rate": 1.0,
+        "no_citation_run": false
+      },
       "evidence": [
         {
           "rank": 1,
-          "doc_id": "guide-2020",
-          "title": "中国2型糖尿病防治指南（2020年版）",
-          "source": "guidelines/t2dm_guideline_2020.pdf",
-          "chunk_idx": 87,
-          "score": 24.718572,
-          "authority_level": 2,
-          "split": "build",
-          "span_hash": "7e73dac9add59463"
-        },
-        {
-          "rank": 2,
-          "doc_id": "guide-2024",
-          "title": "中国糖尿病防治指南（2024版）",
-          "source": "guidelines/dm_guideline_2024.pdf",
-          "chunk_idx": 95,
-          "score": 24.534008,
-          "authority_level": 2,
-          "split": "build",
-          "span_hash": "9ae43f62393473e4"
-        },
-        {
-          "rank": 3,
-          "doc_id": "guide-2020",
-          "title": "中国2型糖尿病防治指南（2020年版）",
-          "source": "guidelines/t2dm_guideline_2020.pdf",
-          "chunk_idx": 83,
-          "score": 24.272477,
-          "authority_level": 2,
-          "split": "build",
-          "span_hash": "58de0b0a7ba3ecef"
-        },
-        {
-          "rank": 4,
           "doc_id": "guide-pc-2022",
           "title": "国家基层糖尿病防治管理指南（2022）",
           "source": "guidelines/primary_care_dm_guide_2022.pdf",
           "chunk_idx": 23,
           "score": 23.943785,
+          "ranked_score": 23.943785,
           "authority_level": 1,
           "split": "build",
           "span_hash": "753dac8e84f78dd7"
         },
         {
-          "rank": 5,
+          "rank": 2,
           "doc_id": "guide-2020",
           "title": "中国2型糖尿病防治指南（2020年版）",
           "source": "guidelines/t2dm_guideline_2020.pdf",
-          "chunk_idx": 115,
-          "score": 23.867343,
+          "chunk_idx": 87,
+          "score": 24.718572,
+          "ranked_score": 23.482643,
           "authority_level": 2,
           "split": "build",
-          "span_hash": "15dee38b6ac29f09"
+          "span_hash": "7e73dac9add59463"
+        },
+        {
+          "rank": 3,
+          "doc_id": "guide-2024",
+          "title": "中国糖尿病防治指南（2024版）",
+          "source": "guidelines/dm_guideline_2024.pdf",
+          "chunk_idx": 95,
+          "score": 24.534008,
+          "ranked_score": 23.307307,
+          "authority_level": 2,
+          "split": "build",
+          "span_hash": "9ae43f62393473e4"
+        },
+        {
+          "rank": 4,
+          "doc_id": "guide-2020",
+          "title": "中国2型糖尿病防治指南（2020年版）",
+          "source": "guidelines/t2dm_guideline_2020.pdf",
+          "chunk_idx": 83,
+          "score": 24.272477,
+          "ranked_score": 23.058853,
+          "authority_level": 2,
+          "split": "build",
+          "span_hash": "58de0b0a7ba3ecef"
+        },
+        {
+          "rank": 5,
+          "doc_id": "guide-2024",
+          "title": "中国糖尿病防治指南（2024版）",
+          "source": "guidelines/dm_guideline_2024.pdf",
+          "chunk_idx": 102,
+          "score": 23.538226,
+          "ranked_score": 22.361314,
+          "authority_level": 2,
+          "split": "build",
+          "span_hash": "40a94e295376ea6d"
         }
       ],
-      "p50_latency_s": 31.94,
-      "tokens_in": 10746,
-      "tokens_out": 3837
+      "p50_latency_s": 20.16,
+      "tokens_in": 10554,
+      "tokens_out": 3359
     },
     {
       "question_id": "V-004",
       "type": "V",
       "question": "老年糖尿病患者（≥65岁）的血糖控制目标通常如何调整？",
       "trace_completeness": 1.0,
+      "trace_answer_cite": {
+        "citations": 30,
+        "out_of_range": 0,
+        "rate": 1.0,
+        "no_citation_run": false
+      },
       "evidence": [
         {
           "rank": 1,
@@ -920,6 +1084,7 @@
           "source": "guidelines/elderly_dm_2021.pdf",
           "chunk_idx": 21,
           "score": 32.840479,
+          "ranked_score": 31.198455,
           "authority_level": 2,
           "split": "build",
           "span_hash": "5125f1dc13a667fa"
@@ -931,6 +1096,7 @@
           "source": "guidelines/elderly_dm_2024.pdf",
           "chunk_idx": 22,
           "score": 32.351333,
+          "ranked_score": 30.733766,
           "authority_level": 2,
           "split": "build",
           "span_hash": "9ca0167066553434"
@@ -942,42 +1108,51 @@
           "source": "guidelines/elderly_dm_2021.pdf",
           "chunk_idx": 87,
           "score": 31.161234,
+          "ranked_score": 29.603172,
           "authority_level": 2,
           "split": "build",
           "span_hash": "873d7d447b25f968"
         },
         {
           "rank": 4,
-          "doc_id": "guide-elderly-2021",
-          "title": "中国老年糖尿病诊疗指南（2021年版）",
-          "source": "guidelines/elderly_dm_2021.pdf",
-          "chunk_idx": 90,
-          "score": 31.093056,
-          "authority_level": 2,
-          "split": "build",
-          "span_hash": "5ed1200a5edb5fea"
-        },
-        {
-          "rank": 5,
           "doc_id": "guide-elderly-2024",
           "title": "中国老年糖尿病诊疗指南（2024版）",
           "source": "guidelines/elderly_dm_2024.pdf",
           "chunk_idx": 105,
           "score": 30.696948,
+          "ranked_score": 29.162101,
           "authority_level": 2,
           "split": "build",
           "span_hash": "f0f5e252949e47d4"
+        },
+        {
+          "rank": 5,
+          "doc_id": "guide-2020",
+          "title": "中国2型糖尿病防治指南（2020年版）",
+          "source": "guidelines/t2dm_guideline_2020.pdf",
+          "chunk_idx": 239,
+          "score": 25.183443,
+          "ranked_score": 23.924271,
+          "authority_level": 2,
+          "split": "build",
+          "span_hash": "c0f3fa182f501d4e"
         }
       ],
-      "p50_latency_s": 48.23,
-      "tokens_in": 11947,
-      "tokens_out": 7063
+      "p50_latency_s": 36.69,
+      "tokens_in": 10373,
+      "tokens_out": 8062
     },
     {
       "question_id": "V-005",
       "type": "V",
       "question": "妊娠期高血糖患者的血糖控制目标（空腹）是多少？",
       "trace_completeness": 1.0,
+      "trace_answer_cite": {
+        "citations": 8,
+        "out_of_range": 0,
+        "rate": 1.0,
+        "no_citation_run": false
+      },
       "evidence": [
         {
           "rank": 1,
@@ -986,6 +1161,7 @@
           "source": "guidelines/t2dm_guideline_2020.pdf",
           "chunk_idx": 239,
           "score": 37.807586,
+          "ranked_score": 35.917207,
           "authority_level": 2,
           "split": "build",
           "span_hash": "c0f3fa182f501d4e"
@@ -997,75 +1173,87 @@
           "source": "guidelines/t2dm_guideline_2020.pdf",
           "chunk_idx": 252,
           "score": 36.901357,
+          "ranked_score": 35.056289,
           "authority_level": 2,
           "split": "build",
           "span_hash": "736af4b832ff869c"
         },
         {
           "rank": 3,
-          "doc_id": "guide-2020",
-          "title": "中国2型糖尿病防治指南（2020年版）",
-          "source": "guidelines/t2dm_guideline_2020.pdf",
-          "chunk_idx": 258,
-          "score": 36.534615,
-          "authority_level": 2,
-          "split": "build",
-          "span_hash": "e30f7ade33eac8e3"
-        },
-        {
-          "rank": 4,
-          "doc_id": "guide-2020",
-          "title": "中国2型糖尿病防治指南（2020年版）",
-          "source": "guidelines/t2dm_guideline_2020.pdf",
-          "chunk_idx": 245,
-          "score": 32.366968,
-          "authority_level": 2,
-          "split": "build",
-          "span_hash": "61cc10dcd27c1ddd"
-        },
-        {
-          "rank": 5,
           "doc_id": "guide-2024",
           "title": "中国糖尿病防治指南（2024版）",
           "source": "guidelines/dm_guideline_2024.pdf",
           "chunk_idx": 253,
           "score": 31.59067,
+          "ranked_score": 30.011136,
           "authority_level": 2,
           "split": "build",
           "span_hash": "26f923956eb00a4c"
+        },
+        {
+          "rank": 4,
+          "doc_id": "guide-2024",
+          "title": "中国糖尿病防治指南（2024版）",
+          "source": "guidelines/dm_guideline_2024.pdf",
+          "chunk_idx": 265,
+          "score": 31.515435,
+          "ranked_score": 29.939663,
+          "authority_level": 2,
+          "split": "build",
+          "span_hash": "0423609d37df0fde"
+        },
+        {
+          "rank": 5,
+          "doc_id": "guide-elderly-2021",
+          "title": "中国老年糖尿病诊疗指南（2021年版）",
+          "source": "guidelines/elderly_dm_2021.pdf",
+          "chunk_idx": 87,
+          "score": 30.231391,
+          "ranked_score": 28.719822,
+          "authority_level": 2,
+          "split": "build",
+          "span_hash": "873d7d447b25f968"
         }
       ],
-      "p50_latency_s": 36.94,
-      "tokens_in": 8873,
-      "tokens_out": 4002
+      "p50_latency_s": 82.13,
+      "tokens_in": 8139,
+      "tokens_out": 10454
     },
     {
       "question_id": "X-001",
       "type": "X",
       "question": "一位55岁男性，BMI 28，新诊断2型糖尿病，HbA1c 8.2%，无并发症。请给出初始治疗方案的用药建议。",
       "trace_completeness": 1.0,
+      "trace_answer_cite": {
+        "citations": 13,
+        "out_of_range": 0,
+        "rate": 1.0,
+        "no_citation_run": false
+      },
       "evidence": [
         {
           "rank": 1,
-          "doc_id": "guide-2020",
-          "title": "中国2型糖尿病防治指南（2020年版）",
-          "source": "guidelines/t2dm_guideline_2020.pdf",
-          "chunk_idx": 107,
-          "score": 24.420177,
-          "authority_level": 2,
-          "split": "build",
-          "span_hash": "2f120c91ea36de3c"
-        },
-        {
-          "rank": 2,
           "doc_id": "guide-pc-manual-2022",
           "title": "国家基层糖尿病防治管理手册（2022）",
           "source": "guidelines/primary_care_dm_manual_2022.pdf",
           "chunk_idx": 16,
           "score": 23.840602,
+          "ranked_score": 23.840602,
           "authority_level": 1,
           "split": "blind",
           "span_hash": "420812bb540808bc"
+        },
+        {
+          "rank": 2,
+          "doc_id": "guide-2020",
+          "title": "中国2型糖尿病防治指南（2020年版）",
+          "source": "guidelines/t2dm_guideline_2020.pdf",
+          "chunk_idx": 107,
+          "score": 24.420177,
+          "ranked_score": 23.199168,
+          "authority_level": 2,
+          "split": "build",
+          "span_hash": "2f120c91ea36de3c"
         },
         {
           "rank": 3,
@@ -1074,6 +1262,7 @@
           "source": "guidelines/primary_care_dm_guide_2022.pdf",
           "chunk_idx": 19,
           "score": 22.759022,
+          "ranked_score": 22.759022,
           "authority_level": 1,
           "split": "build",
           "span_hash": "95e5b1521b3489d1"
@@ -1085,31 +1274,39 @@
           "source": "pathways/cp_t2dm_highrisk_2016.pdf",
           "chunk_idx": 6,
           "score": 22.042892,
+          "ranked_score": 22.042892,
           "authority_level": 1,
           "split": "build",
           "span_hash": "d6758ba2e11ac6b1"
         },
         {
           "rank": 5,
-          "doc_id": "guide-2024",
-          "title": "中国糖尿病防治指南（2024版）",
-          "source": "guidelines/dm_guideline_2024.pdf",
-          "chunk_idx": 255,
-          "score": 21.847189,
-          "authority_level": 2,
+          "doc_id": "cp-t1dm-2009",
+          "title": "1型糖尿病临床路径（2009年版）",
+          "source": "pathways/cp_t1dm_2009.pdf",
+          "chunk_idx": 2,
+          "score": 21.68653,
+          "ranked_score": 21.68653,
+          "authority_level": 1,
           "split": "build",
-          "span_hash": "190396af41411860"
+          "span_hash": "626ec83196299ddd"
         }
       ],
-      "p50_latency_s": 46.4,
-      "tokens_in": 8265,
-      "tokens_out": 9799
+      "p50_latency_s": 44.64,
+      "tokens_in": 8563,
+      "tokens_out": 7753
     },
     {
       "question_id": "X-002",
       "type": "X",
       "question": "患者使用达格列净后出现反复泌尿生殖感染，应考虑换用哪类机制不同的降糖药？",
       "trace_completeness": 1.0,
+      "trace_answer_cite": {
+        "citations": 10,
+        "out_of_range": 0,
+        "rate": 1.0,
+        "no_citation_run": false
+      },
       "evidence": [
         {
           "rank": 1,
@@ -1118,6 +1315,7 @@
           "source": "drug_labels/dapagliflozin_fulaida.pdf",
           "chunk_idx": 5,
           "score": 42.977493,
+          "ranked_score": 36.530869,
           "authority_level": 3,
           "split": "blind",
           "span_hash": "b0a7d68b94931ad2"
@@ -1129,6 +1327,7 @@
           "source": "guidelines/elderly_dm_2024.pdf",
           "chunk_idx": 36,
           "score": 36.99595,
+          "ranked_score": 35.146153,
           "authority_level": 2,
           "split": "build",
           "span_hash": "785b6f364b75c6b8"
@@ -1140,42 +1339,51 @@
           "source": "guidelines/elderly_dm_2021.pdf",
           "chunk_idx": 36,
           "score": 36.428622,
+          "ranked_score": 34.607191,
           "authority_level": 2,
           "split": "build",
           "span_hash": "a38a4adf2b4aa624"
         },
         {
           "rank": 4,
-          "doc_id": "drug-dapa-fld",
-          "title": "达格列净片（孚来达）说明书",
-          "source": "drug_labels/dapagliflozin_fulaida.pdf",
-          "chunk_idx": 18,
-          "score": 36.406755,
-          "authority_level": 3,
+          "doc_id": "guide-pc-manual-2022",
+          "title": "国家基层糖尿病防治管理手册（2022）",
+          "source": "guidelines/primary_care_dm_manual_2022.pdf",
+          "chunk_idx": 36,
+          "score": 32.698828,
+          "ranked_score": 32.698828,
+          "authority_level": 1,
           "split": "blind",
-          "span_hash": "5818301ad0af0782"
+          "span_hash": "2d5b91a820fa84d2"
         },
         {
           "rank": 5,
-          "doc_id": "drug-empa",
-          "title": "恩格列净片（欧唐静）说明书",
-          "source": "drug_labels/empagliflozin_jardiance.html",
-          "chunk_idx": 3,
-          "score": 36.035492,
-          "authority_level": 3,
+          "doc_id": "guide-elderly-2024",
+          "title": "中国老年糖尿病诊疗指南（2024版）",
+          "source": "guidelines/elderly_dm_2024.pdf",
+          "chunk_idx": 38,
+          "score": 34.04304,
+          "ranked_score": 32.340888,
+          "authority_level": 2,
           "split": "build",
-          "span_hash": "8eeb8738f0db311b"
+          "span_hash": "71f5bb22f718f966"
         }
       ],
-      "p50_latency_s": 75.7,
-      "tokens_in": 8468,
-      "tokens_out": 10877
+      "p50_latency_s": 52.73,
+      "tokens_in": 9125,
+      "tokens_out": 10309
     },
     {
       "question_id": "X-003",
       "type": "X",
       "question": "猫糖尿病酮症酸中毒急性期，常用什么胰岛素方案起始治疗？",
       "trace_completeness": 1.0,
+      "trace_answer_cite": {
+        "citations": 5,
+        "out_of_range": 0,
+        "rate": 1.0,
+        "no_citation_run": false
+      },
       "evidence": [
         {
           "rank": 1,
@@ -1184,64 +1392,75 @@
           "source": "guidelines/dm_guideline_2024.pdf",
           "chunk_idx": 134,
           "score": 41.468824,
+          "ranked_score": 39.395382,
           "authority_level": 2,
           "split": "build",
           "span_hash": "c427f81a2b23a830"
         },
         {
           "rank": 2,
-          "doc_id": "drug-empa",
-          "title": "恩格列净片（欧唐静）说明书",
-          "source": "drug_labels/empagliflozin_jardiance.html",
-          "chunk_idx": 7,
-          "score": 40.198915,
-          "authority_level": 3,
-          "split": "build",
-          "span_hash": "9a8736602c3f68d2"
-        },
-        {
-          "rank": 3,
           "doc_id": "guide-pc-manual-2022",
           "title": "国家基层糖尿病防治管理手册（2022）",
           "source": "guidelines/primary_care_dm_manual_2022.pdf",
           "chunk_idx": 37,
           "score": 37.104806,
+          "ranked_score": 37.104806,
           "authority_level": 1,
           "split": "blind",
           "span_hash": "4f800664477a3d96"
         },
         {
-          "rank": 4,
-          "doc_id": "drug-cana",
-          "title": "卡格列净片（怡可安）说明书",
-          "source": "drug_labels/canagliflozin_invokana.html",
-          "chunk_idx": 22,
-          "score": 35.708114,
+          "rank": 3,
+          "doc_id": "drug-empa",
+          "title": "恩格列净片（欧唐静）说明书",
+          "source": "drug_labels/empagliflozin_jardiance.html",
+          "chunk_idx": 7,
+          "score": 40.198915,
+          "ranked_score": 34.169077,
           "authority_level": 3,
           "split": "build",
-          "span_hash": "af413c058b8ba42f"
+          "span_hash": "9a8736602c3f68d2"
         },
         {
-          "rank": 5,
+          "rank": 4,
           "doc_id": "guide-2024",
           "title": "中国糖尿病防治指南（2024版）",
           "source": "guidelines/dm_guideline_2024.pdf",
           "chunk_idx": 135,
           "score": 35.456509,
+          "ranked_score": 33.683684,
           "authority_level": 2,
           "split": "build",
           "span_hash": "5987cdb61f53171d"
+        },
+        {
+          "rank": 5,
+          "doc_id": "cp-t1dm-county-2016",
+          "title": "1型糖尿病临床路径（2016年县级医院版）",
+          "source": "pathways/cp_t1dm_county_2016.pdf",
+          "chunk_idx": 4,
+          "score": 32.128705,
+          "ranked_score": 32.128705,
+          "authority_level": 1,
+          "split": "build",
+          "span_hash": "5264adb9c9338fb3"
         }
       ],
-      "p50_latency_s": 18.5,
-      "tokens_in": 5325,
-      "tokens_out": 1054
+      "p50_latency_s": 49.97,
+      "tokens_in": 7798,
+      "tokens_out": 6577
     },
     {
       "question_id": "X-004",
       "type": "X",
       "question": "原发性醛固酮增多症的确诊分型试验（如卡托普利试验）的判读标准是什么？",
       "trace_completeness": 1.0,
+      "trace_answer_cite": {
+        "citations": 6,
+        "out_of_range": 0,
+        "rate": 1.0,
+        "no_citation_run": false
+      },
       "evidence": [
         {
           "rank": 1,
@@ -1250,6 +1469,7 @@
           "source": "guidelines/t2dm_guideline_2020.pdf",
           "chunk_idx": 20,
           "score": 38.941161,
+          "ranked_score": 36.994103,
           "authority_level": 2,
           "split": "build",
           "span_hash": "f8e2e343a230346e"
@@ -1261,6 +1481,7 @@
           "source": "guidelines/dm_guideline_2024.pdf",
           "chunk_idx": 230,
           "score": 34.548782,
+          "ranked_score": 32.821342,
           "authority_level": 2,
           "split": "build",
           "span_hash": "f6f6e5f16e8ebabc"
@@ -1272,42 +1493,51 @@
           "source": "guidelines/t2dm_guideline_2020.pdf",
           "chunk_idx": 188,
           "score": 25.152119,
+          "ranked_score": 23.894514,
           "authority_level": 2,
           "split": "build",
           "span_hash": "e36eee468605ccbb"
         },
         {
           "rank": 4,
-          "doc_id": "guide-2020",
-          "title": "中国2型糖尿病防治指南（2020年版）",
-          "source": "guidelines/t2dm_guideline_2020.pdf",
-          "chunk_idx": 195,
-          "score": 25.152119,
-          "authority_level": 2,
-          "split": "build",
-          "span_hash": "92d9c00ad4eddd81"
-        },
-        {
-          "rank": 5,
           "doc_id": "guide-pc-manual-2022",
           "title": "国家基层糖尿病防治管理手册（2022）",
           "source": "guidelines/primary_care_dm_manual_2022.pdf",
           "chunk_idx": 48,
           "score": 22.461881,
+          "ranked_score": 22.461881,
           "authority_level": 1,
           "split": "blind",
           "span_hash": "637315f56fd44dd4"
+        },
+        {
+          "rank": 5,
+          "doc_id": "guide-2024",
+          "title": "中国糖尿病防治指南（2024版）",
+          "source": "guidelines/dm_guideline_2024.pdf",
+          "chunk_idx": 286,
+          "score": 18.675252,
+          "ranked_score": 17.74149,
+          "authority_level": 2,
+          "split": "build",
+          "span_hash": "9d3e5f981b50111a"
         }
       ],
-      "p50_latency_s": 27.8,
-      "tokens_in": 9015,
-      "tokens_out": 3118
+      "p50_latency_s": 27.87,
+      "tokens_in": 9033,
+      "tokens_out": 4374
     },
     {
       "question_id": "X-005",
       "type": "X",
       "question": "老年住院患者夜间出现意识模糊伴出汗，先测血糖2.2 mmol/L，第一步处置是什么？",
       "trace_completeness": 1.0,
+      "trace_answer_cite": {
+        "citations": 6,
+        "out_of_range": 0,
+        "rate": 1.0,
+        "no_citation_run": false
+      },
       "evidence": [
         {
           "rank": 1,
@@ -1316,6 +1546,7 @@
           "source": "drug_labels/glimepiride_yamoli.pdf",
           "chunk_idx": 4,
           "score": 30.258782,
+          "ranked_score": 25.719965,
           "authority_level": 3,
           "split": "blind",
           "span_hash": "b59cb1f6e03d8385"
@@ -1327,6 +1558,7 @@
           "source": "guidelines/dm_guideline_2024.pdf",
           "chunk_idx": 141,
           "score": 26.949721,
+          "ranked_score": 25.602235,
           "authority_level": 2,
           "split": "build",
           "span_hash": "6ba3e8d31311ca3d"
@@ -1338,6 +1570,7 @@
           "source": "guidelines/t2dm_guideline_2020.pdf",
           "chunk_idx": 125,
           "score": 26.437715,
+          "ranked_score": 25.115829,
           "authority_level": 2,
           "split": "build",
           "span_hash": "c495a2091334500d"
@@ -1349,6 +1582,7 @@
           "source": "guidelines/primary_care_dm_manual_2022.pdf",
           "chunk_idx": 61,
           "score": 24.68704,
+          "ranked_score": 24.68704,
           "authority_level": 1,
           "split": "blind",
           "span_hash": "d23ecfe2de90e6fe"
@@ -1360,14 +1594,15 @@
           "source": "guidelines/dm_guideline_2024.pdf",
           "chunk_idx": 253,
           "score": 23.30577,
+          "ranked_score": 22.140482,
           "authority_level": 2,
           "split": "build",
           "span_hash": "26f923956eb00a4c"
         }
       ],
-      "p50_latency_s": 66.46,
-      "tokens_in": 8371,
-      "tokens_out": 10609
+      "p50_latency_s": 39.41,
+      "tokens_in": 8352,
+      "tokens_out": 7133
     }
   ],
   "runs": [
@@ -1377,9 +1612,15 @@
       "run": 0,
       "total": 1.0,
       "type": "F",
-      "latency_s": 25.78,
-      "answer": "二甲双胍属于双胍类降糖药 [3]；它是2型糖尿病患者的常用基础用药之一 [3]，也被推荐为老年2型糖尿病患者的一线/一级推荐降糖药物 [2]。\n\n本内容为参考资料，不能替代临床判断。",
-      "reason": "",
+      "latency_s": 28.28,
+      "answer": "二甲双胍属于双胍类降糖药 [1]。  \n本内容为参考资料，不能替代临床判断。",
+      "trace_answer_cite": {
+        "citations": 1,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
+      "reason": "全部达标",
       "parse_error": false
     },
     {
@@ -1388,8 +1629,14 @@
       "run": 1,
       "total": 1.0,
       "type": "F",
-      "latency_s": 30.93,
-      "answer": "二甲双胍属于双胍类降糖药。[3]",
+      "latency_s": 210.54,
+      "answer": "二甲双胍属于双胍类降糖药 [1]。",
+      "trace_answer_cite": {
+        "citations": 1,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
       "reason": "",
       "parse_error": false
     },
@@ -1399,8 +1646,14 @@
       "run": 2,
       "total": 1.0,
       "type": "F",
-      "latency_s": 44.03,
-      "answer": "二甲双胍属于双胍类降糖药 [3]。\n\n安全声明：本内容为参考资料，不能替代临床判断。",
+      "latency_s": 53.76,
+      "answer": "二甲双胍属于双胍类降糖药 [1]。",
+      "trace_answer_cite": {
+        "citations": 1,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
       "reason": "",
       "parse_error": false
     },
@@ -1408,22 +1661,34 @@
       "question_id": "F-002",
       "pass": 0,
       "run": 0,
-      "total": 0.7,
+      "total": 0.3,
       "type": "F",
-      "latency_s": 19.86,
-      "answer": "糖化血红蛋白（HbA1c）可反映过去 **2~3 个月**的平均血糖水平 [5]。",
-      "reason": "key_facts未覆盖必答点8-12周，仅覆盖2-3个月",
+      "latency_s": 231.32,
+      "answer": "知识库片段中未明确给出 HbA1c 反映的具体时间；[1] 仅提及“糖化血红蛋白反映既往 个月血糖控制状况”，但具体月数缺失，因此知识库中没有依据。",
+      "trace_answer_cite": {
+        "citations": 1,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
+      "reason": "key_facts未覆盖必答点8-12周和2-3个月；refusal本题无需拒答却进行了拒答",
       "parse_error": false
     },
     {
       "question_id": "F-002",
       "pass": 0,
       "run": 1,
-      "total": 0.7,
+      "total": 0.4,
       "type": "F",
-      "latency_s": 179.31,
-      "answer": "糖化血红蛋白（HbA1c）反映过去 **2~3个月** 的平均血糖水平 [5]；它也是评估长期血糖控制状况和调整治疗方案的依据 [5]，并可用于糖尿病辅助诊断 [1]。",
-      "reason": "key_facts 缺失必答点：8-12周",
+      "latency_s": 37.87,
+      "answer": "根据知识库片段，仅提及“糖化血红蛋白反映既往[某]个月血糖控制状况” [1]，但片段未给出具体月数，因此“HbA1c反映多长时间”在知识库中没有明确依据。",
+      "trace_answer_cite": {
+        "citations": 1,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
+      "reason": "key_facts未覆盖必答点'8-12周'和'2-3个月'，答案称无依据而未给出具体时间。",
       "parse_error": false
     },
     {
@@ -1432,9 +1697,15 @@
       "run": 2,
       "total": 0.7,
       "type": "F",
-      "latency_s": 56.53,
-      "answer": "糖化血红蛋白（HbA1c）可反映过去 **2~3个月** 的平均血糖水平 [5]。  \n本内容为参考资料，不能替代临床判断。",
-      "reason": "key_facts未覆盖必答点8-12周",
+      "latency_s": 27.53,
+      "answer": "糖化血红蛋白（HbA1c）反映既往约2～3个月的平均血糖控制状况 [1]。",
+      "trace_answer_cite": {
+        "citations": 1,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
+      "reason": "key_facts: 仅覆盖'2-3个月'，缺失'8-12周'必答点",
       "parse_error": false
     },
     {
@@ -1443,9 +1714,15 @@
       "run": 0,
       "total": 1.0,
       "type": "F",
-      "latency_s": 24.56,
-      "answer": "2型糖尿病患者的一线药物治疗首选是二甲双胍 [2][3]。若存在二甲双胍禁忌证或不能耐受，可根据情况选择其他降糖药物 [3]。\n\n本内容为参考资料，不能替代临床判断。",
-      "reason": "全部达标",
+      "latency_s": 38.22,
+      "answer": "2型糖尿病患者的一线药物治疗首选是**二甲双胍** [2][3]。若单纯生活方式干预不能使血糖达标，应开始单药治疗，首选二甲双胍；无禁忌证且能耐受者，二甲双胍应一直保留在治疗方案中 [3]。\n\n本内容为参考资料，不能替代临床判断。",
+      "trace_answer_cite": {
+        "citations": 3,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
+      "reason": "",
       "parse_error": false
     },
     {
@@ -1454,549 +1731,899 @@
       "run": 1,
       "total": 1.0,
       "type": "F",
-      "latency_s": 24.37,
-      "answer": "2型糖尿病患者一线药物治疗首选是二甲双胍 [2][3]。\n\n本内容为参考资料，不能替代临床判断。",
-      "reason": "所有项均达标。",
-      "parse_error": false
-    },
-    {
-      "question_id": "F-003",
-      "pass": 1,
-      "run": 2,
-      "total": 1.0,
-      "type": "F",
-      "latency_s": 42.91,
-      "answer": "2型糖尿病患者的一线药物治疗首选是二甲双胍 [2][3]。若单纯生活方式干预不能使血糖达标，应开始单药治疗，首选二甲双胍；无禁忌证且能耐受者，二甲双胍应一直保留在治疗方案中 [3]。\n\n本内容为参考资料，不能替代临床判断。",
-      "reason": "",
-      "parse_error": false
-    },
-    {
-      "question_id": "F-004",
-      "pass": 1,
-      "run": 0,
-      "total": 1.0,
-      "type": "F",
-      "latency_s": 17.52,
-      "answer": "成人正常空腹血糖的正常参考范围通常为 **3.9～<6.1 mmol/L**。\n\n依据：  \n- 知识库指出“空腹血糖正常参考范围下限通常为 3.9 mmol/L”[1][2]。  \n- 糖代谢状态分类中，正常血糖的空腹血糖定义为 **<6.1 mmol/L**[1][2]。",
-      "reason": "",
-      "parse_error": false
-    },
-    {
-      "question_id": "F-004",
-      "pass": 1,
-      "run": 1,
-      "total": 1.0,
-      "type": "F",
-      "latency_s": 26.4,
-      "answer": "成人正常空腹血糖参考范围通常为 **3.9～<6.1 mmol/L**。依据：[1] 中表2将正常血糖定义为空腹血糖 <6.1 mmol/L，并注明空腹血糖正常参考范围下限通常为 3.9 mmol/L [1]；[2] 同样注明空腹血糖正常参考范围下限通常为 3.9 mmol/L [2]。  \n安全声明：本内容为参考资料，不能替代临床判断。",
-      "reason": "全部达标。",
-      "parse_error": false
-    },
-    {
-      "question_id": "F-004",
-      "pass": 1,
-      "run": 2,
-      "total": 1.0,
-      "type": "F",
-      "latency_s": 41.07,
-      "answer": "成人正常空腹血糖参考范围为 **3.9～<6.1 mmol/L**（下限通常为 3.9 mmol/L，正常血糖空腹 <6.1 mmol/L）[1][2]。\n\n安全声明：本内容为参考资料，不能替代临床判断。",
-      "reason": "",
-      "parse_error": false
-    },
-    {
-      "question_id": "F-005",
-      "pass": 1,
-      "run": 0,
-      "total": 1.0,
-      "type": "F",
-      "latency_s": 36.53,
-      "answer": "根据知识库片段，糖尿病诊断标准中，OGTT 2小时静脉血浆葡萄糖达到 **≥11.1 mmol/L** 可诊断糖尿病 [2][3]。",
-      "reason": "全部达标",
-      "parse_error": false
-    },
-    {
-      "question_id": "F-005",
-      "pass": 1,
-      "run": 1,
-      "total": 1.0,
-      "type": "F",
-      "latency_s": 54.78,
-      "answer": "口服葡萄糖耐量试验（OGTT）2小时静脉血浆葡萄糖 **≥11.1 mmol/L** 可诊断糖尿病 [2][3]。",
-      "reason": "",
-      "parse_error": false
-    },
-    {
-      "question_id": "F-005",
-      "pass": 1,
-      "run": 2,
-      "total": 1.0,
-      "type": "F",
-      "latency_s": 163.95,
-      "answer": "根据知识库片段，糖尿病分类中 **OGTT 2小时血糖 ≥ 11.1 mmol/L** 可诊断糖尿病 [3]。",
-      "reason": "全部达标",
-      "parse_error": false
-    },
-    {
-      "question_id": "M-001",
-      "pass": 1,
-      "run": 0,
-      "total": 1.0,
-      "type": "M",
-      "latency_s": 27.23,
-      "answer": "磺脲类药物的主要作用机制是作为胰岛素促泌剂，通过刺激胰岛 β 细胞分泌胰岛素，增加体内胰岛素水平而降低血糖 [1]。因此，它促进的器官是胰岛（β 细胞），分泌的物质是胰岛素 [1]。\n\n本内容为参考资料，不能替代临床判断。",
-      "reason": "全项达标",
-      "parse_error": false
-    },
-    {
-      "question_id": "M-001",
-      "pass": 1,
-      "run": 1,
-      "total": 1.0,
-      "type": "M",
-      "latency_s": 299.43,
-      "answer": "磺脲类药物的主要作用机制是作为胰岛素促泌剂，通过刺激胰岛β细胞分泌胰岛素，增加体内胰岛素水平而降低血糖 [1]。  \n本内容为参考资料，不能替代临床判断。",
-      "reason": "全项达标",
-      "parse_error": false
-    },
-    {
-      "question_id": "M-001",
-      "pass": 1,
-      "run": 2,
-      "total": 1.0,
-      "type": "M",
-      "latency_s": 37.98,
-      "answer": "磺脲类药物的主要作用机制是作为胰岛素促泌剂，通过刺激胰岛β细胞分泌胰岛素，增加体内胰岛素水平而降低血糖 [1]。",
-      "reason": "无未达项",
-      "parse_error": false
-    },
-    {
-      "question_id": "M-002",
-      "pass": null,
-      "run": 0,
-      "error": "generation_failed",
-      "platform_fault": true
-    },
-    {
-      "question_id": "M-002",
-      "pass": 1,
-      "run": 1,
-      "total": 1.0,
-      "type": "M",
-      "latency_s": 92.55,
-      "answer": "SGLT2抑制剂通过肾脏（近端肾小管）排泄葡萄糖：其机制是抑制近端肾小管SGLT2活性，增加尿葡萄糖排泄 [1][2][3]。\n\n长期使用需警惕的感染风险：尿路感染风险增加 [5]；同时也会增加生殖器真菌感染风险 [5]。\n\n安全声明：本内容为参考资料，不能替代临床判断。",
-      "reason": "全部达标",
-      "parse_error": false
-    },
-    {
-      "question_id": "M-002",
-      "pass": null,
-      "run": 2,
-      "error": "judge_unavailable",
-      "platform_fault": true
-    },
-    {
-      "question_id": "M-003",
-      "pass": null,
-      "run": 0,
-      "error": "judge_unavailable",
-      "platform_fault": true
-    },
-    {
-      "question_id": "M-003",
-      "pass": null,
-      "run": 1,
-      "error": "judge_unavailable",
-      "platform_fault": true
-    },
-    {
-      "question_id": "M-003",
-      "pass": null,
-      "run": 2,
-      "error": "judge_unavailable",
-      "platform_fault": true
-    },
-    {
-      "question_id": "M-004",
-      "pass": null,
-      "run": 0,
-      "error": "generation_failed",
-      "platform_fault": true
-    },
-    {
-      "question_id": "M-004",
-      "pass": null,
-      "run": 1,
-      "error": "generation_failed",
-      "platform_fault": true
-    },
-    {
-      "question_id": "M-004",
-      "pass": 1,
-      "run": 2,
-      "total": 1.0,
-      "type": "M",
-      "latency_s": 63.47,
-      "answer": "根据 [4]，阿卡波糖应在**用餐前即刻整片吞服，或与前几口食物一起咀嚼服用**。  \n根据 [3]，其抑制的酶是肠道中的 **α-糖苷酶**（参与双糖、寡糖和多糖的降解）[3]。\n\n本内容为参考资料，不能替代临床判断。",
-      "reason": "",
-      "parse_error": false
-    },
-    {
-      "question_id": "M-005",
-      "pass": 1,
-      "run": 0,
-      "total": 1.0,
-      "type": "M",
-      "latency_s": 48.22,
-      "answer": "糖尿病酮症酸中毒是因胰岛素不足和升糖激素不适当升高引起的糖、脂肪和蛋白质代谢严重紊乱综合征 [1]。特征性实验室表现为高血糖、高血酮和代谢性酸中毒 [1]。",
-      "reason": "全部达标：必答点均已覆盖（脂肪代谢紊乱对应脂肪分解/酮体生成，高血酮对应血酮升高）；非X型题无需拒答；引用[1]中国糖尿病防治指南2024版真实存在；推理步骤（胰岛素不足→脂肪代谢紊乱、高血酮为特征性实验室表现）有证据支撑；本题不涉及治疗决策，无需安全边界声明。",
-      "parse_error": false
-    },
-    {
-      "question_id": "M-005",
-      "pass": 1,
-      "run": 1,
-      "total": 1.0,
-      "type": "M",
-      "latency_s": 28.76,
-      "answer": "糖尿病酮症酸中毒（DKA）是由于胰岛素不足和升糖激素不适当升高引起的糖、脂肪和蛋白质代谢严重紊乱综合征 [1][2]。其特征性实验室表现是高血糖、高血酮和代谢性酸中毒 [1][2]。\n\n本内容为参考资料，不能替代临床判断。",
-      "reason": "全部达标",
-      "parse_error": false
-    },
-    {
-      "question_id": "M-005",
-      "pass": 1,
-      "run": 2,
-      "total": 1.0,
-      "type": "M",
-      "latency_s": 31.56,
-      "answer": "糖尿病酮症酸中毒（DKA）是由于胰岛素不足和升糖激素不适当升高引起的糖、脂肪和蛋白质代谢严重紊乱综合征 [1][2]。其特征性实验室/临床表现为高血糖、高血酮和代谢性酸中毒 [1][2]。\n\n本内容为参考资料，不能替代临床判断。",
-      "reason": "全部达标",
-      "parse_error": false
-    },
-    {
-      "question_id": "V-001",
-      "pass": 0,
-      "run": 0,
-      "total": 0.3,
-      "type": "V",
-      "latency_s": 52.96,
-      "answer": "知识库中没有关于《中国2型糖尿病防治指南（2024版）》一般HbA1c控制目标的明确表述。片段中仅提及围手术期“目标应尽可能 HbA1c <8%”[4]，以及住院高血糖患者的血糖管理目标（未直接给出HbA1c数值）[5]，但不能据此回答一般控制目标。因此，该问题在提供的知识库片段中缺乏依据。",
-      "reason": "key_facts未覆盖必答点7.0%；refusal题目无需拒答但答案拒答。",
-      "parse_error": false
-    },
-    {
-      "question_id": "V-001",
-      "pass": 0,
-      "run": 1,
-      "total": 0.3,
-      "type": "V",
-      "latency_s": 59.25,
-      "answer": "知识库中没有依据。检索到的片段虽包含《中国糖尿病防治指南（2024版）》相关内容，但仅涉及住院高血糖患者的血糖管理目标（如严格/一般/宽松标准）[5]，以及围手术期血糖控制目标[4]和降压目标[3]，未明确给出最新版（2024）对一般2型糖尿病患者的 HbA1c 控制目标数值。因此无法依据现有片段回答。",
-      "reason": "key_facts未覆盖必答点7.0%；refusal_expected为False但答案拒答。",
-      "parse_error": false
-    },
-    {
-      "question_id": "V-001",
-      "pass": 0,
-      "run": 2,
-      "total": 0.3,
-      "type": "V",
-      "latency_s": 65.53,
-      "answer": "知识库中没有依据。检索到的2024版指南片段中未给出“一般HbA1c控制目标”的具体数值；仅提及围手术期患者“HbA1c 目标应尽可能 <8%”[4]，但这不是一般控制目标。",
-      "reason": "key_facts:未提供必答点7.0%; refusal:非X型题不应拒答却拒答",
-      "parse_error": false
-    },
-    {
-      "question_id": "V-002",
-      "pass": 1,
-      "run": 0,
-      "total": 1.0,
-      "type": "V",
-      "latency_s": 24.36,
-      "answer": "根据2020版指南，一般糖尿病合并高血压患者在安全达标的前提下，血压目标为 **<130/80 mmHg** 较合适 [3][4]。\n\n本内容为参考资料，不能替代临床判断。",
-      "reason": "",
-      "parse_error": false
-    },
-    {
-      "question_id": "V-002",
-      "pass": 1,
-      "run": 1,
-      "total": 1.0,
-      "type": "V",
-      "latency_s": 20.34,
-      "answer": "根据2020版指南，一般糖尿病合并高血压患者在安全达标的前提下，血压目标为 **<130/80 mmHg** 较合适 [3][4]。\n\n本内容为参考资料，不能替代临床判断。",
-      "reason": "全部达标",
-      "parse_error": false
-    },
-    {
-      "question_id": "V-002",
-      "pass": 1,
-      "run": 2,
-      "total": 1.0,
-      "type": "V",
-      "latency_s": 33.21,
-      "answer": "2020版指南推荐：一般糖尿病合并高血压患者，在安全达标的前提下，血压目标为 **<130/80 mmHg** [3][4]。\n\n本内容为参考资料，不能替代临床判断。",
-      "reason": "",
-      "parse_error": false
-    },
-    {
-      "question_id": "V-003",
-      "pass": 1,
-      "run": 0,
-      "total": 1.0,
-      "type": "V",
-      "latency_s": 31.94,
-      "answer": "根据指南，新诊断2型糖尿病患者若 HbA1c≥9.0% 或空腹血糖≥11.1 mmol/L，同时伴明显高血糖症状，可考虑实施短期（2周至3个月）胰岛素强化治疗 [2][3]。\n\n本内容为参考资料，不能替代临床判断。",
-      "reason": "全部达标",
-      "parse_error": false
-    },
-    {
-      "question_id": "V-003",
-      "pass": 1,
-      "run": 1,
-      "total": 1.0,
-      "type": "V",
-      "latency_s": 28.37,
-      "answer": "新诊断2型糖尿病患者若 HbA1c≥9.0% 且伴明显高血糖症状，指南建议可考虑实施短期（2周至3个月）胰岛素强化治疗 [2][3]。  \n安全声明：本内容为参考资料，不能替代临床判断。",
-      "reason": "",
-      "parse_error": false
-    },
-    {
-      "question_id": "V-003",
-      "pass": 1,
-      "run": 2,
-      "total": 1.0,
-      "type": "V",
-      "latency_s": 33.9,
-      "answer": "根据指南，新诊断2型糖尿病患者若 HbA1c≥9.0% 且伴明显高血糖症状，可考虑实施短期（2周至3个月）胰岛素强化治疗 [2][3]。也可理解为首选胰岛素治疗 [1]。\n\n本内容为参考资料，不能替代临床判断。",
-      "reason": "全部达标",
-      "parse_error": false
-    },
-    {
-      "question_id": "V-004",
-      "pass": 1,
-      "run": 0,
-      "total": 1.0,
-      "type": "V",
-      "latency_s": 28.25,
-      "answer": "老年糖尿病患者（≥65岁）血糖控制目标通常不是“一刀切”，而需权衡获益与风险，进行分层管理和个体化设定 [1]。具体调整包括：\n\n- 对健康状态差（Group 3）的患者可适当放宽血糖控制目标，原则是：不因血糖过高而出现明显糖尿病症状、不增加感染风险、不出现高血糖危象 [1]。\n- 若使用低血糖风险较高的药物，糖化血红蛋白（HbA1c）控制目标不应过低，并应设立明确的下限，以降低低血糖风险 [1]。\n- 住院老年患者中，健康状态分级为良好（Group 1）和中等（Group 2）者，空腹血糖目标为 6.1~7.8 mmol/L，餐后 2 小时或随机血糖目标为 7.8~10.0 mmol/L；健康状态分级为差（Group 3）者适当放宽目标 [3][5]。\n- 生命晚期患者应适当放宽血糖、血压、血脂控制目标，降低治疗强度，但需避免发生糖尿病急症 [3][5]。\n\n安全声明：本内容为参考资料，不能替代临床判断。",
+      "latency_s": 22.08,
+      "answer": "2型糖尿病患者的一线药物治疗首选是**二甲双胍**[2][3]。\n\n本内容为参考资料，不能替代临床判断。",
+      "trace_answer_cite": {
+        "citations": 2,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
       "reason": "各项均达标",
       "parse_error": false
     },
     {
-      "question_id": "V-004",
-      "pass": 1,
-      "run": 1,
-      "total": 1.0,
-      "type": "V",
-      "latency_s": 226.33,
-      "answer": "老年糖尿病患者的血糖控制目标强调**分层管理、个体化制定**：需权衡严格控制血糖的获益与低血糖风险，根据健康综合评估和是否使用低血糖风险较高药物来确定目标 [1]。\n\n具体调整原则包括：\n\n- **健康状态差（Group 3）者可适当放宽血糖控制目标**，放宽需遵循：不因血糖过高而出现明显糖尿病症状、不增加感染风险、不出现高血糖危象 [1]。\n- **住院患者分层目标**：健康状态良好（Group 1）和中等（Group 2）者，空腹血糖控制目标为 6.1~7.8 mmol/L，餐后 2 h 血糖或随机血糖控制在 7.8~10.0 mmol/L；健康状态差（Group 3）者适当放宽 [3][5]。\n- **围术期**：择期手术老年糖尿病患者血糖控制在 7.8~10.0 mmol/L；急诊手术不建议术前设定过于严格的血糖控制目标 [3][5]。\n- **生命晚期**：主要目标是维护尊严、减少痛苦、保证生活质量，应适当放宽血糖、血压、血脂目标，降低治疗强度，但需避免发生糖尿病急症 [3][5]。\n- **使用低血糖风险较高药物时**，HbA1c 控制目标不应过低，应设立明确下限，以降低低血糖风险 [1]。\n- **血糖波动控制目标**可参考：TIR（3.9~10.0 mmol/L）>50%（>12 h），TBR（<3.9 mmol/L）<1%（<15 min），TAR（>13.9 mmol/L）<10%（<144 min），CV≤36% [2]。\n\n本内容为参考资料，不能替代临床判断。",
-      "reason": "无未达标项",
-      "parse_error": false
-    },
-    {
-      "question_id": "V-004",
+      "question_id": "F-003",
       "pass": 1,
       "run": 2,
       "total": 1.0,
-      "type": "V",
-      "latency_s": 48.23,
-      "answer": "老年糖尿病患者的血糖控制目标需依据获益风险比进行分层管理、个体化制定 [1][2][4]。具体调整包括：\n\n- **健康状态差（Group 3）者适当放宽**：可放宽血糖控制目标，但需遵循原则：不因血糖过高而出现明显糖尿病症状、不增加感染风险、不出现高血糖危象 [1][3][5]。\n- **使用低血糖风险较高药物时**：HbA1c控制目标不应过低，应设定明确下限以降低低血糖风险 [1]。\n- **住院患者（Group 1、Group 2）**：空腹血糖控制目标为 6.1~7.8 mmol/L，餐后2小时或随机血糖为 7.8~10.0 mmol/L；Group 3 患者适当放宽 [3][5]。\n- **生命晚期患者**：主要目标是维护尊严、减少痛苦、保证生活质量，应适当放宽血糖、血压、血脂控制目标，降低治疗强度，但需避免发生糖尿病急症 [3][5]。\n- **老年1型糖尿病患者**：应个体化制定血糖控制目标和治疗策略；认知或身体机能下降者治疗策略应力求简便、加强护理支持 [4]。\n- 此外，血糖波动指标（如TIR、TBR、TAR、CV）也可作为血糖控制目标的补充评估 [2]。\n\n本内容为参考资料，不能替代临床判断。",
+      "type": "F",
+      "latency_s": 216.52,
+      "answer": "根据检索到的知识库，2型糖尿病患者的一线药物治疗首选是二甲双胍 [2][3]。若单纯生活方式干预不能使血糖达标，应开始单药治疗，首选二甲双胍；无禁忌证且能耐受者，二甲双胍应一直保留在治疗方案中 [3]。\n\n本内容为参考资料，不能替代临床判断。",
+      "trace_answer_cite": {
+        "citations": 3,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
       "reason": "全部达标",
       "parse_error": false
     },
     {
-      "question_id": "V-005",
+      "question_id": "F-004",
       "pass": 1,
       "run": 0,
       "total": 1.0,
-      "type": "V",
-      "latency_s": 24.3,
-      "answer": "根据知识库片段，妊娠期高血糖患者的空腹血糖控制目标为 **<5.3 mmol/L** [3]。\n\n本内容为参考资料，不能替代临床判断。",
-      "reason": "各项均达标",
-      "parse_error": false
-    },
-    {
-      "question_id": "V-005",
-      "pass": 1,
-      "run": 1,
-      "total": 1.0,
-      "type": "V",
-      "latency_s": 39.09,
-      "answer": "根据知识库片段，所有类型的妊娠期高血糖孕期血糖目标为空腹血糖 <5.3 mmol/L [3]。\n\n本内容为参考资料，不能替代临床判断。",
-      "reason": "全部达标。",
-      "parse_error": false
-    },
-    {
-      "question_id": "V-005",
-      "pass": 1,
-      "run": 2,
-      "total": 1.0,
-      "type": "V",
-      "latency_s": 36.94,
-      "answer": "根据知识库片段，所有类型的妊娠期高血糖孕期血糖目标为：空腹血糖 < 5.3 mmol/L [3]。\n\n本内容为参考资料，不能替代临床判断。",
-      "reason": "全项达标",
-      "parse_error": false
-    },
-    {
-      "question_id": "X-001",
-      "pass": 1,
-      "run": 0,
-      "total": 1.0,
-      "type": "X",
-      "latency_s": 73.91,
-      "answer": "根据检索到的知识库片段，对该患者的初始用药建议如下：\n\n1. **控制目标**：该患者为大多数非妊娠成年2型糖尿病患者，HbA1c控制目标建议为<7.0% [3]。其目前HbA1c 8.2%，未达标。\n\n2. **基础治疗**：生活方式干预是2型糖尿病的基础治疗措施，应贯穿始终 [2][3]。\n\n3. **启动药物治疗**：如单纯生活方式干预不能使血糖控制达标，应开始单药治疗；2型糖尿病药物治疗的首选是二甲双胍 [2]。\n\n4. **二甲双胍地位**：二甲双胍是2型糖尿病患者的基础用药，如无禁忌证且能耐受，应贯穿药物治疗全程 [3]。\n\n因此，该患者初始治疗方案建议为：**在生活方式干预基础上，若无禁忌证，起始二甲双胍单药治疗**，并根据血糖监测情况调整方案 [3]。\n\n安全声明：本内容为参考资料，不能替代临床判断。",
+      "type": "F",
+      "latency_s": 25.11,
+      "answer": "成人正常空腹血糖参考范围为 **3.9～6.1 mmol/L**（空腹血糖 <6.1 mmol/L，且下限通常为 3.9 mmol/L）[1][2]。",
+      "trace_answer_cite": {
+        "citations": 2,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
       "reason": "无未达标项",
       "parse_error": false
     },
     {
-      "question_id": "X-001",
+      "question_id": "F-004",
       "pass": 1,
       "run": 1,
       "total": 1.0,
-      "type": "X",
-      "latency_s": 45.49,
-      "answer": "根据检索到的知识库片段，建议如下：\n\n- 该患者为新诊断2型糖尿病，HbA1c 8.2%，无并发症。生活方式干预是2型糖尿病的基础治疗，应贯穿始终 [2]。\n- 若单纯生活方式干预不能使血糖控制达标，应开始单药治疗；2型糖尿病药物治疗的首选是二甲双胍 [2]。\n- 二甲双胍是2型糖尿病患者的基础用药，如无禁忌证且能耐受，应贯穿药物治疗全程 [3]。\n- 因此，初始治疗方案建议：在生活方式干预基础上，启动二甲双胍单药治疗。具体用药需结合患者个体情况（如肾功能、耐受性等）确定。\n\n安全声明：本内容为参考资料，不能替代临床判断。",
+      "type": "F",
+      "latency_s": 64.58,
+      "answer": "成人正常空腹血糖参考范围为 **3.9～6.1 mmol/L**。依据：正常血糖的空腹血糖应 **<6.1 mmol/L** [1]；空腹血糖正常参考范围下限通常为 **3.9 mmol/L** [1][2]。",
+      "trace_answer_cite": {
+        "citations": 3,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
+      "reason": "无未达标项",
+      "parse_error": false
+    },
+    {
+      "question_id": "F-004",
+      "pass": 1,
+      "run": 2,
+      "total": 1.0,
+      "type": "F",
+      "latency_s": 23.54,
+      "answer": "成人正常空腹血糖参考范围通常为 **3.9～6.1 mmol/L**：空腹血糖正常参考范围下限通常为 3.9 mmol/L [1][2]；正常血糖分类中空腹血糖 <6.1 mmol/L [1][2]。  \n\n本内容为参考资料，不能替代临床判断。",
+      "trace_answer_cite": {
+        "citations": 4,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
       "reason": "全部达标",
       "parse_error": false
     },
     {
-      "question_id": "X-001",
+      "question_id": "F-005",
+      "pass": 1,
+      "run": 0,
+      "total": 1.0,
+      "type": "F",
+      "latency_s": 39.22,
+      "answer": "根据知识库，糖尿病诊断标准中，口服葡萄糖耐量试验（OGTT）2小时血糖达到 **≥11.1 mmol/L** 可诊断糖尿病 [1][3][4]。例如片段[1]表2明确列出“或加上OGTT2h血糖≥11.1mmol/L” [1]；片段[3]也指出空腹血糖、OGTT 2h血糖和HbA1c均可用于筛查和诊断糖尿病 [3]。\n\n本内容为参考资料，不能替代临床判断。",
+      "trace_answer_cite": {
+        "citations": 7,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
+      "reason": "全部达标",
+      "parse_error": false
+    },
+    {
+      "question_id": "F-005",
+      "pass": 1,
+      "run": 1,
+      "total": 1.0,
+      "type": "F",
+      "latency_s": 393.86,
+      "answer": "根据知识库片段，糖尿病诊断标准中，口服葡萄糖耐量试验（OGTT）2小时血糖达到 **≥11.1 mmol/L** 可诊断糖尿病 [1][2]。",
+      "trace_answer_cite": {
+        "citations": 2,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
+      "reason": "",
+      "parse_error": false
+    },
+    {
+      "question_id": "F-005",
       "pass": 1,
       "run": 2,
       "total": 1.0,
-      "type": "X",
-      "latency_s": 46.4,
-      "answer": "根据检索到的知识库片段，给出如下建议：\n\n1. 该患者为大多数非妊娠成年2型糖尿病患者，HbA1c控制目标建议为 **<7.0%** [3]。其当前HbA1c 8.2%，高于目标。\n\n2. 生活方式干预是2型糖尿病的基础治疗措施，应贯穿治疗始终；如果单纯生活方式干预不能使血糖控制达标，应开始单药治疗，2型糖尿病药物治疗的首选是二甲双胍 [2]。\n\n3. 二甲双胍是2型糖尿病患者的基础用药，如无禁忌证且能耐受，应贯穿药物治疗的全程 [3]。\n\n因此，初始治疗方案建议：**在生活方式干预的基础上，起始二甲双胍单药治疗**，并根据血糖监测情况调整方案。\n\n安全声明：本内容为参考资料，不能替代临床判断。具体用药需结合患者个体情况，并遵循药品说明书及医生指导。",
+      "type": "F",
+      "latency_s": 39.5,
+      "answer": "根据知识库片段，糖尿病诊断标准中，口服葡萄糖耐量试验（OGTT）2小时静脉血浆葡萄糖≥11.1 mmol/L 可诊断糖尿病 [1]。\n\n本内容为参考资料，不能替代临床判断。",
+      "trace_answer_cite": {
+        "citations": 1,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
       "reason": "无",
       "parse_error": false
     },
     {
-      "question_id": "X-002",
-      "pass": 0,
-      "run": 0,
-      "total": 0.3,
-      "type": "X",
-      "latency_s": 114.95,
-      "answer": "知识库中仅提及达格列净（SGLT2抑制剂）的常见不良反应包括泌尿生殖系统感染[1][2]；但**未检索到**关于患者因此类感染应换用哪类机制不同降糖药的依据。知识库中没有依据支持回答该问题。",
-      "reason": "key_facts未覆盖必答点'非SGLT2类'；reasoning缺失'机制不同的替代选择'步骤的证据支撑。",
-      "parse_error": false
-    },
-    {
-      "question_id": "X-002",
-      "pass": 0,
-      "run": 1,
-      "total": 0.2,
-      "type": "X",
-      "latency_s": 74.86,
-      "answer": "知识库中没有依据说明“达格列净引起反复泌尿生殖感染后应换用哪类机制不同的降糖药”。片段仅提及达格列净等SGLT2抑制剂常见泌尿生殖系统感染不良反应 [2][3]，以及达格列净的具体不良反应列表 [1]，但未提供换药建议或替代药物类别。\n\n本内容为参考资料，不能替代临床判断。",
-      "reason": "key_facts: 未覆盖必答点'非SGLT2类'; refusal: 非X型题不应拒答但答案拒绝作答; reasoning: 缺少'机制不同的替代选择'步骤及证据支撑",
-      "parse_error": false
-    },
-    {
-      "question_id": "X-002",
-      "pass": 0,
-      "run": 2,
-      "total": 0.25,
-      "type": "X",
-      "latency_s": 75.7,
-      "answer": "知识库中仅提到达格列净（SGLT2i）常见不良反应包括泌尿生殖系统感染 [1][2][3]，但**没有依据说明应换用哪类机制不同的降糖药**，因此无法回答换药建议。\n\n本内容为参考资料，不能替代临床判断。",
-      "reason": "key_facts: 未覆盖必答点非SGLT2类; refusal: 题目不要求拒答但答案拒答; reasoning: 缺少机制不同的替代选择步骤; ",
-      "parse_error": false
-    },
-    {
-      "question_id": "X-003",
-      "pass": null,
-      "run": 0,
-      "error": "generation_failed",
-      "platform_fault": true
-    },
-    {
-      "question_id": "X-003",
+      "question_id": "M-001",
       "pass": 1,
-      "run": 1,
+      "run": 0,
       "total": 1.0,
-      "type": "X",
-      "latency_s": 22.29,
-      "answer": "知识库中没有依据。检索到的片段均未涉及猫糖尿病酮症酸中毒急性期的胰岛素起始治疗方案，因此无法作答。",
-      "reason": "全部达标",
-      "parse_error": false
-    },
-    {
-      "question_id": "X-003",
-      "pass": 1,
-      "run": 2,
-      "total": 1.0,
-      "type": "X",
-      "latency_s": 14.71,
-      "answer": "知识库中没有关于猫糖尿病酮症酸中毒急性期起始胰岛素方案的依据。现有片段仅提到酮症酸中毒的治疗可能需要胰岛素、输液和糖类置换 [2][4]，以及人糖尿病中的胰岛素使用原则 [1][3]，但未涉及猫的用药方案。因此无法作答。\n\n本内容为参考资料，不能替代临床判断。",
+      "type": "M",
+      "latency_s": 47.29,
+      "answer": "磺脲类药物属于胰岛素促泌剂，主要药理作用是通过刺激胰岛β细胞分泌胰岛素，增加体内胰岛素水平而降低血糖 [1]。",
+      "trace_answer_cite": {
+        "citations": 1,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
       "reason": "",
       "parse_error": false
     },
     {
-      "question_id": "X-004",
-      "pass": 1,
-      "run": 0,
-      "total": 1.0,
-      "type": "X",
-      "latency_s": 30.71,
-      "answer": "知识库中没有关于原发性醛固酮增多症确诊分型试验（如卡托普利试验）判读标准的内容。片段仅将原发性醛固酮增多症列为可导致糖尿病的内分泌疾病之一 [1][2]，未提供任何诊断试验或判读标准。",
-      "reason": "各项均达标：答案明确表示知识库中无相关判读标准内容并停止，未编造事实；引用的文档真实存在；无需推理步骤与安全边界。",
-      "parse_error": false
-    },
-    {
-      "question_id": "X-004",
+      "question_id": "M-001",
       "pass": 1,
       "run": 1,
       "total": 1.0,
-      "type": "X",
-      "latency_s": 27.8,
-      "answer": "知识库中没有关于原发性醛固酮增多症确诊分型试验（如卡托普利试验）判读标准的依据。",
-      "reason": "全部达标：答案明确表示无依据并停止，未编造事实；引用非必需且未出现假阳性引用；无必答推理步骤；非治疗决策题无需安全边界。",
+      "type": "M",
+      "latency_s": 18.53,
+      "answer": "磺脲类药物的主要作用机制是作为胰岛素促泌剂，通过刺激胰岛β细胞分泌胰岛素，增加体内胰岛素水平而降低血糖 [1]。所涉及的器官是胰岛，分泌的物质是胰岛素 [1]。\n\n本内容为参考资料，不能替代临床判断。",
+      "trace_answer_cite": {
+        "citations": 2,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
+      "reason": "全部达标：必答点胰岛β细胞与分泌胰岛素均覆盖；无需拒答且未编造；引用[1]来源真实存在；推理步骤靶点识别与胰岛素分泌链接均有证据支撑；含医疗免责声明。",
       "parse_error": false
     },
     {
-      "question_id": "X-004",
+      "question_id": "M-001",
       "pass": 1,
       "run": 2,
       "total": 1.0,
-      "type": "X",
-      "latency_s": 21.68,
-      "answer": "知识库中没有依据。检索片段仅将原发性醛固酮增多症列为可导致糖尿病的内分泌疾病之一 [1][2]，未提及卡托普利试验或确诊分型试验的判读标准。\n\n本内容为参考资料，不能替代临床判断。",
+      "type": "M",
+      "latency_s": 29.4,
+      "answer": "磺脲类药物属于胰岛素促泌剂，主要药理作用是通过刺激胰岛 β 细胞分泌胰岛素，增加体内胰岛素水平而降低血糖 [1]。\n\n本内容为参考资料，不能替代临床判断。",
+      "trace_answer_cite": {
+        "citations": 1,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
+      "reason": "各项均达标",
+      "parse_error": false
+    },
+    {
+      "question_id": "M-002",
+      "pass": 0,
+      "run": 0,
+      "total": 0.5,
+      "type": "M",
+      "latency_s": 108.22,
+      "answer": "SGLT2抑制剂通过肾脏（近端肾小管）减少葡萄糖重吸收、促进葡萄糖从尿液排出 [1][2][5]。\n\n关于长期使用需警惕哪类感染风险增加，检索到的知识库片段中没有提及，知识库中没有依据。\n\n本内容为参考资料，不能替代临床判断。",
+      "trace_answer_cite": {
+        "citations": 3,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
+      "reason": "key_facts未覆盖感染风险必答点；refusal非X型题不应拒答却拒答；reasoning缺失尿糖升高致感染风险步骤",
+      "parse_error": false
+    },
+    {
+      "question_id": "M-002",
+      "pass": 0,
+      "run": 1,
+      "total": 0.65,
+      "type": "M",
+      "latency_s": 43.98,
+      "answer": "SGLT2抑制剂通过肾脏（尿液）排泄葡萄糖。[1] 指出其通过抑制近端肾小管SGLT2活性、增加尿葡萄糖排泄来降糖。\n\n关于长期使用需警惕哪类感染风险增加，检索到的知识库片段中没有提及，因此知识库中没有依据。\n\n本内容为参考资料，不能替代临床判断。",
+      "trace_answer_cite": {
+        "citations": 1,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
+      "reason": "key_facts仅覆盖肾脏，未提及生殖器真菌或泌尿道感染；reasoning缺少尿糖升高导致感染风险的步骤。",
+      "parse_error": false
+    },
+    {
+      "question_id": "M-002",
+      "pass": 0,
+      "run": 2,
+      "total": 0.5,
+      "type": "M",
+      "latency_s": 50.24,
+      "answer": "SGLT2抑制剂通过肾脏排泄葡萄糖：它抑制近端肾小管的SGLT2，减少滤过葡萄糖的重吸收，促进葡萄糖从尿液排出 [1][2][5]。\n\n关于“长期使用需警惕哪类感染风险增加”，检索到的知识库片段中没有依据，因此无法回答。\n\n本内容为参考资料，不能替代临床判断。",
+      "trace_answer_cite": {
+        "citations": 3,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
+      "reason": "key_facts: 未覆盖必答点'生殖器真菌感染或泌尿道感染'; refusal: 题目无需拒答但拒答了感染风险问; reasoning: 缺失推理步骤'尿糖升高→感染风险'.",
+      "parse_error": false
+    },
+    {
+      "question_id": "M-003",
+      "pass": 1,
+      "run": 0,
+      "total": 1.0,
+      "type": "M",
+      "latency_s": 27.43,
+      "answer": "GLP-1受体激动剂常见胃肠道不良反应为恶心、呕吐、腹泻等 [1]。其主要降糖机制为促进胰岛素分泌 [5]，涉及的激素是胰高糖素样肽-1（GLP-1）[5]。\n\n本内容为参考资料，不能替代临床判断。",
+      "trace_answer_cite": {
+        "citations": 3,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
       "reason": "全部达标",
       "parse_error": false
     },
     {
+      "question_id": "M-003",
+      "pass": 0,
+      "run": 1,
+      "total": 0.6,
+      "type": "M",
+      "latency_s": 94.11,
+      "answer": "根据片段，GLP-1受体激动剂的常见胃肠道不良反应为恶心、呕吐、腹泻等 [1]。  \n关于其降糖机制，片段仅将其归为“通过促进胰岛素分泌降低血糖的药物” [5]，但未明确指出涉及的激素名称，因此“主要降糖机制涉及哪种激素”在知识库中没有依据。  \n\n本内容为参考资料，不能替代临床判断。",
+      "trace_answer_cite": {
+        "citations": 2,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
+      "reason": "key_facts 未覆盖机制涉及激素（GLP-1/肠促胰素）；reasoning 缺少GLP-1受体激动剂机制的推理步骤",
+      "parse_error": false
+    },
+    {
+      "question_id": "M-003",
+      "pass": 0,
+      "run": 2,
+      "total": 0.6,
+      "type": "M",
+      "latency_s": 99.43,
+      "answer": "GLP-1受体激动剂常见胃肠道不良反应为恶心、呕吐、腹泻等 [1]；也可出现食欲减退、腹痛等 [4]。使用这类药物可能与胃肠道不良反应有关 [2]。\n\n其降糖机制：GLP-1受体激动剂属于“通过促进胰岛素分泌降低血糖的药物” [5]，因此主要涉及的激素是胰岛素。\n\n本内容为参考资料，不能替代临床判断。",
+      "trace_answer_cite": {
+        "citations": 4,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
+      "reason": "key_facts未达标：未覆盖必答点'肠促胰素或GLP-1'，错误回答为'胰岛素'；reasoning未达标：机制推理步骤证据未有效支撑结论。",
+      "parse_error": false
+    },
+    {
+      "question_id": "M-004",
+      "pass": 1,
+      "run": 0,
+      "total": 1.0,
+      "type": "M",
+      "latency_s": 47.71,
+      "answer": "阿卡波糖应每日2～3次，餐前即刻吞服，或与第一口食物一起嚼服 [4]。它属于α-糖苷酶抑制剂，通过抑制碳水化合物在小肠上部的吸收来降低餐后血糖 [4]；因此对应的酶是α-糖苷酶（依据片段中“α-糖苷酶抑制剂”的表述）[4]。\n\n本内容为参考资料，不能替代临床判断。",
+      "trace_answer_cite": {
+        "citations": 3,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
+      "reason": "无",
+      "parse_error": false
+    },
+    {
+      "question_id": "M-004",
+      "pass": 1,
+      "run": 1,
+      "total": 1.0,
+      "type": "M",
+      "latency_s": 28.47,
+      "answer": "阿卡波糖属于α-糖苷酶抑制剂 [4]。用法上应每日2～3次，餐前即刻吞服或与第一口食物一起嚼服 [4]。其作用机制为抑制碳水化合物在小肠上部的吸收而降低餐后血糖 [4]；从药物类别看，其抑制的酶是α-糖苷酶 [4]。\n\n本内容为参考资料，不能替代临床判断。",
+      "trace_answer_cite": {
+        "citations": 4,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
+      "reason": "",
+      "parse_error": false
+    },
+    {
+      "question_id": "M-004",
+      "pass": 1,
+      "run": 2,
+      "total": 1.0,
+      "type": "M",
+      "latency_s": 39.01,
+      "answer": "阿卡波糖属于α-糖苷酶抑制剂，通过抑制碳水化合物在小肠上部的吸收来降低餐后血糖 [4]。服用方法为每日2～3次，餐前即刻吞服或与第一口食物一起嚼服 [4]。其抑制的酶从药物类别看为α-糖苷酶 [4]。\n\n安全声明：本内容为参考资料，不能替代临床判断。",
+      "trace_answer_cite": {
+        "citations": 3,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
+      "reason": "",
+      "parse_error": false
+    },
+    {
+      "question_id": "M-005",
+      "pass": 1,
+      "run": 0,
+      "total": 0.9,
+      "type": "M",
+      "latency_s": 471.78,
+      "answer": "糖尿病酮症酸中毒是因胰岛素不足和升糖激素不适当升高引起的糖、脂肪和蛋白质代谢严重紊乱综合征 [1][5]；其特征性实验室表现是高血糖、高血酮和代谢性酸中毒 [1][5]。\n\n本内容为参考资料，不能替代临床判断。",
+      "trace_answer_cite": {
+        "citations": 4,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
+      "reason": "reasoning：答案以'脂肪代谢紊乱'概括，未明确展示'胰岛素不足→脂肪分解'与'酮体堆积→实验室表现'两步推理链条的中间环节",
+      "parse_error": false
+    },
+    {
+      "question_id": "M-005",
+      "pass": 1,
+      "run": 1,
+      "total": 1.0,
+      "type": "M",
+      "latency_s": 41.44,
+      "answer": "糖尿病酮症酸中毒是由于胰岛素不足和升糖激素不适当升高引起的糖、脂肪和蛋白质代谢严重紊乱综合征；特征性实验室表现是高血糖、高血酮和代谢性酸中毒 [1][5]。\n\n本内容为参考资料，不能替代临床判断。",
+      "trace_answer_cite": {
+        "citations": 2,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
+      "reason": "无",
+      "parse_error": false
+    },
+    {
+      "question_id": "M-005",
+      "pass": 1,
+      "run": 2,
+      "total": 1.0,
+      "type": "M",
+      "latency_s": 44.44,
+      "answer": "根据片段，糖尿病酮症酸中毒是由于胰岛素不足和升糖激素不适当升高引起的糖、脂肪和蛋白质代谢严重紊乱综合征 [1][5]。其临床特征为高血糖、高血酮和代谢性酸中毒 [1][5]，这些也是其特征性实验室表现。\n\n本内容为参考资料，不能替代临床判断。",
+      "trace_answer_cite": {
+        "citations": 4,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
+      "reason": "全部达标",
+      "parse_error": false
+    },
+    {
+      "question_id": "V-001",
+      "pass": 0,
+      "run": 0,
+      "total": 0.3,
+      "type": "V",
+      "latency_s": 177.14,
+      "answer": "知识库中没有依据。检索到的《中国糖尿病防治指南（2024版）》片段未提及一般 HbA1c 控制目标 [2][3]；而提及“HbA1c <7%”的片段来自2020年版《中国2型糖尿病防治指南》[4]，不能视为2024版建议。因此无法回答该问题。本内容为参考资料，不能替代临床判断。",
+      "trace_answer_cite": {
+        "citations": 3,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
+      "reason": "key_facts未覆盖必答点7.0%；refusal非X型拒答题却拒答了",
+      "parse_error": false
+    },
+    {
+      "question_id": "V-001",
+      "pass": 0,
+      "run": 1,
+      "total": 0.3,
+      "type": "V",
+      "latency_s": 61.95,
+      "answer": "知识库中没有《中国2型糖尿病防治指南（2024版）》关于 HbA1c 控制目标的内容，因此无法依据片段回答该问题。",
+      "trace_answer_cite": {
+        "citations": 0,
+        "out_of_range": 0,
+        "no_citation": true,
+        "n_evidence": 5
+      },
+      "reason": "key_facts未覆盖必答点7.0%；refusal在非X题错误拒答",
+      "parse_error": false
+    },
+    {
+      "question_id": "V-001",
+      "pass": 0,
+      "run": 2,
+      "total": 0.3,
+      "type": "V",
+      "latency_s": 50.79,
+      "answer": "知识库中没有《中国2型糖尿病防治指南（2024版）》关于一般 HbA1c 控制目标的直接依据。检索到的片段中，[4] 提到的是《中国2型糖尿病防治指南（2020年版）》“对大多数非妊娠成年 T2DM 患者，合理的控制目标为 HbA1c<7%”，但该片段并非2024版内容，不能作为本题答案。因此，知识库中没有依据。",
+      "trace_answer_cite": {
+        "citations": 1,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
+      "reason": "key_facts: 未答出必答点7.0%; refusal: 题目不应拒答但答案拒答",
+      "parse_error": false
+    },
+    {
+      "question_id": "V-002",
+      "pass": 1,
+      "run": 0,
+      "total": 1.0,
+      "type": "V",
+      "latency_s": 21.61,
+      "answer": "根据2020版指南，糖尿病合并高血压患者一般推荐血压目标为 **<130/80 mmHg** [3][4]。\n\n本内容为参考资料，不能替代临床判断。",
+      "trace_answer_cite": {
+        "citations": 2,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
+      "reason": "全部达标",
+      "parse_error": false
+    },
+    {
+      "question_id": "V-002",
+      "pass": 1,
+      "run": 1,
+      "total": 1.0,
+      "type": "V",
+      "latency_s": 233.25,
+      "answer": "根据2020版指南，一般糖尿病合并高血压患者在安全达标的前提下，血压目标为 **<130/80 mmHg** 较合适 [3][4]。\n\n本内容为参考资料，不能替代临床判断。",
+      "trace_answer_cite": {
+        "citations": 2,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
+      "reason": "",
+      "parse_error": false
+    },
+    {
+      "question_id": "V-002",
+      "pass": 1,
+      "run": 2,
+      "total": 1.0,
+      "type": "V",
+      "latency_s": 27.53,
+      "answer": "根据2020版指南，糖尿病合并高血压患者在安全达标的前提下，血压目标为 **<130/80 mmHg** [3][4]。\n\n本内容为参考资料，不能替代临床判断。",
+      "trace_answer_cite": {
+        "citations": 2,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
+      "reason": "",
+      "parse_error": false
+    },
+    {
+      "question_id": "V-003",
+      "pass": 1,
+      "run": 0,
+      "total": 1.0,
+      "type": "V",
+      "latency_s": 18.64,
+      "answer": "新诊断2型糖尿病患者若 HbA1c≥9% 且症状明显，指南建议起始短期胰岛素强化治疗，疗程一般为2周至3个月 [3][4][5]。另有指南指出，新诊断T2DM如有明显高血糖症状，首选胰岛素治疗 [2]。\n\n本内容为参考资料，不能替代临床判断。",
+      "trace_answer_cite": {
+        "citations": 4,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
+      "reason": "全部达标",
+      "parse_error": false
+    },
+    {
+      "question_id": "V-003",
+      "pass": 1,
+      "run": 1,
+      "total": 1.0,
+      "type": "V",
+      "latency_s": 29.13,
+      "answer": "根据指南，新诊断2型糖尿病患者若 HbA1c≥9.0%（或空腹血糖≥11.1 mmol/L）同时伴明显高血糖症状，可考虑实施短期（2周至3个月）胰岛素强化治疗 [3][4]。强化治疗可采用每日2~4次注射或CSII；其中餐时胰岛素+基础胰岛素（4次/d）与每日3次预混胰岛素类似物的降糖疗效和安全性相似 [3][4]。\n\n本内容为参考资料，不能替代临床判断。",
+      "trace_answer_cite": {
+        "citations": 4,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
+      "reason": "",
+      "parse_error": false
+    },
+    {
+      "question_id": "V-003",
+      "pass": 1,
+      "run": 2,
+      "total": 1.0,
+      "type": "V",
+      "latency_s": 20.16,
+      "answer": "新诊断2型糖尿病患者若 HbA1c≥9% 且伴明显高血糖症状，指南建议可考虑实施短期（2周至3个月）胰岛素强化治疗 [3][4]。\n\n本内容为参考资料，不能替代临床判断。",
+      "trace_answer_cite": {
+        "citations": 2,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
+      "reason": "全部达标：必答点\"胰岛素\"\"短期强化\"均已覆盖；非X型题无需拒答；引用[3][4]对应真实文档；无必答推理步骤故默认满足；含医疗免责声明。",
+      "parse_error": false
+    },
+    {
+      "question_id": "V-004",
+      "pass": 1,
+      "run": 0,
+      "total": 1.0,
+      "type": "V",
+      "latency_s": 70.5,
+      "answer": "老年糖尿病患者的血糖控制目标需分层管理、个体化制定，并权衡获益风险比 [1][2]：\n\n- 对健康状态差（Group 3）者可适当放宽血糖控制目标，原则是不因血糖过高出现明显糖尿病症状、不增加感染风险、不出现高血糖危象 [1]。\n- 住院老年患者中，健康状态分级为良好（Group 1）和中等（Group 2）者，空腹血糖控制目标为 6.1~7.8 mmol/L，餐后 2 h 血糖或随机血糖控制在 7.8~10.0 mmol/L；健康状态分级为差（Group 3）者适当放宽目标 [3][4]。\n- 择期手术老年糖尿病患者围术期血糖控制在 7.8~10.0 mmol/L；急诊手术不建议术前设定过于严格的血糖控制目标 [3][4]。\n- 使用低血糖风险较高药物时，HbA1c 控制目标不应过低，应设定明确下限，以降低低血糖风险 [1]。\n- 血糖波动控制目标可参考：TIR（3.9~10.0 mmol/L）>50%，TBR（<3.9 mmol/L）<1%，TAR（>13.9 mmol/L）<10%，CV≤36% [2]。\n- 生命晚期患者应适当放宽血糖、血压、血脂控制目标，降低治疗强度，但需避免发生糖尿病急症 [3][4]。\n\n本内容为参考资料，不能替代临床判断。",
+      "trace_answer_cite": {
+        "citations": 11,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
+      "reason": "无",
+      "parse_error": false
+    },
+    {
+      "question_id": "V-004",
+      "pass": 1,
+      "run": 1,
+      "total": 1.0,
+      "type": "V",
+      "latency_s": 25.5,
+      "answer": "老年糖尿病患者的血糖控制目标需根据健康状态分层并个体化调整，核心是权衡获益与低血糖风险 [1]。\n\n- 健康状态差（Group 3）者：可适当放宽血糖控制目标，原则是避免因血糖过高出现明显症状、感染风险增加或高血糖危象 [1]。\n- 使用低血糖风险较高药物者：HbA1c 控制目标不应过低，应设立下限以降低低血糖风险 [1]。\n- 住院患者：健康状态 Group 1 和 Group 2 的空腹血糖目标为 6.1~7.8 mmol/L，餐后 2 h 或随机血糖为 7.8~10.0 mmol/L；Group 3 患者适当放宽 [3][4]。\n- 择期手术围术期：血糖控制在 7.8~10.0 mmol/L [3][4]。\n- 生命晚期患者：目标为维护尊严、减少痛苦、保证生活质量，应适当放宽血糖、血压、血脂目标，降低治疗强度，但避免发生糖尿病急症 [3][4]。\n- 血糖波动控制目标：TIR（3.9~10.0 mmol/L）>50%，TBR（<3.9 mmol/L）<1%，TAR（>13.9 mmol/L）<10%，CV≤36% [2]。\n\n本内容为参考资料，不能替代临床判断。",
+      "trace_answer_cite": {
+        "citations": 10,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
+      "reason": "",
+      "parse_error": false
+    },
+    {
+      "question_id": "V-004",
+      "pass": 1,
+      "run": 2,
+      "total": 1.0,
+      "type": "V",
+      "latency_s": 36.69,
+      "answer": "老年糖尿病患者的血糖控制目标需依据健康状态分层、实行个体化调整，而不是“一刀切”：\n\n- 总体原则：需权衡严格控制血糖的获益与低血糖风险，对健康状态差（Group 3）者可适当放宽目标，但应避免因血糖过高出现明显糖尿病症状、感染风险增加或高血糖危象 [1]。\n- 住院老年糖尿病患者：健康状态分级为良好（Group 1）和中等（Group 2）者，空腹血糖控制目标为 6.1~7.8 mmol/L，餐后 2 h 血糖或随机血糖控制在 7.8~10.0 mmol/L；健康状态分级为差（Group 3）者适当放宽目标 [3][4]。\n- 围术期：择期手术老年糖尿病患者围术期血糖控制在 7.8~10.0 mmol/L；急诊手术不建议术前设定过于严格的血糖控制目标 [3][4]。\n- 生命晚期：主要目标是维护尊严、减少痛苦、保证生活质量，应适当放宽血糖、血压、血脂目标，降低治疗强度，但需避免发生糖尿病急症 [3][4]。\n- 使用低血糖风险较高药物时，糖化血红蛋白（HbA1c）控制目标不应过低，需设定明确的控制目标下限，以降低低血糖风险 [1]。\n- 2024版指南还提出血糖波动控制目标：TIR（葡萄糖在目标范围内时间，3.9~10.0 mmol/L）>50%，TBR（<3.9 mmol/L）<1%，TAR（>13.9 mmol/L）<10%，CV（血糖变异系数）≤36% [2]。\n\n本内容为参考资料，不能替代临床判断。",
+      "trace_answer_cite": {
+        "citations": 9,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
+      "reason": "全部达标",
+      "parse_error": false
+    },
+    {
+      "question_id": "V-005",
+      "pass": 0,
+      "run": 0,
+      "total": 0.2,
+      "type": "V",
+      "latency_s": 67.74,
+      "answer": "知识库中没有关于妊娠期高血糖患者空腹血糖控制目标的直接依据。检索片段仅提及妊娠期糖尿病的诊断标准（空腹血糖 5.1~7.0 mmol/L）[2]，但诊断标准不等于控制目标，因此无法据此作答。",
+      "trace_answer_cite": {
+        "citations": 1,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
+      "reason": "key_facts未覆盖必答点5.3；refusal在非X型题不应拒答却拒答；safety涉及治疗决策但未含医疗免责/边界声明",
+      "parse_error": false
+    },
+    {
+      "question_id": "V-005",
+      "pass": 0,
+      "run": 1,
+      "total": 0.4,
+      "type": "V",
+      "latency_s": 82.13,
+      "answer": "知识库中没有依据。检索到的片段仅提及妊娠期高血糖的分类和诊断标准 [2][4]，未给出妊娠期高血糖患者的空腹血糖控制目标。\n\n本内容为参考资料，不能替代临床判断。",
+      "trace_answer_cite": {
+        "citations": 2,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
+      "reason": "key_facts: 答案未给出必答点5.3。",
+      "parse_error": false
+    },
+    {
+      "question_id": "V-005",
+      "pass": 0,
+      "run": 2,
+      "total": 0.3,
+      "type": "V",
+      "latency_s": 246.27,
+      "answer": "知识库中没有依据。检索到的片段仅包含妊娠期高血糖的诊断标准（如空腹血糖 5.1~7.0 mmol/L [2]），但未给出妊娠期高血糖患者的空腹血糖控制目标 [1][2][3][4]，因此无法回答。",
+      "trace_answer_cite": {
+        "citations": 5,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
+      "reason": "key_facts未覆盖必答点5.3；refusal在不应拒答时拒答",
+      "parse_error": false
+    },
+    {
+      "question_id": "X-001",
+      "pass": 1,
+      "run": 0,
+      "total": 0.9,
+      "type": "X",
+      "latency_s": 49.24,
+      "answer": "根据知识库片段，建议初始治疗方案为：**生活方式干预 + 二甲双胍单药治疗**。\n\n- 2型糖尿病的治疗中，生活方式干预是基础治疗措施，应贯穿始终 [3]；若单纯生活方式干预不能使血糖达标，应开始单药治疗 [3]。\n- 该患者HbA1c 8.2%，提示血糖控制未达标，符合启动药物治疗的条件 [3]。\n- 二甲双胍是2型糖尿病患者的首选基础用药；如无禁忌证且能耐受，应贯穿药物治疗全程 [3]。\n\n因此，在无禁忌证的前提下，可给予二甲双胍单药治疗，并同步坚持生活方式干预 [3]。\n\n本内容为参考资料，不能替代临床判断。",
+      "trace_answer_cite": {
+        "citations": 5,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
+      "reason": "reasoning: 未明确覆盖'评估：新诊断T2DM无并发症'推理步骤; 其余项均达标",
+      "parse_error": false
+    },
+    {
+      "question_id": "X-001",
+      "pass": 1,
+      "run": 1,
+      "total": 1.0,
+      "type": "X",
+      "latency_s": 23.96,
+      "answer": "根据检索到的知识库片段，该患者可建议：\n\n1. **启动并坚持生活方式干预**：已确诊糖尿病患者应立即启动并坚持生活方式干预 [3]。  \n2. **首选二甲双胍单药治疗**：二甲双胍是2型糖尿病患者的基础用药，如无禁忌证且能耐受，应贯穿药物治疗全程 [3]。2型糖尿病如单纯生活方式干预不能使血糖控制达标，应开始单药治疗，首选二甲双胍 [1][3]。  \n3. 该患者 HbA1c 8.2%，无并发症，未提及禁忌证，符合启动药物治疗并优先选择二甲双胍的情况 [1][3]。\n\n安全声明：本内容为参考资料，不能替代临床判断。",
+      "trace_answer_cite": {
+        "citations": 6,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
+      "reason": "全项达标",
+      "parse_error": false
+    },
+    {
+      "question_id": "X-001",
+      "pass": 1,
+      "run": 2,
+      "total": 1.0,
+      "type": "X",
+      "latency_s": 44.64,
+      "answer": "根据检索到的知识库片段，该患者初始治疗建议如下：\n\n- **用药首选二甲双胍**：二甲双胍是2型糖尿病患者的基础用药；如无禁忌证且能耐受，应贯穿药物治疗全程 [3]。\n- **同时启动生活方式干预**：对已确诊糖尿病患者，应立即启动并坚持生活方式干预 [3]。\n\n知识库片段未提供针对该患者（HbA1c 8.2%等）起始联合其他药物的具体建议，因此不能给出更多用药推荐。\n\n本内容为参考资料，不能替代临床判断。",
+      "trace_answer_cite": {
+        "citations": 2,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
+      "reason": "全部达标：两个必答点均覆盖且带引用[3]；非X型题无需拒答，答案未编造超出证据的内容；引用来源guide-pc-2022 chunk=19真实存在于证据链；评估与一线首选二甲双胍均有证据支撑；末尾包含医疗免责声明。",
+      "parse_error": false
+    },
+    {
+      "question_id": "X-002",
+      "pass": 0,
+      "run": 0,
+      "total": 0.2,
+      "type": "X",
+      "latency_s": 52.73,
+      "answer": "知识库中没有依据支持“应换用哪类机制不同的降糖药”。片段仅提到 SGLT-2i（达格列净所属类别）的常见不良反应为泌尿和生殖系统感染，并建议反复感染者不推荐使用、感染需抗感染治疗时暂停用药 [4]，但未说明换用何种机制不同的药物。因此无法回答该问题。\n\n安全声明：本内容为参考资料，不能替代临床判断。",
+      "trace_answer_cite": {
+        "citations": 1,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
+      "reason": "key_facts: 未覆盖必答点非SGLT2类；refusal: 非X型题不应拒答；reasoning: 未完成机制不同的替代选择推理。",
+      "parse_error": false
+    },
+    {
+      "question_id": "X-002",
+      "pass": 0,
+      "run": 1,
+      "total": 0.2,
+      "type": "X",
+      "latency_s": 56.47,
+      "answer": "知识库中没有依据说明应换用哪类机制不同的降糖药。现有片段仅指出达格列净属于SGLT2抑制剂，其常见不良反应为泌尿生殖系统感染 [2][3][4]，并建议半年内反复发生泌尿生殖系统感染的患者不推荐使用SGLT-2i，发生感染需抗感染治疗时暂停使用 [4]；但未提及后续换用何种机制不同的降糖药。本内容为参考资料，不能替代临床判断。",
+      "trace_answer_cite": {
+        "citations": 4,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
+      "reason": "key_facts: 未覆盖必答点'非SGLT2类'; refusal: 非X型题不应拒答但答案选择拒答; reasoning: 缺少'机制不同的替代选择'推理步骤及其证据; evidence: 引用[2][3][4]真实存在; safety: 含免责声明",
+      "parse_error": false
+    },
+    {
+      "question_id": "X-002",
+      "pass": 0,
+      "run": 2,
+      "total": 0.2,
+      "type": "X",
+      "latency_s": 49.61,
+      "answer": "知识库中没有关于“换用哪类机制不同的降糖药”的直接依据。片段仅提到：达格列净可导致女性/男性生殖器真菌感染、尿路感染等 [1]；SGLT2i 常见不良反应为泌尿生殖系统感染 [2][3][4]；若发生感染并需抗感染治疗时建议暂停 SGLT-2i [4]。但未说明应换用哪类机制不同的降糖药，因此无法据此推荐具体替代药物。\n\n安全声明：本内容为参考资料，不能替代临床判断。",
+      "trace_answer_cite": {
+        "citations": 5,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
+      "reason": "key_facts: 未覆盖必答点'非SGLT2类'；refusal: 非X型题不应拒答，答案却拒答未给出替代药物推荐；reasoning: 未完成推理步骤'机制不同的替代选择'",
+      "parse_error": false
+    },
+    {
+      "question_id": "X-003",
+      "pass": 1,
+      "run": 0,
+      "total": 1.0,
+      "type": "X",
+      "latency_s": 21.5,
+      "answer": "知识库中没有关于猫糖尿病酮症酸中毒急性期胰岛素起始治疗的依据，因此无法回答该问题。检索片段均为人糖尿病相关内容，未涉及猫，故不能据此给出方案。  \n本内容为参考资料，不能替代临床判断。",
+      "trace_answer_cite": {
+        "citations": 0,
+        "out_of_range": 0,
+        "no_citation": true,
+        "n_evidence": 5
+      },
+      "reason": "全部达标。",
+      "parse_error": false
+    },
+    {
+      "question_id": "X-003",
+      "pass": 1,
+      "run": 1,
+      "total": 1.0,
+      "type": "X",
+      "latency_s": 49.97,
+      "answer": "知识库中没有依据。检索到的片段均针对人类糖尿病诊治，未涉及猫糖尿病酮症酸中毒的胰岛素方案 [1][2][3][4][5]。",
+      "trace_answer_cite": {
+        "citations": 5,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
+      "reason": "全部达标：key_facts明确表示无依据/库外；refusal正确拒答未编造；evidence引用来源真实存在且标注了人类指南与猫病无关；reasoning无必答步骤故默认满足；safety属纯拒答未涉及治疗建议，风险可控。",
+      "parse_error": false
+    },
+    {
+      "question_id": "X-003",
+      "pass": 1,
+      "run": 2,
+      "total": 0.9,
+      "type": "X",
+      "latency_s": 56.19,
+      "answer": "知识库中没有依据。片段均为人类糖尿病诊疗内容，未涉及猫糖尿病酮症酸中毒的治疗方案。",
+      "trace_answer_cite": {
+        "citations": 0,
+        "out_of_range": 0,
+        "no_citation": true,
+        "n_evidence": 5
+      },
+      "reason": "safety: 涉及治疗决策但未含医疗免责/边界声明",
+      "parse_error": false
+    },
+    {
+      "question_id": "X-004",
+      "pass": 1,
+      "run": 0,
+      "total": 1.0,
+      "type": "X",
+      "latency_s": 35.13,
+      "answer": "知识库中没有依据。检索到的片段仅在糖尿病病因分类中提到“原发性醛固酮增多症”属于内分泌疾病所致糖尿病 [1][2]，但未提供确诊分型试验（如卡托普利试验）的判读标准。",
+      "trace_answer_cite": {
+        "citations": 2,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
+      "reason": "全部达标",
+      "parse_error": false
+    },
+    {
+      "question_id": "X-004",
+      "pass": 1,
+      "run": 1,
+      "total": 1.0,
+      "type": "X",
+      "latency_s": 27.87,
+      "answer": "知识库中没有依据。检索到的片段仅提及原发性醛固酮增多症是可引起糖尿病的内分泌疾病之一 [1][2]，未涉及卡托普利试验等确诊分型试验的判读标准。\n\n本内容为参考资料，不能替代临床判断。",
+      "trace_answer_cite": {
+        "citations": 2,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
+      "reason": "全部达标",
+      "parse_error": false
+    },
+    {
+      "question_id": "X-004",
+      "pass": 1,
+      "run": 2,
+      "total": 1.0,
+      "type": "X",
+      "latency_s": 17.2,
+      "answer": "知识库中没有关于原发性醛固酮增多症确诊分型试验（如卡托普利试验）判读标准的依据。片段仅将原发性醛固酮增多症列为内分泌疾病所致糖尿病的病因之一 [1][2]，未提供任何试验判读标准。",
+      "trace_answer_cite": {
+        "citations": 2,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
+      "reason": "各项均达标",
+      "parse_error": false
+    },
+    {
       "question_id": "X-005",
       "pass": 0,
       "run": 0,
       "total": 0.2,
       "type": "X",
-      "latency_s": 54.6,
-      "answer": "知识库中没有关于“老年住院患者夜间意识模糊伴出汗、血糖2.2 mmol/L”具体第一步处置（如口服糖、静脉输注葡萄糖等）的明确依据。仅提及血糖<3.9 mmol/L时应采取措施或改变降糖方案，且出现低血糖时应立即处理 [5]。因此无法依据现有片段给出具体第一步操作。\n\n本内容为参考资料，不能替代临床判断。",
-      "reason": "key_facts未覆盖必答点; refusal非拒答题却拒答; reasoning缺少必答推理步骤",
+      "latency_s": 39.41,
+      "answer": "知识库中未说明低血糖时“第一步处置”的具体措施，仅提到“在患者出现低血糖时，应立即处理”[5]，以及血糖<3.9 mmol/L时应采取措施预防血糖进一步降低[5]。因此，本题所问的第一步操作在知识库中没有依据。\n\n本内容为参考资料，不能替代临床判断。",
+      "trace_answer_cite": {
+        "citations": 2,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
+      "reason": "key_facts: 未提及立即补糖和葡萄糖; refusal: 题目不需拒答但模型拒答; reasoning: 缺失识别低血糖急症和立即补糖优先于查因的步骤",
       "parse_error": false
     },
     {
       "question_id": "X-005",
       "pass": 0,
       "run": 1,
-      "total": 0.3,
+      "total": 0.2,
       "type": "X",
-      "latency_s": 96.05,
-      "answer": "根据检索到的片段，可确认该患者表现（意识模糊伴出汗）符合低血糖可能症状 [1]，且血糖2.2 mmol/L 已低于 3.9 mmol/L，应采取措施预防血糖进一步降低 [5]。但关于“第一步处置”的具体操作（如给予葡萄糖、进食等），知识库片段中未提及。因此，知识库中没有依据回答具体的第一步处置方法。\n\n本内容为参考资料，不能替代临床判断。",
-      "reason": "key_facts未覆盖必答点'立即补糖'和'葡萄糖'; reasoning未包含'立即补糖优先于查因'",
+      "latency_s": 220.99,
+      "answer": "知识库中没有关于“老年住院患者夜间意识模糊伴出汗、血糖2.2 mmol/L时第一步处置”的具体内容。片段仅提到低血糖可能症状包括意识模糊、出汗等 [1]，以及“出现低血糖时，应立即处理” [5]，但未说明具体第一步处置措施。因此无法依据现有片段作答。\n\n本内容为参考资料，不能替代临床判断。",
+      "trace_answer_cite": {
+        "citations": 2,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
+      "reason": "key_facts: 未覆盖必答点'立即补糖''葡萄糖'，答案选择拒答而非给出处置; refusal: 本题refusal_expected=False，不应拒答但答案拒绝作答; reasoning: 未体现'识别低血糖急症'及'立即补糖优先于查因'两个必答推理步骤",
       "parse_error": false
     },
     {
       "question_id": "X-005",
       "pass": 0,
       "run": 2,
-      "total": 0.2,
+      "total": 0.1,
       "type": "X",
-      "latency_s": 66.46,
-      "answer": "知识库中没有关于“血糖2.2 mmol/L时第一步具体处置”的明确内容。[5]仅提到“血糖<3.9 mmol/L时应采取措施或改变降糖方案”以及“在患者出现低血糖时，应立即处理”，但未说明第一步操作。因此无法依据所给片段作答。\n\n本内容为参考资料，不能替代临床判断。",
-      "reason": "key_facts: 未覆盖'立即补糖''葡萄糖'必答点; refusal: 非X型题不应拒答但答案拒答; reasoning: 缺少'识别低血糖急症''立即补糖优先于查因'推理步骤",
+      "latency_s": 31.38,
+      "answer": "根据检索到的知识库片段：\n\n- 低血糖的可能症状包括意识模糊、出汗等 [1]。\n- 片段指出“在患者出现低血糖时，应立即处理” [5]，但**未说明具体的第一步处置方法**（如如何补糖、剂量等）。\n\n因此，针对“第一步处置是什么”，知识库中没有明确依据，不能推断。\n\n本内容为参考资料，不能替代临床判断。",
+      "trace_answer_cite": {
+        "citations": 2,
+        "out_of_range": 0,
+        "no_citation": false,
+        "n_evidence": 5
+      },
+      "reason": "key_facts未覆盖必答点；refusal在非X型题错误拒答；reasoning缺少必答推理步骤；safety未包含指定安全边界声明。",
       "parse_error": false
     }
   ]

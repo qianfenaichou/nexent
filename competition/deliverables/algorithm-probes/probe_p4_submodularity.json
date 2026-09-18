@@ -1,0 +1,137 @@
+{
+  "probe": "p4_submodularity",
+  "purpose": "Empirical evidence for the plan section 3.1 claim: coverage-type impact is submodular so greedy carries the (1 - 1/e) approximation guarantee; the real impact function contains non-coverage terms, so only an approximate/empirical statement is made for it.",
+  "generated_at_utc": "2026-09-18T18:46:36Z",
+  "config": {
+    "seed": 20260919,
+    "part_a_seed": 20260919,
+    "part_b_seed": 1020260926,
+    "n_proposals": 14,
+    "budget_k": 3,
+    "instances": 400,
+    "ground_set_size_part_a": 30,
+    "cover_prob_part_a": 0.25,
+    "w1_entity_weight": 1.0,
+    "w2_evidence_weight": 0.5,
+    "entity_ground_set_size": 40,
+    "evidence_ground_set_size": 60,
+    "part_b_topics": 4,
+    "max_n_exhaustive": 20,
+    "greedy_tie_break": "deterministic stable ordering: lowest proposal index wins ties (exact arithmetic)",
+    "optimum_method_part_a": "exhaustive brute force over ALL subsets of size <= k",
+    "python_version": "3.12.3"
+  },
+  "part_a": {
+    "n_proposals": 14,
+    "budget_k": 3,
+    "instances": 400,
+    "exhaustive": true,
+    "optimum_method": "brute-force enumeration of every subset of size <= k (no approximate solver)",
+    "subsets_enumerated_total": 188000,
+    "ratio_stats": {
+      "n_instances": 400,
+      "min": 0.88,
+      "p10": 0.9565217391304348,
+      "median": 1.0,
+      "mean": 0.9883927135867353,
+      "max": 1.0
+    },
+    "greedy_optimal_ratio_eq_1": {
+      "count": 311,
+      "total": 400,
+      "fraction": 0.7775
+    },
+    "ratio_ge_one_minus_one_over_e": {
+      "threshold": 0.6321205588285577,
+      "count": 400,
+      "total": 400,
+      "fraction": 1.0
+    },
+    "degenerate_zero_optimum_instances": 0,
+    "mean_f_optimal": 23.845,
+    "mean_f_greedy": 23.5675,
+    "theory_note": "For a monotone submodular (coverage) objective, deterministic greedy guarantees f(greedy) >= (1 - 1/e) * OPT on every instance; any ratio below the bound would indicate an implementation bug, not a theory violation."
+  },
+  "part_b": {
+    "instances": 400,
+    "proposals_per_instance": 14,
+    "positions": 14,
+    "greedy_procedure": "dynamic greedy over all n proposals: each step adds the maximum marginal-VOI proposal (ties -> lowest index), so the selection is in descending marginal-VOI order",
+    "mean_marginal_gain_curve": [
+      17.49125,
+      12.0875,
+      8.6525,
+      6.175,
+      4.585,
+      3.41125,
+      2.6025,
+      1.9625,
+      1.4425,
+      1.02875,
+      0.71625,
+      0.3675,
+      0.11125,
+      0.015
+    ],
+    "median_marginal_gain_curve": [
+      17.5,
+      12.0,
+      8.5,
+      6.0,
+      4.5,
+      3.5,
+      2.5,
+      2.0,
+      1.5,
+      1.0,
+      1.0,
+      0.5,
+      0.0,
+      0.0
+    ],
+    "mean_curve_nonincreasing_violations": {
+      "strict_increase_count": 0,
+      "strict_increase_positions": [],
+      "increase_count_with_tolerance": 0,
+      "tolerance": 1e-09
+    },
+    "per_instance_violations": {
+      "counts_min": 0,
+      "counts_median": 0.0,
+      "counts_mean": 0.0,
+      "counts_max": 0,
+      "instances_with_any_violation": {
+        "count": 0,
+        "total": 400,
+        "fraction": 0.0
+      },
+      "histogram_violation_count_to_instances": {
+        "0": 400
+      },
+      "per_position_increase_counts": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "interpretation": "For a submodular impact the greedy marginal-gain sequence is provably non-increasing, so any increase is direct evidence against (empirical) submodularity. The simulated dual-channel function is coverage-type (nonnegative weighted sum of two coverage functions), hence also submodular in theory: zero violations validate the measurement pipeline and the empirical diminishing-returns shape, but do NOT certify the production impact function, whose non-coverage terms are not simulated here."
+  },
+  "honesty_notes": [
+    "覆盖型假设是理想化假设，真实函数只验证经验单调性，不声称严格子模性保证。",
+    "Part A 的最优解是对全部 size<=k 子集的真实穷举（ brute force ），未用任何近似算法冒充最优。",
+    "Part B 模拟的双通道 impact 本身仍是覆盖型函数（两通道非负加权并集），真实 impact 中的非覆盖项未被模拟；Part B 验证的是测量流程与经验边际递减形状，不能外推为真实函数的子模性证明。",
+    "比例类指标均同时报告 count 与分母（实例数）；f(opt)=0 的退化实例单独计数，不静默丢弃；异常不吞。"
+  ],
+  "conclusion": "合成覆盖型设定下贪心达到最优的 98.8%，支持工程使用；真实函数的子模性声明保持'近似/经验成立'的诚实措辞。",
+  "scope_statement": "适用范围：合成条件下的机制验证，非真实数据结论。"
+}

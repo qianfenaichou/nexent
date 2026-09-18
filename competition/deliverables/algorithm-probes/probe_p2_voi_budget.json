@@ -1,0 +1,164 @@
+{
+  "probe": "p2_voi_budget",
+  "question": "Under a fixed expert-review budget, does VOI-ordered review confirm more good proposals than confidence-ordered review on the same proposal pool?",
+  "config": {
+    "seed": 7,
+    "n_pool": 120,
+    "budgets": [
+      10,
+      20,
+      30,
+      50
+    ],
+    "impact_range": [
+      1,
+      30
+    ],
+    "p_confirm_range": [
+      0.2,
+      0.95
+    ],
+    "p_true_quality": 0.55,
+    "p_accept_if_true_quality": 0.9,
+    "p_accept_otherwise": 0.1,
+    "orderings": {
+      "voi": "sorted by p_confirm * impact descending",
+      "confidence": "sorted by p_confirm descending"
+    },
+    "review_protocol": "acceptance coins drawn at review time per (budget, arm) evaluation; arm order per budget: voi then confidence (matches the /tmp reference protocol)"
+  },
+  "results": {
+    "pool": {
+      "n_proposals": 120,
+      "n_true_quality": 71,
+      "true_quality_rate": {
+        "n_ok": 71,
+        "n_total": 120,
+        "rate": 0.5916666666666667
+      }
+    },
+    "budgets": [
+      {
+        "budget": 10,
+        "voi": {
+          "good": 6,
+          "bad": 0,
+          "net_good": 6,
+          "n_reviewed": 10
+        },
+        "confidence": {
+          "good": 4,
+          "bad": 0,
+          "net_good": 4,
+          "n_reviewed": 10
+        },
+        "net_good_gain": 2
+      },
+      {
+        "budget": 20,
+        "voi": {
+          "good": 11,
+          "bad": 0,
+          "net_good": 11,
+          "n_reviewed": 20
+        },
+        "confidence": {
+          "good": 6,
+          "bad": 1,
+          "net_good": 5,
+          "n_reviewed": 20
+        },
+        "net_good_gain": 6
+      },
+      {
+        "budget": 30,
+        "voi": {
+          "good": 16,
+          "bad": 4,
+          "net_good": 12,
+          "n_reviewed": 30
+        },
+        "confidence": {
+          "good": 12,
+          "bad": 1,
+          "net_good": 11,
+          "n_reviewed": 30
+        },
+        "net_good_gain": 1
+      },
+      {
+        "budget": 50,
+        "voi": {
+          "good": 26,
+          "bad": 3,
+          "net_good": 23,
+          "n_reviewed": 50
+        },
+        "confidence": {
+          "good": 20,
+          "bad": 2,
+          "net_good": 18,
+          "n_reviewed": 50
+        },
+        "net_good_gain": 5
+      }
+    ],
+    "net_good_gain_seed_sensitivity": {
+      "n_extra_seeds": 20,
+      "extra_seeds": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20
+      ],
+      "net_good_gain_by_budget": {
+        "10": {
+          "min": -4,
+          "mean": 0.2,
+          "max": 4,
+          "n_gain_positive": 9,
+          "n_seeds": 20
+        },
+        "20": {
+          "min": -5,
+          "mean": 1.2,
+          "max": 6,
+          "n_gain_positive": 13,
+          "n_seeds": 20
+        },
+        "30": {
+          "min": -6,
+          "mean": -0.7,
+          "max": 5,
+          "n_gain_positive": 8,
+          "n_seeds": 20
+        },
+        "50": {
+          "min": -12,
+          "mean": -0.2,
+          "max": 9,
+          "n_gain_positive": 9,
+          "n_seeds": 20
+        }
+      },
+      "note": "true_quality is independent of both ranking scores in this pool model, so the expected unweighted net_good_gain is 0; this distribution quantifies the single-trial sampling noise around that expectation"
+    },
+    "scope_note": "适用范围：合成条件下的机制验证，非真实数据结论。"
+  }
+}

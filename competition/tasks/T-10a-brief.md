@@ -9,7 +9,7 @@
 - `test/backend/services/knowevo/test_eval_v1.py`（**新建**，schema 校验 + pass^k 聚合）
 - `backend/prompts/knowevo_expand_en.yaml` + `_zh.yaml`（**新建**，评测集 LLM 扩展 prompt，T-10a-3 用）
 
-**待接线项**（登记给 T-08）: LLM 真实调用链路（judge/expand 的 tier 路由）；检索链路（知识库 → RAG 上下文 → 生成）；上游评估工作台 code 评测器注册（knowevo_passk/knowevo_trace，零侵入，见 02 §6.5）
+**待接线项**（登记给 T-08）: LLM 真实调用链路（judge/expand 的 tier 路由）；检索链路（知识库 → RAG 上下文 → 生成）；上游智能体评估 code 评测器注册（knowevo_passk/knowevo_trace，零侵入，见 02 §6.5）
 
 **禁改清单**: 上游共享文件；T-03 表结构（`eval_run_t` 只写不 ALTER）；E0 既有文件（`e0-baseline.md`/`e0-questions.md` 只读，作为对照锚点）
 

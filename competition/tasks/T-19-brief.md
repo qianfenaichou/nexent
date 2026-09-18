@@ -31,7 +31,7 @@
 - `DecisionService`（decision_service.py:232）有完整 `route/multi_hop/assemble_evidence/render_card/validate_card/persist/rerun_marked`，但**无任何 HTTP 路由**（`grep -rn decision backend/apps` 零命中），**唯一消费者是 MCP**，且 MCP 只注册了 `kg_search/kg_stats/kg_multi_hop`（server.py:234/241/247）——**`render_card`/`persist` 无生产调用方**（仅测试）。
 - `frontend/features/` 下**无** `decisionCard/`（grep 零命中）。
 - 聊天自定义卡片机制：`thread.tsx` 的 `MessagePrimitive.GroupedParts` switch 里 `case "data"` 按 `(part as ...).name === "<name>"` 分发（如 `history-summary`/`execution-code`/`nl2skill-file`/`automation-proposal`，:1526-1580），末尾兜底 `part.dataRendererUI`。**这是唯一已存在的、上游提供的卡片扩展点**。
-- `nl2a.content.subtype` 分支（:1591-1606）是另一条（NL2Agent 卡片）路径，**不适合决策卡**（那是 agent 生成前的推荐卡）。
+- `nl2a.content.subtype` 分支（:1591-1606）是另一条（NL2Agent 卡片）路径，**不适合决策卡**（那是 agent 生成前的推荐卡；NL2Agent 为代码层观察、非官方文档功能，进对外材料前须按红线报告禁写 #8 补核验）。
 - 导航过滤见 T-18a：`ROUTE_CONFIG` + RBAC `LEFT_NAV_MENU` 双闸门。
 
 **验收命令**:

@@ -1,0 +1,50 @@
+{
+  "probe": "p3_impact_prop",
+  "question": "Can the impact scope of a document change (affected entities, affected decision cards) be obtained by precomputed index queries only, fast enough for interactive use?",
+  "config": {
+    "seed": 11,
+    "n_docs": 80,
+    "n_entities": 2000,
+    "n_cards": 3000,
+    "doc_entity_range": [
+      5,
+      40
+    ],
+    "card_entity_range": [
+      1,
+      6
+    ],
+    "n_changed_docs": 8,
+    "changed_doc_selection": "first 8 doc ids (deterministic, 10% of docs)",
+    "timing_reps": 50
+  },
+  "results": {
+    "changed_docs": {
+      "count": 8,
+      "n_total": 80,
+      "fraction": 0.1
+    },
+    "affected_entities": {
+      "count": 164,
+      "n_total": 2000,
+      "fraction": 0.082
+    },
+    "affected_decision_cards": {
+      "count": 750,
+      "n_total": 3000,
+      "fraction": 0.25
+    },
+    "propagation_ms": {
+      "mean": 0.021134719863766804,
+      "min": 0.01836199953686446,
+      "max": 0.048971000069286674,
+      "n_timed_runs": 50,
+      "method": "time.perf_counter around the full two-layer propagation (set-union index queries), after 1 warmup run; counts are deterministic given the seed"
+    },
+    "index_sizes": {
+      "n_doc_entity_links": 1877,
+      "n_entity_card_links": 10427
+    },
+    "scope_note": "适用范围：合成条件下的机制验证，非真实数据结论。"
+  }
+}

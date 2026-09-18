@@ -1,0 +1,162 @@
+{
+  "probe": "p1_version_pin",
+  "question": "Does version-pinned traversal answer version-sensitive questions correctly where un-versioned retrieval fails, without flipping stable conclusions (F regression guard)?",
+  "config": {
+    "seed": 20260918,
+    "n_questions": 200,
+    "n_versions": 4,
+    "sensitive_rule": "question index % 5 == 0 (20% of pool are V questions)",
+    "version_window_days": 365,
+    "version_window_start": "2020-01-01",
+    "version_query_points": [
+      "2020-06-01",
+      "2021-06-01",
+      "2022-06-01",
+      "2023-06-01"
+    ],
+    "arm_definitions": {
+      "pinned": "answer from as-of-version sub-graph (valid_from <= t_v <= valid_to)",
+      "ret-random": "answer from un-versioned retrieval; any version's fact may surface",
+      "ret-latest": "answer from recency-biased retrieval; always the newest conclusion"
+    }
+  },
+  "results": {
+    "n_questions": 200,
+    "n_version_sensitive_questions": 40,
+    "n_stable_questions": 160,
+    "question_version_pairs_per_arm": 800,
+    "arms": {
+      "pinned": {
+        "v_accuracy": {
+          "n_ok": 160,
+          "n_total": 160,
+          "acc": 1.0
+        },
+        "f_accuracy": {
+          "n_ok": 640,
+          "n_total": 640,
+          "acc": 1.0
+        },
+        "overall_accuracy": {
+          "n_ok": 800,
+          "n_total": 800,
+          "acc": 1.0
+        },
+        "v_ok_by_version": [
+          40,
+          40,
+          40,
+          40
+        ],
+        "v_total_by_version": [
+          40,
+          40,
+          40,
+          40
+        ],
+        "f_ok_by_version": [
+          160,
+          160,
+          160,
+          160
+        ],
+        "f_total_by_version": [
+          160,
+          160,
+          160,
+          160
+        ]
+      },
+      "ret-random": {
+        "v_accuracy": {
+          "n_ok": 33,
+          "n_total": 160,
+          "acc": 0.20625
+        },
+        "f_accuracy": {
+          "n_ok": 640,
+          "n_total": 640,
+          "acc": 1.0
+        },
+        "overall_accuracy": {
+          "n_ok": 673,
+          "n_total": 800,
+          "acc": 0.84125
+        },
+        "v_ok_by_version": [
+          8,
+          9,
+          10,
+          6
+        ],
+        "v_total_by_version": [
+          40,
+          40,
+          40,
+          40
+        ],
+        "f_ok_by_version": [
+          160,
+          160,
+          160,
+          160
+        ],
+        "f_total_by_version": [
+          160,
+          160,
+          160,
+          160
+        ]
+      },
+      "ret-latest": {
+        "v_accuracy": {
+          "n_ok": 40,
+          "n_total": 160,
+          "acc": 0.25
+        },
+        "f_accuracy": {
+          "n_ok": 640,
+          "n_total": 640,
+          "acc": 1.0
+        },
+        "overall_accuracy": {
+          "n_ok": 680,
+          "n_total": 800,
+          "acc": 0.85
+        },
+        "v_ok_by_version": [
+          0,
+          0,
+          0,
+          40
+        ],
+        "v_total_by_version": [
+          40,
+          40,
+          40,
+          40
+        ],
+        "f_ok_by_version": [
+          160,
+          160,
+          160,
+          160
+        ],
+        "f_total_by_version": [
+          160,
+          160,
+          160,
+          160
+        ]
+      }
+    },
+    "reading_notes": [
+      "pinned is correct on V questions by construction of the version predicate;",
+      "ret-latest is correct on V questions only when asked at the newest version point",
+      "(see v_ok_by_version: correct only in the last slot); ret-random succeeds only by",
+      "chance (~1/n_versions). F accuracy stays 1.0 for all arms: pinning does not flip",
+      "stable conclusions (regression guard)."
+    ],
+    "scope_note": "适用范围：合成条件下的机制验证，非真实数据结论。"
+  }
+}

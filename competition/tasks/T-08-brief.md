@@ -23,7 +23,7 @@
 | 2 | T-07 | Local MCP 工具注册 `kg_tools.wire()` → `local_mcp_service.mount` | local_mcp_service.py |
 | 3 | T-06/T-10a | LLM 真实调用链路（extract/align/judge/expand 的 tier 路由） | llm_client.py + 注入点 |
 | 4 | T-06 | `calibrate_thresholds` 产物回写 env | const.py 只读 → 台账记录，不写回 env（降级为文档化） |
-| 5 | T-10a | 检索链路：知识库 → RAG 上下文 → 生成（E1 基线） | 评估工作台接线（T-10a-2 用） |
+| 5 | T-10a | 检索链路：知识库 → RAG 上下文 → 生成（E1 基线） | 智能体评估接线（T-10a-2 用） |
 | 6 | T-05 | RBAC 权限种子 `RESOURCE.KNOWLEDGE_GRAPH.MANAGE` | role_permission 种子 |
 
 **禁改清单**: 上游共享文件除上表列出的接线文件外一律禁改（apps/app_factory.py 只读、`apps/runtime_app.py`/`config_app.py` 仅加 include_router 行）；T-03 表结构（不 ALTER）；`deploy/sql/migrations/` 已存在文件；前端（路由/菜单注册归 T-12，本任务不碰前端）。
