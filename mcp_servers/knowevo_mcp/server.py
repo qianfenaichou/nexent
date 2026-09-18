@@ -1,13 +1,17 @@
 """
-KnowEvo FastMCP server (T-07b, extended by T-09) - graph-query tool service.
+KnowEvo FastMCP server (T-07b, extended by T-09/T-19/T-20) - graph-query
+and decision-layer tool service.
 
-Tools delivered so far (SPEC.md freezes 8; the decision-layer trio is
-T-09's, of which kg_multi_hop lands here):
+Tools delivered so far (SPEC.md freezes 8; kg_multi_hop and
+decision_card_render landed here; skill_template_apply is T-20's additive
+reuse-loop tool):
 
-    kg_search      lexical entity lookup + 1..2 hop neighborhood
-    kg_stats       graph scale numbers
-    kg_multi_hop   version-pinned beam walk (B2: every hop constrained to
-                   the facts valid at the requested knowledge version)
+    kg_search             lexical entity lookup + 1..2 hop neighborhood
+    kg_stats              graph scale numbers
+    kg_multi_hop          version-pinned beam walk (B2: every hop constrained
+                          to the facts valid at the requested knowledge version)
+    decision_card_render  question -> evidence-backed decision card (T-19)
+    skill_template_apply  mined SKILL.md template -> rendered instance (T-20)
 
 Standalone form: ``python -m mcp_servers.knowevo_mcp.server`` serves a
 FastMCP app that tools are registered on. The Local-MCP inner form
@@ -33,6 +37,7 @@ from mcp_servers.knowevo_mcp.schemas import (
     KGSearchOutput,
     KGStatsInput,
     KGStatsOutput,
+    SkillTemplateApplyInput,
     ToolError,
 )
 from mcp_servers.knowevo_mcp.schemas import (
@@ -59,15 +64,22 @@ _default_tenant = ""
 # T-09: the decision service is what owns the pinned beam walk, so the
 # multi-hop handler delegates to it. Same injection shape as the store.
 _decision_service = None
+# T-20: the skill-template service owns the reuse loop over skill_template_t;
+# same injection shape so tests can supply an in-memory seam.
+_skill_template_service = None
 
 
-def configure(tenant_id: str = "", store=None, decision_service=None):
+def configure(tenant_id: str = "", store=None, decision_service=None,
+              skill_template_service=None):
     """Server-level dependency injection (tests / T-08 wiring)."""
     global _graph_store, _default_tenant, _decision_service
+    global _skill_template_service
     _default_tenant = tenant_id
     _graph_store = store
     if decision_service is not None:
         _decision_service = decision_service
+    if skill_template_service is not None:
+        _skill_template_service = skill_template_service
 
 
 def _store():
@@ -119,6 +131,19 @@ def _card_service(store=None, tenant_id: str = ""):
         logger.warning("decision-card llm wiring unavailable: %s", exc)
     return DecisionService(store=store or _store(),
                            tenant_id=tenant_id or _default_tenant, llm=llm)
+
+
+def _template_service(tenant_id: str = ""):
+    """The skill-template service for this request scope (T-20).
+
+    Deliberately LLM-free: apply only renders the stored body_md and
+    bumps the reuse counter - induction (the LLM channel) lives in the
+    mining pipeline, not behind this tool.
+    """
+    if _skill_template_service is not None:
+        return _skill_template_service
+    from services.knowevo.skill_template_service import SkillTemplateService
+    return SkillTemplateService(tenant_id=tenant_id or _default_tenant)
 
 
 def _err(code: str, hint: str) -> dict:
@@ -330,6 +355,46 @@ async def decision_card_render_handler(inputs: DecisionCardInput,
                     f"card render failed: {type(exc).__name__}")
 
 
+async def skill_template_apply_handler(inputs: SkillTemplateApplyInput,
+                                       tenant_id: str = "",
+                                       service=None) -> dict:
+    """Instantiate a mined SKILL.md template (T-20): render the stored
+    body_md with the merged variables and bump the template's reuse_count
+    (both done by ``SkillTemplateService.apply_template``).
+
+    Returns the service-owned apply payload (``name``/``skill_md``/
+    ``variables``/``reuse_count``) with the SPEC cost fields added, or a
+    structured error dict - never raises into the MCP runtime. Honesty
+    contract: apply does NOT write ``reuse_success`` - at apply time the
+    outcome is unknown, the success rate is written back only by
+    ``SkillTemplateService.record_reuse_outcome`` after a real run, and
+    no success number is fabricated here. An unknown template answers
+    ``template_not_found`` (echoing only the caller's own input, nothing
+    internal); any other failure degrades to ``skill_template_apply_failed``
+    with the exception type name only.
+    """
+    t0 = time.monotonic()
+    try:
+        svc = service or _template_service(tenant_id)
+        result = await svc.apply_template(
+            inputs.template_name, variables=dict(inputs.variables))
+        result["used_tokens"] = 0
+        result["elapsed_ms"] = int((time.monotonic() - t0) * 1000)
+        return result
+    except KeyError as exc:
+        if "template not found" in str(exc):
+            return _err(
+                "template_not_found",
+                f"no skill template named '{inputs.template_name}' in this "
+                "tenant; check the name against skill_template_t or the "
+                "template library page")
+        return _err("skill_template_apply_failed",
+                    f"template apply failed: {type(exc).__name__}")
+    except Exception as exc:  # noqa: BLE001 - structured error boundary
+        return _err("skill_template_apply_failed",
+                    f"template apply failed: {type(exc).__name__}")
+
+
 # ---------------------------------------------------------------------------
 # FastMCP registration (standalone form). Tool signatures ARE the Pydantic
 # models - one field source, no decorator/schema drift (SPEC discipline 1).
@@ -362,6 +427,17 @@ async def kg_multi_hop(inputs: KGMultiHopInput) -> dict:
           "INSUFFICIENT_EVIDENCE when no evidence supports the question.")
 async def decision_card_render(inputs: DecisionCardInput) -> dict:
     out = await decision_card_render_handler(inputs)
+    return out if isinstance(out, dict) else out.model_dump(mode="json")
+
+
+@mcp.tool(name="skill_template_apply",
+          description="Instantiate a mined SKILL.md template: render its "
+          "parameterized body with the given variables (domain, "
+          "task_type, relation_template, domain_rules overrides) and bump "
+          "the reuse counter. The success rate is NOT written here - apply "
+          "cannot know the outcome; it is updated only after a real run.")
+async def skill_template_apply(inputs: SkillTemplateApplyInput) -> dict:
+    out = await skill_template_apply_handler(inputs)
     return out if isinstance(out, dict) else out.model_dump(mode="json")
 
 

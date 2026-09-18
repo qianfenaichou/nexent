@@ -17,6 +17,7 @@ import {
   Zap,
   CalendarClock,
   ClipboardList,
+  Layers,
   LineChart,
   Network,
 } from "lucide-react";
@@ -171,6 +172,18 @@ const ROUTE_CONFIG: RouteConfig[] = [
     Icon: ClipboardList,
     labelKey: "sidebar.decisionCard",
     order: 14,
+    parentKey: "/resource-space",
+  },
+  {
+    // KnowEvo skill-template library (T-20). Visible only when the role
+    // holds VISIBILITY.LEFT_NAV_MENU /skillTemplate (seeded in
+    // deploy/sql/migrations/v2.5.5_kw_007_skill_template_rbac.sql); the
+    // list data source (read-only HTTP route) is a recorded pending-wiring
+    // item - instantiation goes through the skill_template_apply MCP tool.
+    path: "/skillTemplate",
+    Icon: Layers,
+    labelKey: "sidebar.skillTemplate",
+    order: 15,
     parentKey: "/resource-space",
   },
   // Management menus
