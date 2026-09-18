@@ -247,10 +247,28 @@ def build_chunks(docs: Iterable[CorpusDoc]) -> list[Chunk]:
 
 @dataclass
 class Hit:
-    """One scored retrieval hit (the document-channel evidence unit)."""
+    """One scored retrieval hit (the document-channel evidence unit).
+
+    ``score`` is the pure BM25 value (what E1 reports and the judge reads,
+    stable across ranking changes); ``ranked_score`` is the value actually
+    used for ordering after the authority prior is applied (T-18d). Keeping
+    the raw BM25 score on the hit preserves auditability: a re-rank never
+    rewrites history, it only changes the order.
+    """
 
     chunk: Chunk
     score: float
+    ranked_score: float | None = None
+
+
+# Default authority prior weights (T-18d D4). Semantic: *down-weight* low
+# authority rather than boost high authority, so a drug label that happens to
+# hit every query term cannot crowd out a guideline with a near-equal BM25
+# score. authority_level 1 (national standard) is never penalised; 4 (public
+# education) is cut by 25%. Configurable per-retriever; the table is frozen
+# by unit tests so a silent change of the default cannot drift the ablation.
+DEFAULT_AUTHORITY_WEIGHTS: dict[int, float] = {1: 1.0, 2: 0.95, 3: 0.85, 4: 0.75}
+DEFAULT_PER_DOC_QUOTA = 2
 
 
 @dataclass
@@ -262,24 +280,52 @@ class Retriever:
     object. Building only inside the factory methods would leave direct
     construction silently returning empty hits - a search that "works" but
     finds nothing is the hardest kind of retrieval bug to notice.
+
+    Authority-aware ranking (T-18d): ``authority_weights`` applies a
+    multiplicative prior ``ranked_score = bm25 * w(authority_level)`` and
+    ``per_doc_quota`` caps how many top-k slots one document may occupy
+    (deterministic MMR-lite: greedy by ranked score, skip over-quota docs).
+    Conventions:
+      * ``authority_weights=None`` -> use ``DEFAULT_AUTHORITY_WEIGHTS``
+        (authority ranking ON by default - the D4 contract);
+      * ``authority_weights={}``    -> disable the prior (pure BM25 order,
+        used by the T-22 ablation as the no-authority arm);
+      * ``per_doc_quota=None``      -> no per-document cap.
     """
 
     chunks: list[Chunk] = field(default_factory=list)
+    authority_weights: dict[int, float] | None = None
+    per_doc_quota: int | None = DEFAULT_PER_DOC_QUOTA
+    _authority_weights: dict[int, float] | None = field(default=None, repr=False)
     _df: dict[str, int] = field(default_factory=dict, repr=False)
     _tf: list[dict[str, int]] = field(default_factory=list, repr=False)
     _len: list[int] = field(default_factory=list, repr=False)
     _avg_len: float = 0.0
 
     def __post_init__(self) -> None:
+        if self.authority_weights is None:
+            self._authority_weights = dict(DEFAULT_AUTHORITY_WEIGHTS)
+        else:
+            self._authority_weights = dict(self.authority_weights)
         self._build()
 
     @classmethod
-    def from_documents(cls, docs: Iterable[CorpusDoc]) -> Retriever:
-        return cls(chunks=build_chunks(docs))
+    def from_documents(cls, docs: Iterable[CorpusDoc],
+                       authority_weights: dict[int, float] | None = None,
+                       per_doc_quota: int | None = DEFAULT_PER_DOC_QUOTA
+                       ) -> Retriever:
+        return cls(chunks=build_chunks(docs),
+                   authority_weights=authority_weights,
+                   per_doc_quota=per_doc_quota)
 
     @classmethod
-    def from_chunks(cls, chunks: list[Chunk]) -> Retriever:
-        return cls(chunks=list(chunks))
+    def from_chunks(cls, chunks: list[Chunk],
+                    authority_weights: dict[int, float] | None = None,
+                    per_doc_quota: int | None = DEFAULT_PER_DOC_QUOTA
+                    ) -> Retriever:
+        return cls(chunks=list(chunks),
+                   authority_weights=authority_weights,
+                   per_doc_quota=per_doc_quota)
 
     def _build(self) -> None:
         df: dict[str, int] = {}
@@ -301,10 +347,19 @@ class Retriever:
 
     def search(self, query: str, top_k: int = 5,
                splits: tuple[str, ...] | None = None) -> list[Hit]:
-        """Top-k BM25 hits for ``query``.
+        """Top-k hits for ``query`` ordered by the authority-aware rank.
 
         ``splits`` optionally restricts to build/blind chunks (used by the
         anti-overfitting check); None searches everything.
+
+        Ranking (T-18d): every chunk is scored by pure BM25 first; the
+        authority prior is then applied multiplicatively to produce
+        ``ranked_score`` (raw ``score`` is preserved for auditability), and
+        the final list is a greedy pass that skips a hit when its document
+        already holds ``per_doc_quota`` slots. An over-quota skip does not
+        consume a slot, so short documents with no quota competitor keep
+        their place - this is a deterministic, zero-dependency substitute
+        for MMR diversification.
         """
         if not self.chunks:
             return []
@@ -328,9 +383,28 @@ class Retriever:
                 denom = f + BM25_K1 * (1 - BM25_B + BM25_B * length / (self._avg_len or 1))
                 score += idf * (f * (BM25_K1 + 1)) / denom
             if score > 0:
-                scored.append(Hit(chunk=ch, score=round(score, 6)))
-        scored.sort(key=lambda h: h.score, reverse=True)
-        return scored[:top_k]
+                ranked = score
+                if self._authority_weights:
+                    weight = self._authority_weights.get(
+                        ch.authority_level, 1.0)
+                    ranked = score * weight
+                scored.append(Hit(chunk=ch, score=round(score, 6),
+                                  ranked_score=round(ranked, 6)))
+        scored.sort(key=lambda h: (h.ranked_score if h.ranked_score is not None
+                                   else h.score), reverse=True)
+        if self.per_doc_quota is None:
+            return scored[:top_k]
+        selected: list[Hit] = []
+        per_doc: dict[str, int] = {}
+        for hit in scored:
+            if len(selected) >= top_k:
+                break
+            doc_id = hit.chunk.doc_id
+            if per_doc.get(doc_id, 0) >= self.per_doc_quota:
+                continue
+            per_doc[doc_id] = per_doc.get(doc_id, 0) + 1
+            selected.append(hit)
+        return selected
 
 
 def retrieve_context(retriever: Retriever, question: str, top_k: int = 5,
@@ -338,7 +412,9 @@ def retrieve_context(retriever: Retriever, question: str, top_k: int = 5,
     """Render retrieved chunks into an LLM context block + evidence records.
 
     Returns ``(context_text, evidence)`` where evidence items carry the
-    doc/title/score locators the judge and the trace metric consume.
+    doc/title/score locators the judge and the trace metric consume. Both
+    ``score`` (pure BM25) and ``ranked_score`` (post-authority-prior) are
+    exposed so a downstream report can show why a hit outranked another.
     """
     hits = retriever.search(question, top_k=top_k)
     parts: list[str] = []
@@ -357,6 +433,8 @@ def retrieve_context(retriever: Retriever, question: str, top_k: int = 5,
             "source": hit.chunk.source,
             "chunk_idx": hit.chunk.chunk_idx,
             "score": hit.score,
+            "ranked_score": hit.ranked_score if hit.ranked_score is not None
+            else hit.score,
             "authority_level": hit.chunk.authority_level,
             "split": hit.chunk.split,
             "span_hash": hashlib.sha256(
