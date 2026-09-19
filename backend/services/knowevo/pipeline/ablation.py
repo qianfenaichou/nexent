@@ -863,6 +863,19 @@ def _e8_section(results: list[dict[str, Any]]) -> dict[str, Any] | None:
     return out
 
 
+def _ran_no_new_questions(metrics: dict[str, Any],
+                          prev_detail_count: int) -> bool:
+    """True when a resumed level produced zero new question records.
+
+    A budget checkpoint that lands before the level's first question must
+    neither clobber the previous partial record (in a multi-arm E8
+    invocation the second arm would otherwise wipe the first arm's data)
+    nor emit an empty eval_run_t row - the level simply stays pending and
+    the resume command points at it.
+    """
+    return int(metrics.get("n_questions_run") or 0) <= prev_detail_count
+
+
 def _resume_command(args: argparse.Namespace, levels: list[str],
                     pins: list[str]) -> str:
     types = args.types or "all"
@@ -1060,6 +1073,14 @@ def main(argv=None) -> int:
             for key in previous.get("levels_requested") or []:
                 if key not in report["levels_requested"]:
                     report["levels_requested"].append(key)
+            # the header keeps the WIDEST scope any invocation planned, so
+            # a narrow E8 (--types V,F) resume does not shrink the report
+            # header of a four-level run
+            report["n_questions"] = max(previous.get("n_questions") or 0,
+                                        len(questions))
+            merged_types = {t for t in (previous.get("types_filter") or [])}
+            merged_types.update(types or QTYPES)
+            report["types_filter"] = [t for t in QTYPES if t in merged_types]
         except (json.JSONDecodeError, OSError) as exc:
             logger.warning("existing report unreadable, starting fresh: %s",
                            exc)
@@ -1143,14 +1164,27 @@ def main(argv=None) -> int:
         prev_runs = list((prev or {}).get("metrics", {}).get("runs") or [])
         prev_details = list((prev or {}).get("metrics", {})
                             .get("details") or [])
+        result_arm_gold = bool(arm_gold and level == "A4_full")
         if prev is not None:
             logger.info("resuming %s from %d measured question(s)",
-                        _result_key(level, pin, True), len(prev_details))
+                        _result_key(level, pin, result_arm_gold),
+                        len(prev_details))
         metrics, complete = asyncio.run(run_level(
             level, questions, router=router,
-            pin_on=(pin == "on"), arm_gold=(arm_gold and level == "A4_full"),
+            pin_on=(pin == "on"), arm_gold=result_arm_gold,
             ontology=ontology, prev_runs=prev_runs,
             prev_details=prev_details, **run_kwargs))
+        if _ran_no_new_questions(metrics, len(prev_details)):
+            # Budget expired before this level ran a single new question:
+            # record nothing. Writing here would replace the previous
+            # partial entry with an empty one (E8's second arm) or insert
+            # a zero-question eval_run_t row; the level stays pending and
+            # the resume command points at it.
+            logger.warning("%s: no new questions in this invocation "
+                           "(budget checkpoint); existing record untouched",
+                           _result_key(level, pin, result_arm_gold))
+            _finalize_report(report, out_path, args, levels, pins)
+            continue
         run_id = None
         if not args.no_persist:
             run_id = persist_eval_run(metrics, testset_hash, args.tenant,
@@ -1163,7 +1197,6 @@ def main(argv=None) -> int:
                 f"acc={metrics['acc']} pass2={metrics['pass2']} "
                 f"n_judged={metrics['n_judged']}/{metrics['n_expected']} "
                 f"trace={metrics['trace_machine']}")
-        result_arm_gold = bool(arm_gold and level == "A4_full")
         # a continued pair REPLACES its partial predecessor (same key)
         new_key = _result_key(level, pin, result_arm_gold)
         report["results"] = [

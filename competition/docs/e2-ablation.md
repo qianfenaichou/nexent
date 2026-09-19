@@ -145,3 +145,10 @@ cd backend && uv run pytest ../test/backend/services/knowevo/test_ablation.py -q
 3. 种子词必须是**实体名的子串**（store 的 ILIKE 是 name CONTAINS query）：CJK 长run 用 3 字滑窗（步长 2）+ 全 run，ASCII 词原样；上限 12 个查词/题，确定性可复现。
 4. 卡片渲染的 llm 契约只回 str（token 不可见）——用 `_CountingLLM` 包装器过 `call_with_usage` 计量；非 JSON 卡片输出重试 1 次（模型抖动），仍失败按 count_fail 记 runner_error 留分母。
 5. pin=None（A1-A3）与 pin=off 语义不同：`pin_on = (pin == "on")` 而不是 `!= "off"`——后者会让 A3 意外被钉住（冒烟 dry-run 抓到）。
+
+## 附录 C：续跑增记（2026-09-19 下午，主智能体）
+
+- **A4 headline 重测完成**（e2-17ce73d5，47,769 in + 129,556 out tokens）：重试修复生效——2 题 × 3 runs 全部判定（n_judged 6/6，**零 runner_error**），acc=0.5。报告 JSON 的 A4 段已替换（旧 3 题含 4 条网关空内容污染，DB 行保留作台账，eval_run_t 保持 INSERT-only）。
+- **ablation.py 两个续跑安全修复**：预算空跑不再覆盖 prev 条目/不再插空行；报告 header 跨 invocation 保留最宽 scope。单测 31 passed。
+- **E8 全量补跑未完成（诚实记录）**：13:2x 两段 8 分钟预算运行**零新 eval_run_t 行**——今天端点劣化（>50% 空内容响应，每次重试 ~70s），单段预算内连一道题的 3 runs 都无法完成。结合「构建租户图谱为空 → 图通道空载 → E8 Δ 结构性≈0」的既定数据现实，**继续微观补跑性价比为负**，全量 E8 矩阵挂起，解锁路径=构建租户图谱摄取（见 .task_b_status/ingest-feasibility.md：pdftotext + batch.json 轻量路径，定向 ~60 chunk ≈ 0.3-0.5M tokens，**待用户授权成本**）。
+- 现状结论不变：机制证明（判别性谓词分得开事实）由 T-18b 单测 + PG 集成测试承载；真实图谱数字待摄取后由断点续跑补齐（命令见附录 A，runner 自动跳过已完成 pair）。

@@ -26,3 +26,4 @@
 | e2-eacba193-890c-4ed8-9487-f897a01bc66f | 2026-09-19 08:56 | 评测(E2 消融) | mid:deepseek-v4-flash / large:glm-5.2 | 0 | 0 | 0 | p95=0.0s | T-22 A4_full pin=off 0题×3runs(部分); acc=0.0 pass2=0.0 n_judged=0/0 trace=0.0 |
 | e2-1b98defc-7887-46f3-b7e9-e2c546489601 | 2026-09-19 09:04 | 评测(E2 消融) | mid:deepseek-v4-flash / large:glm-5.2 | 33709 | 24048 | 0 | p95=48.62s | T-22 A2_graph pin=n/a 4题×3runs(部分); acc=0.75 pass2=0.75 n_judged=12/12 trace=1.0 |
 | e2-59b71408-030f-4c64-ade8-282afcc9100b | 2026-09-19 09:04 | 评测(E2 消融) | mid:deepseek-v4-flash / large:glm-5.2 | 0 | 0 | 0 | p95=0.0s | T-22 A3_multihop pin=n/a 0题×3runs(部分); acc=0.0 pass2=0.0 n_judged=0/0 trace=0.0 |
+| e2-17ce73d5-3c20-4188-8a82-6bc426c7a66e | 2026-09-19 11:59 | 评测(E2 消融) | mid:deepseek-v4-flash / large:glm-5.2 | 47769 | 129556 | 0 | p95=489.51s | T-22 A4_full pin=on 2题×3runs(部分); acc=0.5 pass2=0.5 n_judged=6/6 trace=1.0 |

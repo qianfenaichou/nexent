@@ -495,3 +495,21 @@ class TestPlanParsing:
     def test_build_plan_single_pin(self):
         plan = ablation.build_plan(["A2_graph"], ["on"])
         assert plan == [("A2_graph", None)]
+
+
+class TestNoNewQuestionsGuard:
+    """A budget checkpoint before a level's first question records nothing.
+
+    Otherwise a multi-arm E8 invocation whose budget dies inside the first
+    arm would replace the second arm's partial record with an empty one.
+    """
+
+    def test_zero_new_questions_detected(self):
+        assert ablation._ran_no_new_questions({"n_questions_run": 0}, 0)
+        # a continued level that added nothing keeps its previous record
+        assert ablation._ran_no_new_questions({"n_questions_run": 3}, 3)
+        assert not ablation._ran_no_new_questions({"n_questions_run": 4}, 3)
+
+    def test_missing_counter_is_defensive_nothing(self):
+        assert ablation._ran_no_new_questions({}, 0)
+

@@ -1,7 +1,7 @@
 {
   "task": "T-22",
   "partial": true,
-  "generated_at": "2026-09-19T01:11:16.762999+00:00",
+  "generated_at": "2026-09-19T03:59:31.064620+00:00",
   "testset": "testset-v1-seed.json",
   "testset_hash": "fd56571a304fb09d",
   "n_questions": 20,
@@ -16,22 +16,20 @@
     "X"
   ],
   "levels_requested": [
-    "A1_pure_rag|n/a|0",
     "A4_full|on|0",
-    "A4_full|on|1",
-    "A4_full|off|1",
+    "A1_pure_rag|n/a|0",
     "A2_graph|n/a|0",
     "A3_multihop|n/a|0"
   ],
   "data_reality": {
     "d1_discriminative_counts": {
-      "all": 474,
+      "all": 504,
       "t_v_2022_01_01": 0,
-      "t_v_2024_06_01": 121,
+      "t_v_2024_06_01": 129,
       "t_v_2025_06_01": 1,
       "discriminative": true
     },
-    "d1_checked_at": "2026-09-19T00:56:03.552376+00:00",
+    "d1_checked_at": "2026-09-19T03:17:52.514512+00:00",
     "ablation_tenant_graph": {
       "entities": 0,
       "relations": 0
@@ -1419,971 +1417,6 @@
       }
     },
     {
-      "level": "A4_full",
-      "pin": "on",
-      "arm_gold": false,
-      "complete": false,
-      "eval_run_id": "edcad253-1ac5-4006-bae9-b7a1e0100a0a",
-      "metrics": {
-        "acc": 0.3333,
-        "pass2": 0.3333,
-        "pass3": 0.3333,
-        "n_questions": 3,
-        "n_runs": 9,
-        "n_judged": 9,
-        "n_expected": 9,
-        "trace_machine": 1.0,
-        "trace_answer_cite": {
-          "citations": 0,
-          "out_of_range": 0,
-          "rate": null,
-          "no_citation_run": true
-        },
-        "p95_latency_s": 96.03,
-        "tokens_in": 20005,
-        "tokens_out": 32954,
-        "judge_parse_errors": 0,
-        "runner_errors": 4,
-        "integrity_warning": true,
-        "platform_faults": {
-          "n": 0,
-          "generation": 0,
-          "judge": 0,
-          "judge_unparseable": 0
-        },
-        "by_type": {
-          "F": {
-            "n": 3,
-            "n_judged": 9,
-            "acc": 0.3333
-          },
-          "M": {
-            "n": 0,
-            "n_judged": 0,
-            "acc": null,
-            "insufficient_data": true
-          },
-          "V": {
-            "n": 0,
-            "n_judged": 0,
-            "acc": null,
-            "insufficient_data": true
-          },
-          "X": {
-            "n": 0,
-            "n_judged": 0,
-            "acc": null,
-            "insufficient_data": true
-          }
-        },
-        "config": {
-          "ablation_level": "A4_full",
-          "pin": "on",
-          "pin_as_of": "2024-06-01T00:00:00+00:00",
-          "arm_gold_judging": false,
-          "multihop": {
-            "depth": 2,
-            "beam": 3
-          },
-          "model_plan": {
-            "generator": "mid:deepseek-v4-flash",
-            "judge": "large:glm-5.2"
-          },
-          "knowledge_stamp": {
-            "retrieval": "bm25_local_corpus",
-            "corpus_chunks": 3243,
-            "top_k": 5,
-            "graph": "pg_jsonb_store"
-          },
-          "pace_seconds": 8.0,
-          "runs_per_question": 3,
-          "on_unexpected": "count_fail",
-          "tenant_id": "6756b0ab-39c0-462a-9745-aa12e1511fcd"
-        },
-        "level_complete": false,
-        "n_questions_run": 3,
-        "decision_llm_calls": 14,
-        "details": [
-          {
-            "question_id": "F-001",
-            "type": "F",
-            "question": "二甲双胍是哪一类降糖药？",
-            "trace_completeness": 1.0,
-            "trace_answer_cite": {
-              "citations": 0,
-              "out_of_range": 0,
-              "rate": null,
-              "no_citation_run": true
-            },
-            "evidence": [
-              {
-                "rank": 1,
-                "doc_id": "guide-pc-manual-2022",
-                "title": "国家基层糖尿病防治管理手册（2022）",
-                "source": "guidelines/primary_care_dm_manual_2022.pdf",
-                "chunk_idx": 29,
-                "score": 25.117129,
-                "ranked_score": 25.117129,
-                "authority_level": 1,
-                "split": "blind",
-                "span_hash": "29eb0713caff277d",
-                "channel": "doc"
-              },
-              {
-                "rank": 2,
-                "doc_id": "guide-2024",
-                "title": "中国糖尿病防治指南（2024版）",
-                "source": "guidelines/dm_guideline_2024.pdf",
-                "chunk_idx": 62,
-                "score": 25.346193,
-                "ranked_score": 24.078883,
-                "authority_level": 2,
-                "split": "build",
-                "span_hash": "fab89665b9699df5",
-                "channel": "doc"
-              },
-              {
-                "rank": 3,
-                "doc_id": "guide-elderly-2024",
-                "title": "中国老年糖尿病诊疗指南（2024版）",
-                "source": "guidelines/elderly_dm_2024.pdf",
-                "chunk_idx": 30,
-                "score": 25.290212,
-                "ranked_score": 24.025702,
-                "authority_level": 2,
-                "split": "build",
-                "span_hash": "dfe284f4f86bfa2d",
-                "channel": "doc"
-              },
-              {
-                "rank": 4,
-                "doc_id": "guide-2020",
-                "title": "中国2型糖尿病防治指南（2020年版）",
-                "source": "guidelines/t2dm_guideline_2020.pdf",
-                "chunk_idx": 55,
-                "score": 22.693414,
-                "ranked_score": 21.558743,
-                "authority_level": 2,
-                "split": "build",
-                "span_hash": "529e7259ae2c86bd",
-                "channel": "doc"
-              },
-              {
-                "rank": 5,
-                "doc_id": "guide-2024",
-                "title": "中国糖尿病防治指南（2024版）",
-                "source": "guidelines/dm_guideline_2024.pdf",
-                "chunk_idx": 92,
-                "score": 21.882727,
-                "ranked_score": 20.78859,
-                "authority_level": 2,
-                "split": "build",
-                "span_hash": "3caf221db922ebfd",
-                "channel": "doc"
-              }
-            ],
-            "context_chars": 2840,
-            "p50_latency_s": 51.45,
-            "tokens_in": 10987,
-            "tokens_out": 16065,
-            "kg_channel": {
-              "seeds": [],
-              "n_seeds": 0,
-              "n_edges": 0,
-              "n_paths": 0,
-              "pinned": true,
-              "clock_source": "explicit",
-              "kg_cutoff": "2024-06-01T00:00:00+00:00",
-              "errors": []
-            },
-            "route": "R/L1:lookup rule: class_or_type"
-          },
-          {
-            "question_id": "F-002",
-            "type": "F",
-            "question": "糖化血红蛋白（HbA1c）反映多长时间的平均血糖水平？",
-            "trace_completeness": 1.0,
-            "trace_answer_cite": {
-              "citations": 0,
-              "out_of_range": 0,
-              "rate": null,
-              "no_citation_run": true
-            },
-            "evidence": [
-              {
-                "rank": 1,
-                "doc_id": "guide-pc-2022",
-                "title": "国家基层糖尿病防治管理指南（2022）",
-                "source": "guidelines/primary_care_dm_guide_2022.pdf",
-                "chunk_idx": 13,
-                "score": 46.328079,
-                "ranked_score": 46.328079,
-                "authority_level": 1,
-                "split": "build",
-                "span_hash": "1e42ba185a3d42e4",
-                "channel": "doc"
-              },
-              {
-                "rank": 2,
-                "doc_id": "guide-2024",
-                "title": "中国糖尿病防治指南（2024版）",
-                "source": "guidelines/dm_guideline_2024.pdf",
-                "chunk_idx": 127,
-                "score": 45.611299,
-                "ranked_score": 43.330734,
-                "authority_level": 2,
-                "split": "build",
-                "span_hash": "6a61faec75d55473",
-                "channel": "doc"
-              },
-              {
-                "rank": 3,
-                "doc_id": "std-glucose-monitor-2021",
-                "title": "中国血糖监测临床应用指南（2021年版）",
-                "source": "lab_standards/glucose_monitor_guide_2021.pdf",
-                "chunk_idx": 22,
-                "score": 41.988242,
-                "ranked_score": 39.88883,
-                "authority_level": 2,
-                "split": "build",
-                "span_hash": "866af007f8bd80b0",
-                "channel": "doc"
-              },
-              {
-                "rank": 4,
-                "doc_id": "std-glucose-monitor-2021",
-                "title": "中国血糖监测临床应用指南（2021年版）",
-                "source": "lab_standards/glucose_monitor_guide_2021.pdf",
-                "chunk_idx": 34,
-                "score": 41.915015,
-                "ranked_score": 39.819264,
-                "authority_level": 2,
-                "split": "build",
-                "span_hash": "cff6cea9e34e9007",
-                "channel": "doc"
-              },
-              {
-                "rank": 5,
-                "doc_id": "guide-2020",
-                "title": "中国2型糖尿病防治指南（2020年版）",
-                "source": "guidelines/t2dm_guideline_2020.pdf",
-                "chunk_idx": 49,
-                "score": 38.239655,
-                "ranked_score": 36.327673,
-                "authority_level": 2,
-                "split": "build",
-                "span_hash": "c2496d4d6884c8ca",
-                "channel": "doc"
-              }
-            ],
-            "context_chars": 2910,
-            "p50_latency_s": 96.03,
-            "tokens_in": 9018,
-            "tokens_out": 16889,
-            "kg_channel": {
-              "seeds": [],
-              "n_seeds": 0,
-              "n_edges": 0,
-              "n_paths": 0,
-              "pinned": true,
-              "clock_source": "explicit",
-              "kg_cutoff": "2024-06-01T00:00:00+00:00",
-              "errors": []
-            },
-            "route": "R/L1:lookup rule: quantity"
-          },
-          {
-            "question_id": "F-003",
-            "type": "F",
-            "question": "2型糖尿病患者的一线药物治疗首选是什么？",
-            "trace_completeness": 1.0,
-            "trace_answer_cite": {
-              "citations": 0,
-              "out_of_range": 0,
-              "rate": null,
-              "no_citation_run": true
-            },
-            "evidence": [
-              {
-                "rank": 1,
-                "doc_id": "guide-2024",
-                "title": "中国糖尿病防治指南（2024版）",
-                "source": "guidelines/dm_guideline_2024.pdf",
-                "chunk_idx": 190,
-                "score": 25.26453,
-                "ranked_score": 24.001303,
-                "authority_level": 2,
-                "split": "build",
-                "span_hash": "f6a7ab42fcfdfada",
-                "channel": "doc"
-              },
-              {
-                "rank": 2,
-                "doc_id": "guide-pc-manual-2022",
-                "title": "国家基层糖尿病防治管理手册（2022）",
-                "source": "guidelines/primary_care_dm_manual_2022.pdf",
-                "chunk_idx": 16,
-                "score": 21.553313,
-                "ranked_score": 21.553313,
-                "authority_level": 1,
-                "split": "blind",
-                "span_hash": "420812bb540808bc",
-                "channel": "doc"
-              },
-              {
-                "rank": 3,
-                "doc_id": "guide-pc-2022",
-                "title": "国家基层糖尿病防治管理指南（2022）",
-                "source": "guidelines/primary_care_dm_guide_2022.pdf",
-                "chunk_idx": 24,
-                "score": 20.25274,
-                "ranked_score": 20.25274,
-                "authority_level": 1,
-                "split": "build",
-                "span_hash": "0416301d17249953",
-                "channel": "doc"
-              },
-              {
-                "rank": 4,
-                "doc_id": "guide-foot-2024",
-                "title": "中国糖尿病足诊治指南（2024）",
-                "source": "guidelines/diabetic_foot_2024.pdf",
-                "chunk_idx": 12,
-                "score": 19.451079,
-                "ranked_score": 18.478525,
-                "authority_level": 2,
-                "split": "blind",
-                "span_hash": "c5e3cc2e46c9c376",
-                "channel": "doc"
-              },
-              {
-                "rank": 5,
-                "doc_id": "guide-2024",
-                "title": "中国糖尿病防治指南（2024版）",
-                "source": "guidelines/dm_guideline_2024.pdf",
-                "chunk_idx": 306,
-                "score": 18.385448,
-                "ranked_score": 17.466175,
-                "authority_level": 2,
-                "split": "build",
-                "span_hash": "afa38a612708dabd",
-                "channel": "doc"
-              }
-            ],
-            "context_chars": 3129,
-            "p50_latency_s": 0.0,
-            "tokens_in": 0,
-            "tokens_out": 0,
-            "kg_channel": {
-              "seeds": [],
-              "n_seeds": 0,
-              "n_edges": 0,
-              "n_paths": 0,
-              "pinned": true,
-              "clock_source": "explicit",
-              "kg_cutoff": "2024-06-01T00:00:00+00:00",
-              "errors": []
-            },
-            "route": "R/L1:lookup rule: definition"
-          }
-        ],
-        "runs": [
-          {
-            "question_id": "F-001",
-            "pass": 1,
-            "run": 0,
-            "total": 1.0,
-            "type": "F",
-            "latency_s": 55.79,
-            "answer": "双胍类（依据：二甲双胍属于双胍类降糖药）",
-            "trace_answer_cite": {
-              "citations": 0,
-              "out_of_range": 0,
-              "no_citation": true,
-              "n_evidence": 5
-            },
-            "reason": "全部达标",
-            "parse_error": false
-          },
-          {
-            "question_id": "F-001",
-            "pass": 1,
-            "run": 1,
-            "total": 1.0,
-            "type": "F",
-            "latency_s": 31.07,
-            "answer": "双胍类（依据：二甲双胍属于双胍类降糖药）",
-            "trace_answer_cite": {
-              "citations": 0,
-              "out_of_range": 0,
-              "no_citation": true,
-              "n_evidence": 5
-            },
-            "reason": "全部达标",
-            "parse_error": false
-          },
-          {
-            "question_id": "F-001",
-            "pass": 1,
-            "run": 2,
-            "total": 1.0,
-            "type": "F",
-            "latency_s": 51.45,
-            "answer": "双胍类降糖药（依据：《国家基层糖尿病防治管理手册（2022）》的“表9 常用降糖药”中，二甲双胍列于“双胍类”类别下。；因此，二甲双胍属于双胍类降糖药。）",
-            "trace_answer_cite": {
-              "citations": 0,
-              "out_of_range": 0,
-              "no_citation": true,
-              "n_evidence": 5
-            },
-            "reason": "各项均达标：必答点\"双胍类\"已覆盖；无需拒答且未编造；引用来源真实存在（guide-pc-manual-2022, chunk=29）；无必答推理步骤故默认满足；题目不涉及治疗决策，安全边界无需触发。",
-            "parse_error": false
-          },
-          {
-            "question_id": "F-002",
-            "pass": 0,
-            "run": 0,
-            "error": "runner_error",
-            "platform_fault": false,
-            "reason": "card render runner error: decision-card LLM output was not a JSON object; got: ''",
-            "type": "F"
-          },
-          {
-            "question_id": "F-002",
-            "pass": 0,
-            "run": 1,
-            "total": 0.3,
-            "type": "F",
-            "latency_s": 80.29,
-            "answer": "证据不足，无法给出推荐。检索文档中提及糖化血红蛋白（HbA1c）反映既往血糖控制状况，但未明确给出具体时间范围（如2~3个月）；相关数字在原文中被截断或缺失。证据中明确的时间信息（2~3周）仅针对糖化白蛋白，而非HbA1c。因此，基于所给证据无法确定HbA1c反映的平均血糖周期。; 未找到校准表（eval_run_t.calibration 为空）：置信度为模型自报值，未做经验校准。",
-            "trace_answer_cite": {
-              "citations": 0,
-              "out_of_range": 0,
-              "no_citation": true,
-              "n_evidence": 5
-            },
-            "reason": "key_facts: 未覆盖8-12周或2-3个月; refusal: 非X型题不应拒答但模型拒答",
-            "parse_error": false
-          },
-          {
-            "question_id": "F-002",
-            "pass": 0,
-            "run": 2,
-            "total": 0.3,
-            "type": "F",
-            "latency_s": 111.77,
-            "answer": "证据不足，无法给出推荐。所给证据中仅出现“糖化血红蛋白反映既往 个月血糖控制状况”，具体月数在命中文本中缺失；无法据此确认HbA1c反映的是2~3个月的平均血糖水平。; 文档中关于“2~3周”的明确表述针对的是糖化白蛋白/GA或糖化血清蛋白，不能外推至HbA1c。",
-            "trace_answer_cite": {
-              "citations": 0,
-              "out_of_range": 0,
-              "no_citation": true,
-              "n_evidence": 5
-            },
-            "reason": "key_facts：未覆盖必答点'8-12周'和'2-3个月'；refusal：本题不需拒答但答案选择拒答，未能给出已知标准答案；evidence/reasoning/safety：通过",
-            "parse_error": false
-          },
-          {
-            "question_id": "F-003",
-            "pass": 0,
-            "run": 0,
-            "error": "runner_error",
-            "platform_fault": false,
-            "reason": "card render runner error: decision-card LLM output was not a JSON object; got: ''",
-            "type": "F"
-          },
-          {
-            "question_id": "F-003",
-            "pass": 0,
-            "run": 1,
-            "error": "runner_error",
-            "platform_fault": false,
-            "reason": "card render runner error: decision-card LLM output was not a JSON object; got: ''",
-            "type": "F"
-          },
-          {
-            "question_id": "F-003",
-            "pass": 0,
-            "run": 2,
-            "error": "runner_error",
-            "platform_fault": false,
-            "reason": "card render runner error: decision-card LLM output was not a JSON object; got: ''",
-            "type": "F"
-          }
-        ],
-        "pass2_ci95": {
-          "lo": 0.0615,
-          "hi": 0.7923
-        },
-        "acc_ci95": {
-          "lo": 0.1206,
-          "hi": 0.6458
-        }
-      }
-    },
-    {
-      "level": "A4_full",
-      "pin": "on",
-      "arm_gold": true,
-      "complete": false,
-      "eval_run_id": "a35a6e73-96c4-468b-b6d0-b06c3b31c7cf",
-      "metrics": {
-        "acc": 0.5,
-        "pass2": 0.5,
-        "pass3": 0.0,
-        "n_questions": 2,
-        "n_runs": 6,
-        "n_judged": 6,
-        "n_expected": 6,
-        "trace_machine": 1.0,
-        "trace_answer_cite": {
-          "citations": 0,
-          "out_of_range": 0,
-          "rate": null,
-          "no_citation_run": true
-        },
-        "p95_latency_s": 137.02,
-        "tokens_in": 18810,
-        "tokens_out": 45410,
-        "judge_parse_errors": 0,
-        "runner_errors": 2,
-        "integrity_warning": true,
-        "platform_faults": {
-          "n": 0,
-          "generation": 0,
-          "judge": 0,
-          "judge_unparseable": 0
-        },
-        "by_type": {
-          "F": {
-            "n": 2,
-            "n_judged": 6,
-            "acc": 0.5
-          },
-          "M": {
-            "n": 0,
-            "n_judged": 0,
-            "acc": null,
-            "insufficient_data": true
-          },
-          "V": {
-            "n": 0,
-            "n_judged": 0,
-            "acc": null,
-            "insufficient_data": true
-          },
-          "X": {
-            "n": 0,
-            "n_judged": 0,
-            "acc": null,
-            "insufficient_data": true
-          }
-        },
-        "config": {
-          "ablation_level": "A4_full",
-          "pin": "on",
-          "pin_as_of": "2024-06-01T00:00:00+00:00",
-          "arm_gold_judging": true,
-          "multihop": {
-            "depth": 2,
-            "beam": 3
-          },
-          "model_plan": {
-            "generator": "mid:deepseek-v4-flash",
-            "judge": "large:glm-5.2"
-          },
-          "knowledge_stamp": {
-            "retrieval": "bm25_local_corpus",
-            "corpus_chunks": 3243,
-            "top_k": 5,
-            "graph": "pg_jsonb_store"
-          },
-          "pace_seconds": 8.0,
-          "runs_per_question": 3,
-          "on_unexpected": "count_fail",
-          "tenant_id": "6756b0ab-39c0-462a-9745-aa12e1511fcd"
-        },
-        "level_complete": false,
-        "n_questions_run": 2,
-        "decision_llm_calls": 10,
-        "details": [
-          {
-            "question_id": "F-001",
-            "type": "F",
-            "question": "二甲双胍是哪一类降糖药？",
-            "trace_completeness": 1.0,
-            "trace_answer_cite": {
-              "citations": 0,
-              "out_of_range": 0,
-              "rate": null,
-              "no_citation_run": true
-            },
-            "evidence": [
-              {
-                "rank": 1,
-                "doc_id": "guide-pc-manual-2022",
-                "title": "国家基层糖尿病防治管理手册（2022）",
-                "source": "guidelines/primary_care_dm_manual_2022.pdf",
-                "chunk_idx": 29,
-                "score": 25.117129,
-                "ranked_score": 25.117129,
-                "authority_level": 1,
-                "split": "blind",
-                "span_hash": "29eb0713caff277d",
-                "channel": "doc"
-              },
-              {
-                "rank": 2,
-                "doc_id": "guide-2024",
-                "title": "中国糖尿病防治指南（2024版）",
-                "source": "guidelines/dm_guideline_2024.pdf",
-                "chunk_idx": 62,
-                "score": 25.346193,
-                "ranked_score": 24.078883,
-                "authority_level": 2,
-                "split": "build",
-                "span_hash": "fab89665b9699df5",
-                "channel": "doc"
-              },
-              {
-                "rank": 3,
-                "doc_id": "guide-elderly-2024",
-                "title": "中国老年糖尿病诊疗指南（2024版）",
-                "source": "guidelines/elderly_dm_2024.pdf",
-                "chunk_idx": 30,
-                "score": 25.290212,
-                "ranked_score": 24.025702,
-                "authority_level": 2,
-                "split": "build",
-                "span_hash": "dfe284f4f86bfa2d",
-                "channel": "doc"
-              },
-              {
-                "rank": 4,
-                "doc_id": "guide-2020",
-                "title": "中国2型糖尿病防治指南（2020年版）",
-                "source": "guidelines/t2dm_guideline_2020.pdf",
-                "chunk_idx": 55,
-                "score": 22.693414,
-                "ranked_score": 21.558743,
-                "authority_level": 2,
-                "split": "build",
-                "span_hash": "529e7259ae2c86bd",
-                "channel": "doc"
-              },
-              {
-                "rank": 5,
-                "doc_id": "guide-2024",
-                "title": "中国糖尿病防治指南（2024版）",
-                "source": "guidelines/dm_guideline_2024.pdf",
-                "chunk_idx": 92,
-                "score": 21.882727,
-                "ranked_score": 20.78859,
-                "authority_level": 2,
-                "split": "build",
-                "span_hash": "3caf221db922ebfd",
-                "channel": "doc"
-              }
-            ],
-            "context_chars": 2840,
-            "p50_latency_s": 47.84,
-            "tokens_in": 7303,
-            "tokens_out": 10941,
-            "kg_channel": {
-              "seeds": [],
-              "n_seeds": 0,
-              "n_edges": 0,
-              "n_paths": 0,
-              "pinned": true,
-              "clock_source": "explicit",
-              "kg_cutoff": "2024-06-01T00:00:00+00:00",
-              "errors": []
-            },
-            "route": "R/L1:lookup rule: class_or_type"
-          },
-          {
-            "question_id": "F-002",
-            "type": "F",
-            "question": "糖化血红蛋白（HbA1c）反映多长时间的平均血糖水平？",
-            "trace_completeness": 1.0,
-            "trace_answer_cite": {
-              "citations": 0,
-              "out_of_range": 0,
-              "rate": null,
-              "no_citation_run": true
-            },
-            "evidence": [
-              {
-                "rank": 1,
-                "doc_id": "guide-pc-2022",
-                "title": "国家基层糖尿病防治管理指南（2022）",
-                "source": "guidelines/primary_care_dm_guide_2022.pdf",
-                "chunk_idx": 13,
-                "score": 46.328079,
-                "ranked_score": 46.328079,
-                "authority_level": 1,
-                "split": "build",
-                "span_hash": "1e42ba185a3d42e4",
-                "channel": "doc"
-              },
-              {
-                "rank": 2,
-                "doc_id": "guide-2024",
-                "title": "中国糖尿病防治指南（2024版）",
-                "source": "guidelines/dm_guideline_2024.pdf",
-                "chunk_idx": 127,
-                "score": 45.611299,
-                "ranked_score": 43.330734,
-                "authority_level": 2,
-                "split": "build",
-                "span_hash": "6a61faec75d55473",
-                "channel": "doc"
-              },
-              {
-                "rank": 3,
-                "doc_id": "std-glucose-monitor-2021",
-                "title": "中国血糖监测临床应用指南（2021年版）",
-                "source": "lab_standards/glucose_monitor_guide_2021.pdf",
-                "chunk_idx": 22,
-                "score": 41.988242,
-                "ranked_score": 39.88883,
-                "authority_level": 2,
-                "split": "build",
-                "span_hash": "866af007f8bd80b0",
-                "channel": "doc"
-              },
-              {
-                "rank": 4,
-                "doc_id": "std-glucose-monitor-2021",
-                "title": "中国血糖监测临床应用指南（2021年版）",
-                "source": "lab_standards/glucose_monitor_guide_2021.pdf",
-                "chunk_idx": 34,
-                "score": 41.915015,
-                "ranked_score": 39.819264,
-                "authority_level": 2,
-                "split": "build",
-                "span_hash": "cff6cea9e34e9007",
-                "channel": "doc"
-              },
-              {
-                "rank": 5,
-                "doc_id": "guide-2020",
-                "title": "中国2型糖尿病防治指南（2020年版）",
-                "source": "guidelines/t2dm_guideline_2020.pdf",
-                "chunk_idx": 49,
-                "score": 38.239655,
-                "ranked_score": 36.327673,
-                "authority_level": 2,
-                "split": "build",
-                "span_hash": "c2496d4d6884c8ca",
-                "channel": "doc"
-              }
-            ],
-            "context_chars": 2910,
-            "p50_latency_s": 137.02,
-            "tokens_in": 11507,
-            "tokens_out": 34469,
-            "kg_channel": {
-              "seeds": [],
-              "n_seeds": 0,
-              "n_edges": 0,
-              "n_paths": 0,
-              "pinned": true,
-              "clock_source": "explicit",
-              "kg_cutoff": "2024-06-01T00:00:00+00:00",
-              "errors": []
-            },
-            "route": "R/L1:lookup rule: quantity"
-          }
-        ],
-        "runs": [
-          {
-            "question_id": "F-001",
-            "pass": 0,
-            "run": 0,
-            "error": "runner_error",
-            "platform_fault": false,
-            "reason": "card render runner error: decision-card LLM output was not a JSON object; got: ''",
-            "type": "F"
-          },
-          {
-            "question_id": "F-001",
-            "pass": 1,
-            "run": 1,
-            "total": 1.0,
-            "type": "F",
-            "latency_s": 38.4,
-            "answer": "双胍类（依据：二甲双胍属于双胍类降糖药。）",
-            "trace_answer_cite": {
-              "citations": 0,
-              "out_of_range": 0,
-              "no_citation": true,
-              "n_evidence": 5
-            },
-            "reason": "全部达标",
-            "parse_error": false
-          },
-          {
-            "question_id": "F-001",
-            "pass": 1,
-            "run": 2,
-            "total": 1.0,
-            "type": "F",
-            "latency_s": 57.27,
-            "answer": "二甲双胍属于双胍类降糖药（依据：二甲双胍属于双胍类降糖药）",
-            "trace_answer_cite": {
-              "citations": 0,
-              "out_of_range": 0,
-              "no_citation": true,
-              "n_evidence": 5
-            },
-            "reason": "各项均达标",
-            "parse_error": false
-          },
-          {
-            "question_id": "F-002",
-            "pass": 0,
-            "run": 0,
-            "total": 0.7,
-            "type": "F",
-            "latency_s": 133.8,
-            "answer": "2～3个月（依据：糖化血红蛋白反映既往2～3个月的平均血糖水平/血糖控制状况。）",
-            "trace_answer_cite": {
-              "citations": 0,
-              "out_of_range": 0,
-              "no_citation": true,
-              "n_evidence": 5
-            },
-            "reason": "key_facts: 答案仅覆盖'2-3个月'，未覆盖必答点'8-12周'",
-            "parse_error": false
-          },
-          {
-            "question_id": "F-002",
-            "pass": 0,
-            "run": 1,
-            "error": "runner_error",
-            "platform_fault": false,
-            "reason": "card render runner error: decision-card LLM output was not a JSON object; got: ''",
-            "type": "F"
-          },
-          {
-            "question_id": "F-002",
-            "pass": 1,
-            "run": 2,
-            "total": 1.0,
-            "type": "F",
-            "latency_s": 140.24,
-            "answer": "约2～3个月（依据：糖化血红蛋白（HbA1c）反映既往2～3个月血糖控制状况）",
-            "trace_answer_cite": {
-              "citations": 0,
-              "out_of_range": 0,
-              "no_citation": true,
-              "n_evidence": 5
-            },
-            "reason": "各项均达标：答案覆盖'2-3个月'且语义上等同于'8-12周'；非X型题无需拒答；引用来源真实存在；无必答推理步骤；非治疗决策题无需安全边界。",
-            "parse_error": false
-          }
-        ],
-        "pass2_ci95": {
-          "lo": 0.0945,
-          "hi": 0.9055
-        },
-        "acc_ci95": {
-          "lo": 0.1876,
-          "hi": 0.8124
-        }
-      }
-    },
-    {
-      "level": "A4_full",
-      "pin": "off",
-      "arm_gold": true,
-      "complete": false,
-      "eval_run_id": "eacba193-890c-4ed8-9487-f897a01bc66f",
-      "metrics": {
-        "acc": 0.0,
-        "pass2": 0.0,
-        "pass3": 0.0,
-        "n_questions": 0,
-        "n_runs": 0,
-        "n_judged": 0,
-        "n_expected": 0,
-        "trace_machine": 0.0,
-        "trace_answer_cite": {
-          "citations": 0,
-          "out_of_range": 0,
-          "rate": null,
-          "no_citation_run": true
-        },
-        "p95_latency_s": 0.0,
-        "tokens_in": 0,
-        "tokens_out": 0,
-        "judge_parse_errors": 0,
-        "runner_errors": 0,
-        "integrity_warning": false,
-        "platform_faults": {
-          "n": 0,
-          "generation": 0,
-          "judge": 0,
-          "judge_unparseable": 0
-        },
-        "by_type": {
-          "F": {
-            "n": 0,
-            "n_judged": 0,
-            "acc": null,
-            "insufficient_data": true
-          },
-          "M": {
-            "n": 0,
-            "n_judged": 0,
-            "acc": null,
-            "insufficient_data": true
-          },
-          "V": {
-            "n": 0,
-            "n_judged": 0,
-            "acc": null,
-            "insufficient_data": true
-          },
-          "X": {
-            "n": 0,
-            "n_judged": 0,
-            "acc": null,
-            "insufficient_data": true
-          }
-        },
-        "config": {
-          "ablation_level": "A4_full",
-          "pin": "off",
-          "pin_as_of": "2024-06-01T00:00:00+00:00",
-          "arm_gold_judging": true,
-          "multihop": {
-            "depth": 2,
-            "beam": 3
-          },
-          "model_plan": {
-            "generator": "mid:deepseek-v4-flash",
-            "judge": "large:glm-5.2"
-          },
-          "knowledge_stamp": {
-            "retrieval": "bm25_local_corpus",
-            "corpus_chunks": 3243,
-            "top_k": 5,
-            "graph": "pg_jsonb_store"
-          },
-          "pace_seconds": 8.0,
-          "runs_per_question": 3,
-          "on_unexpected": "count_fail",
-          "tenant_id": "6756b0ab-39c0-462a-9745-aa12e1511fcd"
-        },
-        "level_complete": false,
-        "n_questions_run": 0,
-        "decision_llm_calls": 0,
-        "details": [],
-        "runs": []
-      }
-    },
-    {
       "level": "A2_graph",
       "pin": "n/a",
       "arm_gold": false,
@@ -3147,6 +2180,395 @@
         "details": [],
         "runs": []
       }
+    },
+    {
+      "level": "A4_full",
+      "pin": "on",
+      "arm_gold": false,
+      "complete": false,
+      "eval_run_id": "17ce73d5-3c20-4188-8a82-6bc426c7a66e",
+      "metrics": {
+        "acc": 0.5,
+        "pass2": 0.5,
+        "pass3": 0.5,
+        "n_questions": 2,
+        "n_runs": 6,
+        "n_judged": 6,
+        "n_expected": 6,
+        "trace_machine": 1.0,
+        "trace_answer_cite": {
+          "citations": 0,
+          "out_of_range": 0,
+          "rate": null,
+          "no_citation_run": true
+        },
+        "p95_latency_s": 489.51,
+        "tokens_in": 47769,
+        "tokens_out": 129556,
+        "judge_parse_errors": 0,
+        "runner_errors": 0,
+        "integrity_warning": false,
+        "platform_faults": {
+          "n": 0,
+          "generation": 0,
+          "judge": 0,
+          "judge_unparseable": 0
+        },
+        "by_type": {
+          "F": {
+            "n": 2,
+            "n_judged": 6,
+            "acc": 0.5
+          },
+          "M": {
+            "n": 0,
+            "n_judged": 0,
+            "acc": null,
+            "insufficient_data": true
+          },
+          "V": {
+            "n": 0,
+            "n_judged": 0,
+            "acc": null,
+            "insufficient_data": true
+          },
+          "X": {
+            "n": 0,
+            "n_judged": 0,
+            "acc": null,
+            "insufficient_data": true
+          }
+        },
+        "config": {
+          "ablation_level": "A4_full",
+          "pin": "on",
+          "pin_as_of": "2024-06-01T00:00:00+00:00",
+          "arm_gold_judging": false,
+          "multihop": {
+            "depth": 2,
+            "beam": 3
+          },
+          "model_plan": {
+            "generator": "mid:deepseek-v4-flash",
+            "judge": "large:glm-5.2"
+          },
+          "knowledge_stamp": {
+            "retrieval": "bm25_local_corpus",
+            "corpus_chunks": 3243,
+            "top_k": 5,
+            "graph": "pg_jsonb_store"
+          },
+          "pace_seconds": 8.0,
+          "runs_per_question": 3,
+          "on_unexpected": "count_fail",
+          "tenant_id": "6756b0ab-39c0-462a-9745-aa12e1511fcd"
+        },
+        "details": [
+          {
+            "question_id": "F-001",
+            "type": "F",
+            "question": "二甲双胍是哪一类降糖药？",
+            "trace_completeness": 1.0,
+            "trace_answer_cite": {
+              "citations": 0,
+              "out_of_range": 0,
+              "rate": null,
+              "no_citation_run": true
+            },
+            "evidence": [
+              {
+                "rank": 1,
+                "doc_id": "guide-pc-manual-2022",
+                "title": "国家基层糖尿病防治管理手册（2022）",
+                "source": "guidelines/primary_care_dm_manual_2022.pdf",
+                "chunk_idx": 29,
+                "score": 25.117129,
+                "ranked_score": 25.117129,
+                "authority_level": 1,
+                "split": "blind",
+                "span_hash": "29eb0713caff277d",
+                "channel": "doc"
+              },
+              {
+                "rank": 2,
+                "doc_id": "guide-2024",
+                "title": "中国糖尿病防治指南（2024版）",
+                "source": "guidelines/dm_guideline_2024.pdf",
+                "chunk_idx": 62,
+                "score": 25.346193,
+                "ranked_score": 24.078883,
+                "authority_level": 2,
+                "split": "build",
+                "span_hash": "fab89665b9699df5",
+                "channel": "doc"
+              },
+              {
+                "rank": 3,
+                "doc_id": "guide-elderly-2024",
+                "title": "中国老年糖尿病诊疗指南（2024版）",
+                "source": "guidelines/elderly_dm_2024.pdf",
+                "chunk_idx": 30,
+                "score": 25.290212,
+                "ranked_score": 24.025702,
+                "authority_level": 2,
+                "split": "build",
+                "span_hash": "dfe284f4f86bfa2d",
+                "channel": "doc"
+              },
+              {
+                "rank": 4,
+                "doc_id": "guide-2020",
+                "title": "中国2型糖尿病防治指南（2020年版）",
+                "source": "guidelines/t2dm_guideline_2020.pdf",
+                "chunk_idx": 55,
+                "score": 22.693414,
+                "ranked_score": 21.558743,
+                "authority_level": 2,
+                "split": "build",
+                "span_hash": "529e7259ae2c86bd",
+                "channel": "doc"
+              },
+              {
+                "rank": 5,
+                "doc_id": "guide-2024",
+                "title": "中国糖尿病防治指南（2024版）",
+                "source": "guidelines/dm_guideline_2024.pdf",
+                "chunk_idx": 92,
+                "score": 21.882727,
+                "ranked_score": 20.78859,
+                "authority_level": 2,
+                "split": "build",
+                "span_hash": "3caf221db922ebfd",
+                "channel": "doc"
+              }
+            ],
+            "context_chars": 2840,
+            "p50_latency_s": 59.43,
+            "tokens_in": 20165,
+            "tokens_out": 46541,
+            "kg_channel": {
+              "seeds": [],
+              "n_seeds": 0,
+              "n_edges": 0,
+              "n_paths": 0,
+              "pinned": true,
+              "clock_source": "explicit",
+              "kg_cutoff": "2024-06-01T00:00:00+00:00",
+              "errors": []
+            },
+            "route": "R/L1:lookup rule: class_or_type"
+          },
+          {
+            "question_id": "F-002",
+            "type": "F",
+            "question": "糖化血红蛋白（HbA1c）反映多长时间的平均血糖水平？",
+            "trace_completeness": 1.0,
+            "trace_answer_cite": {
+              "citations": 0,
+              "out_of_range": 0,
+              "rate": null,
+              "no_citation_run": true
+            },
+            "evidence": [
+              {
+                "rank": 1,
+                "doc_id": "guide-pc-2022",
+                "title": "国家基层糖尿病防治管理指南（2022）",
+                "source": "guidelines/primary_care_dm_guide_2022.pdf",
+                "chunk_idx": 13,
+                "score": 46.328079,
+                "ranked_score": 46.328079,
+                "authority_level": 1,
+                "split": "build",
+                "span_hash": "1e42ba185a3d42e4",
+                "channel": "doc"
+              },
+              {
+                "rank": 2,
+                "doc_id": "guide-2024",
+                "title": "中国糖尿病防治指南（2024版）",
+                "source": "guidelines/dm_guideline_2024.pdf",
+                "chunk_idx": 127,
+                "score": 45.611299,
+                "ranked_score": 43.330734,
+                "authority_level": 2,
+                "split": "build",
+                "span_hash": "6a61faec75d55473",
+                "channel": "doc"
+              },
+              {
+                "rank": 3,
+                "doc_id": "std-glucose-monitor-2021",
+                "title": "中国血糖监测临床应用指南（2021年版）",
+                "source": "lab_standards/glucose_monitor_guide_2021.pdf",
+                "chunk_idx": 22,
+                "score": 41.988242,
+                "ranked_score": 39.88883,
+                "authority_level": 2,
+                "split": "build",
+                "span_hash": "866af007f8bd80b0",
+                "channel": "doc"
+              },
+              {
+                "rank": 4,
+                "doc_id": "std-glucose-monitor-2021",
+                "title": "中国血糖监测临床应用指南（2021年版）",
+                "source": "lab_standards/glucose_monitor_guide_2021.pdf",
+                "chunk_idx": 34,
+                "score": 41.915015,
+                "ranked_score": 39.819264,
+                "authority_level": 2,
+                "split": "build",
+                "span_hash": "cff6cea9e34e9007",
+                "channel": "doc"
+              },
+              {
+                "rank": 5,
+                "doc_id": "guide-2020",
+                "title": "中国2型糖尿病防治指南（2020年版）",
+                "source": "guidelines/t2dm_guideline_2020.pdf",
+                "chunk_idx": 49,
+                "score": 38.239655,
+                "ranked_score": 36.327673,
+                "authority_level": 2,
+                "split": "build",
+                "span_hash": "c2496d4d6884c8ca",
+                "channel": "doc"
+              }
+            ],
+            "context_chars": 2910,
+            "p50_latency_s": 489.51,
+            "tokens_in": 27604,
+            "tokens_out": 83015,
+            "kg_channel": {
+              "seeds": [],
+              "n_seeds": 0,
+              "n_edges": 0,
+              "n_paths": 0,
+              "pinned": true,
+              "clock_source": "explicit",
+              "kg_cutoff": "2024-06-01T00:00:00+00:00",
+              "errors": []
+            },
+            "route": "R/L1:lookup rule: quantity"
+          }
+        ],
+        "runs": [
+          {
+            "question_id": "F-001",
+            "pass": 1,
+            "run": 0,
+            "total": 1.0,
+            "type": "F",
+            "latency_s": 59.43,
+            "answer": "双胍类（Biguanide）（依据：《国家基层糖尿病防治管理手册（2022）》表9中，“双胍类”类别下的通用名包括二甲双胍。；因此，二甲双胍属于双胍类降糖药。）",
+            "trace_answer_cite": {
+              "citations": 0,
+              "out_of_range": 0,
+              "no_citation": true,
+              "n_evidence": 5
+            },
+            "reason": "全部达标",
+            "parse_error": false
+          },
+          {
+            "question_id": "F-001",
+            "pass": 1,
+            "run": 1,
+            "total": 1.0,
+            "type": "F",
+            "latency_s": 57.07,
+            "answer": "双胍类（依据：二甲双胍属于双胍类降糖药）",
+            "trace_answer_cite": {
+              "citations": 0,
+              "out_of_range": 0,
+              "no_citation": true,
+              "n_evidence": 5
+            },
+            "reason": "全部达标",
+            "parse_error": false
+          },
+          {
+            "question_id": "F-001",
+            "pass": 1,
+            "run": 2,
+            "total": 1.0,
+            "type": "F",
+            "latency_s": 263.12,
+            "answer": "双胍类（依据：二甲双胍属于双胍类降糖药。）",
+            "trace_answer_cite": {
+              "citations": 0,
+              "out_of_range": 0,
+              "no_citation": true,
+              "n_evidence": 5
+            },
+            "reason": "无",
+            "parse_error": false
+          },
+          {
+            "question_id": "F-002",
+            "pass": 0,
+            "run": 0,
+            "total": 0.7,
+            "type": "F",
+            "latency_s": 1272.25,
+            "answer": "2～3个月（依据：糖化血红蛋白反映既往2～3个月的血糖控制状况。；糖化血红蛋白与平均血浆葡萄糖水平存在对应关系。）",
+            "trace_answer_cite": {
+              "citations": 0,
+              "out_of_range": 0,
+              "no_citation": true,
+              "n_evidence": 5
+            },
+            "reason": "key_facts未覆盖必答点'8-12周'",
+            "parse_error": false
+          },
+          {
+            "question_id": "F-002",
+            "pass": 0,
+            "run": 1,
+            "total": 0.7,
+            "type": "F",
+            "latency_s": 279.82,
+            "answer": "2~3个月（依据：糖化血红蛋白反映既往2~3个月血糖控制状况；糖化血红蛋白与平均血浆葡萄糖水平存在对应关系）",
+            "trace_answer_cite": {
+              "citations": 0,
+              "out_of_range": 0,
+              "no_citation": true,
+              "n_evidence": 5
+            },
+            "reason": "key_facts: 仅覆盖'2-3个月'，缺失必答点'8-12周'",
+            "parse_error": false
+          },
+          {
+            "question_id": "F-002",
+            "pass": 0,
+            "run": 2,
+            "total": 0.7,
+            "type": "F",
+            "latency_s": 489.51,
+            "answer": "2~3个月（依据：糖化血红蛋白（HbA1c）反映既往2~3个月的血糖控制状况。；指南中列有“糖化血红蛋白与血糖关系对照表”，将HbA1c与平均血浆葡萄糖水平对应。；因此，HbA1c反映约2~3个月的平均血糖水平。）",
+            "trace_answer_cite": {
+              "citations": 0,
+              "out_of_range": 0,
+              "no_citation": true,
+              "n_evidence": 5
+            },
+            "reason": "key_facts 缺失必答点'8-12周'",
+            "parse_error": false
+          }
+        ],
+        "level_complete": false,
+        "n_questions_run": 2,
+        "decision_llm_calls": 16,
+        "pass2_ci95": {
+          "lo": 0.0945,
+          "hi": 0.9055
+        },
+        "acc_ci95": {
+          "lo": 0.1876,
+          "hi": 0.8124
+        }
+      }
     }
   ],
   "cross_table": {
@@ -3154,10 +2576,6 @@
       "A1_pure_rag": {
         "acc": 0.7857,
         "n_judged": 14
-      },
-      "A4_full": {
-        "acc": 0.3333,
-        "n_judged": 9
       },
       "A2_graph": {
         "acc": 0.75,
@@ -3167,6 +2585,10 @@
         "acc": null,
         "n_judged": 0,
         "insufficient_data": true
+      },
+      "A4_full": {
+        "acc": 0.5,
+        "n_judged": 6
       }
     },
     "M": {
@@ -3174,17 +2596,17 @@
         "acc": 0.6667,
         "n_judged": 15
       },
-      "A4_full": {
-        "acc": null,
-        "n_judged": 0,
-        "insufficient_data": true
-      },
       "A2_graph": {
         "acc": null,
         "n_judged": 0,
         "insufficient_data": true
       },
       "A3_multihop": {
+        "acc": null,
+        "n_judged": 0,
+        "insufficient_data": true
+      },
+      "A4_full": {
         "acc": null,
         "n_judged": 0,
         "insufficient_data": true
@@ -3196,17 +2618,17 @@
         "n_judged": 0,
         "insufficient_data": true
       },
-      "A4_full": {
-        "acc": null,
-        "n_judged": 0,
-        "insufficient_data": true
-      },
       "A2_graph": {
         "acc": null,
         "n_judged": 0,
         "insufficient_data": true
       },
       "A3_multihop": {
+        "acc": null,
+        "n_judged": 0,
+        "insufficient_data": true
+      },
+      "A4_full": {
         "acc": null,
         "n_judged": 0,
         "insufficient_data": true
@@ -3218,11 +2640,6 @@
         "n_judged": 0,
         "insufficient_data": true
       },
-      "A4_full": {
-        "acc": null,
-        "n_judged": 0,
-        "insufficient_data": true
-      },
       "A2_graph": {
         "acc": null,
         "n_judged": 0,
@@ -3232,64 +2649,20 @@
         "acc": null,
         "n_judged": 0,
         "insufficient_data": true
+      },
+      "A4_full": {
+        "acc": null,
+        "n_judged": 0,
+        "insufficient_data": true
       }
     }
   },
-  "e8": {
-    "pin_on_run": null,
-    "pin_off_run": null,
-    "arm_gold_judging": {
-      "pin_on": true,
-      "pin_off": true
-    },
-    "per_type": {
-      "F": {
-        "pin_on": {
-          "acc": 0.5,
-          "n_judged": 6,
-          "ci95": {
-            "lo": 0.1876,
-            "hi": 0.8124
-          }
-        },
-        "pin_off": {
-          "acc": null,
-          "n_judged": 0,
-          "ci95": {
-            "lo": null,
-            "hi": null
-          }
-        },
-        "delta_acc_on_minus_off": null
-      },
-      "V": {
-        "pin_on": {
-          "acc": null,
-          "n_judged": 0,
-          "ci95": {
-            "lo": null,
-            "hi": null
-          }
-        },
-        "pin_off": {
-          "acc": null,
-          "n_judged": 0,
-          "ci95": {
-            "lo": null,
-            "hi": null
-          }
-        },
-        "delta_acc_on_minus_off": null
-      }
-    },
-    "caveat": "数据现实（2026-09-19 真库勘察）：构建租户 6756b0ab 的图谱为空（0 实体 / 0 关系）；全库 474 条 kg_relation_t 全部属于临时评测租户，其中仅 121 条带业务时间（valid_at≤2024-06-01，PG 集成测试播种），判别性计数 t_v=2022:0 / t_v=2025-06:1 / all:474（D1 谓词分化成立）。因此 pin on/off 两臂当前收到完全相同的证据（仅文档通道），E8 的 Δ 衡量的是“钉住机制在真实语料图摄取前不可观测”——机制证明由判别性单测 TestDiscriminativeVersionPin 与 PG 集成测试 test_discriminative_version_pin_on_real_db 承载，不在此粉饰。V 题双金标现况：5 道中仅 V-004 的 answer_old≠answer_new，V 题 Δ 样本 n=1，故 E8 的 Δ 主测 F 题（n=5）。"
-  },
+  "e8": null,
   "notes": [
     "A2/A3/A4 的文档通道与 A1 逐字节相同（同一生成模型与 prompt）；图谱通道经 DecisionService.assemble_evidence 融合，冲突标 contested。",
     "A3 多跳为 DecisionService.multi_hop 服务直调（depth=2, beam=3, current view）；A4/E8 的版本钉住走 version_pin 单一入口。",
-    "E8 判分按臂选金标：pin-on 臂对 answer_old、pin-off 臂对 answer_new（V 题按臂收窄 key_facts）；F/M/X 金标不变。",
-    "执行器修订（2026-09-19，落盘后离线重算 metrics）：①runner_error/故障条目补 type 字段——此前 by_type 分母漏计失败 run（如 A4 headline 的 F 格曾是 5/9 而非 9/9）；②_CountingLLM 对网关空内容按 E1 平台故障纪律重试 4 次（此前仅 1 次，A4/E8 部分早期 run 因空内容记 runner_error，如实保留在本报告中）；③A4/E8 两臂的既有数字是在修订前执行器下测得，续跑续测题目将使用修订后执行器，逐题 runner_error 均可追溯。"
+    "E8 判分按臂选金标：pin-on 臂对 answer_old、pin-off 臂对 answer_new（V 题按臂收窄 key_facts）；F/M/X 金标不变。"
   ],
   "pending": [],
-  "resume": "# 步骤1（可选，推荐）：A4/E8 臂在空内容重试修复前的部分数据建议重测——删除 A4 条目后重跑：\n#   python3 -c \"import json;p='../competition/deliverables/e2-ablation-report.json';d=json.load(open(p));d['results']=[r for r in d['results'] if r['level']!='A4_full'];d['levels_requested']=[k for k in d['levels_requested'] if not k.startswith('A4_full')];json.dump(d,open(p,'w'),ensure_ascii=False,indent=2)\"\n# 步骤2：续跑四级 headline（A1 从第 11 题续、A2 从第 5 题续、A3 首跑、A4 视步骤 1）\ncd backend && POSTGRES_HOST=localhost POSTGRES_PORT=5434 POSTGRES_USER=root POSTGRES_DB=nexent NEXENT_POSTGRES_PASSWORD=$(grep -m1 '^NEXENT_POSTGRES_PASSWORD=' ../deploy/env/.env | cut -d= -f2) KW_LLM_SMALL_MODEL_ID=7 KW_LLM_MID_MODEL_ID=7 KW_LLM_LARGE_MODEL_ID=8 uv run python -m services.knowevo.pipeline.ablation --levels A1,A2,A3,A4 --runs 3 --pace 8 --budget-minutes 40 --out ../competition/deliverables/e2-ablation-report.json\n# 步骤3：E8 两臂续跑（on 臂从 F-003 续 / off 臂首跑；若做了步骤 1 则两臂全新重跑）\ncd backend && ... uv run python -m services.knowevo.pipeline.ablation --levels A4 --pin on,off --types V,F --runs 3 --pace 8 --budget-minutes 15 --out ../competition/deliverables/e2-ablation-report.json"
+  "resume": null
 }
