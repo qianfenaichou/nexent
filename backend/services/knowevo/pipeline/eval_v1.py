@@ -25,6 +25,7 @@ inspired by tau2-bench" per 03-development-plan 4.2.3.
 import argparse
 import hashlib
 import json
+import math
 import sys
 from pathlib import Path
 from typing import Any
@@ -139,6 +140,54 @@ def passk_aggregate(runs: list[dict[str, Any]]) -> dict[str, float]:
         "n_questions": n_q,
         "n_runs": len(runs),
     }
+
+
+def wilson_interval(successes: int, trials: int, z: float = 1.96
+                    ) -> dict[str, float | None]:
+    """Wilson score interval on a proportion (95% by default).
+
+    T-22 additive: the sample-size discipline (02-technical-plan 6.2)
+    reports confidence intervals alongside pass^k instead of claiming a
+    5pp effect a 20-question seed set cannot resolve. Returns
+    ``{"lo": None, "hi": None}`` for an empty sample rather than a fake
+    interval.
+    """
+    if trials <= 0:
+        return {"lo": None, "hi": None}
+    p = successes / trials
+    denom = 1.0 + z * z / trials
+    centre = (p + z * z / (2 * trials)) / denom
+    half = (z * math.sqrt(p * (1 - p) / trials
+                          + z * z / (4 * trials * trials))) / denom
+    return {"lo": round(max(0.0, centre - half), 4),
+            "hi": round(min(1.0, centre + half), 4)}
+
+
+def cross_table(level_metrics: dict[str, dict[str, Any]]
+                ) -> dict[str, dict[str, Any]]:
+    """by_type x by_level matrix over per-level ``summarize`` payloads.
+
+    T-22 additive: the direct evidence that version pinning helps V
+    questions without regressing F ones. Every (type, level) cell is
+    present - a zero-judged cell carries ``insufficient_data: true`` with
+    ``acc: null`` instead of silently disappearing (the same honesty rule
+    as ``eval_e1.summarize`` by_type, extended across levels).
+    """
+    out: dict[str, dict[str, Any]] = {}
+    for qtype in ("F", "M", "V", "X"):
+        row: dict[str, Any] = {}
+        for level, metrics in level_metrics.items():
+            cell = ((metrics or {}).get("by_type") or {}).get(qtype) or {}
+            n_judged = int(cell.get("n_judged") or 0)
+            entry: dict[str, Any] = {
+                "acc": cell.get("acc"),
+                "n_judged": n_judged,
+            }
+            if n_judged == 0 or cell.get("insufficient_data"):
+                entry["insufficient_data"] = True
+            row[level] = entry
+        out[qtype] = row
+    return out
 
 
 def render_judge(lang: str = "en", **variables: Any) -> tuple[str, str]:

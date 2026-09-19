@@ -344,10 +344,36 @@ async def run_question(router, item: dict[str, Any], retriever: Retriever,
     error as ``pass=0`` with ``error="runner_error"`` so it stays in the
     accuracy denominator instead of vanishing into platform_fault.
     """
-    qid = item["id"]
     question = item["question"]
     context, evidence = retrieve_context(retriever, question, top_k=top_k)
-    chain = evidence_chain_text(evidence)
+    return await run_question_with_context(
+        router, item, context, evidence, runs, lang=lang,
+        on_unexpected=on_unexpected)
+
+
+async def run_question_with_context(
+        router, item: dict[str, Any], context: str,
+        evidence: list[dict[str, Any]], runs: int, lang: str = "zh",
+        on_unexpected: str = "raise", gen_kind: str = "e1_answer",
+        judge_kind: str = "e1_judge", chain_text: str | None = None,
+        ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """One question x ``runs`` trials over a pre-built (context, evidence).
+
+    T-22 additive extraction: the generate->judge loop of ``run_question``,
+    byte-for-byte the same semantics, factored out so the ablation arms
+    (A2/A3/A4) can supply their own context/evidence (graph channels fused
+    via ``assemble_evidence``) without forking the scoring contract. A1
+    behaviour is unchanged: same prompt, same retry/fault classification,
+    same per-run record shape.
+
+    ``chain_text`` overrides the judge's evidence-chain rendering (the
+    ablation arms render doc + kg records in one numbered list); A1 keeps
+    ``evidence_chain_text(evidence)``.
+    """
+    qid = item["id"]
+    question = item["question"]
+    chain = chain_text if chain_text is not None \
+        else evidence_chain_text(evidence)
     trace = trace_completeness(evidence)
 
     per_run: list[dict[str, Any]] = []
@@ -364,12 +390,13 @@ async def run_question(router, item: dict[str, Any], retriever: Retriever,
         # honest - it must never be swept under platform_fault.
         try:
             answer, gen_usage = await _call_with_retry(
-                router, prompt, kind="e1_answer", tier=GENERATE_TIER,
+                router, prompt, kind=gen_kind, tier=GENERATE_TIER,
                 qid=qid, run_idx=run_idx, label="generation",
                 on_unexpected=on_unexpected)
         except Exception as exc:
             if on_unexpected == "count_fail":
                 per_run.append({"question_id": qid, "pass": 0, "run": run_idx,
+                                "type": item.get("type"),
                                 "error": "runner_error",
                                 "platform_fault": False,
                                 "reason": f"generation runner error: {exc}"[:200]})
@@ -380,6 +407,7 @@ async def run_question(router, item: dict[str, Any], retriever: Retriever,
             # genuine platform outage; a runner error (count_fail) is marked
             # pass=0 above and stays in the denominator.
             per_run.append({"question_id": qid, "pass": None, "run": run_idx,
+                            "type": item.get("type"),
                             "error": "generation_failed",
                             "platform_fault": True})
             continue
@@ -390,61 +418,16 @@ async def run_question(router, item: dict[str, Any], retriever: Retriever,
         # every [n] in the answer must point at a retrieved chunk.
         citation_traces.append(trace_answer_cite(question, evidence, answer))
 
-        judge_prompt = render_judge_prompt(item, answer, chain, lang=lang)
-        # Judge retries hard on platform faults: an unavailable judge is not
-        # a verdict "failed", and we do not pay for a partial run's answer
-        # without a verdict - the run is marked platform_fault and excluded
-        # from the acc denominator instead of silently counted wrong.
-        try:
-            judge_raw, judge_usage = await _call_with_retry(
-                router, judge_prompt, kind="e1_judge", tier=JUDGE_TIER,
-                qid=qid, run_idx=run_idx, label="judge",
-                on_unexpected=on_unexpected)
-        except Exception as exc:
-            # Non-platform judge error: re-raise by default (a code bug must
-            # surface); count_fail records it as a failed judged observation.
-            if on_unexpected == "count_fail":
-                per_run.append({"question_id": qid, "pass": 0, "run": run_idx,
-                                "error": "runner_error",
-                                "platform_fault": False,
-                                "reason": f"judge runner error: {exc}"[:200]})
-                continue
-            raise
-        if judge_raw is None:
-            per_run.append({"question_id": qid, "pass": None, "run": run_idx,
-                            "error": "judge_unavailable", "platform_fault": True})
-            continue
-        judge_usage = judge_usage or {"input_tokens": 0, "output_tokens": 0}
-        tokens_in += judge_usage.get("input_tokens", 0)
-        tokens_out += judge_usage.get("output_tokens", 0)
-
-        verdict = parse_judge_output(judge_raw)
-        if verdict.get("parse_error"):
-            # The judge returned empty or truncated output: that is a judge
-            # failure, not a wrong answer from the model under test. Keeping
-            # it out of the denominator is the same honesty rule as the
-            # platform-fault path (E0 limitation 3 generalised to grading).
-            logger.warning("judge output unparseable for %s run %d: %s",
-                           qid, run_idx, verdict.get("reason", "")[:120])
-            per_run.append({"question_id": qid, "pass": None, "run": run_idx,
-                            "error": "judge_unparseable",
-                            "platform_fault": True,
-                            "reason": verdict.get("reason", "")[:200]})
-            continue
-        latency = time.monotonic() - t0
-        latencies.append(latency)
-        per_run.append({
-            "question_id": qid,
-            "pass": verdict["pass"],
-            "run": run_idx,
-            "total": verdict["total"],
-            "type": item.get("type"),
-            "latency_s": round(latency, 2),
-            "answer": answer[:2000],
-            "trace_answer_cite": citation_traces[-1],
-            "reason": verdict.get("reason", ""),
-            "parse_error": verdict.get("parse_error", False),
-        })
+        entry, judge_usage = await _judge_once(
+            router, item, answer, chain, qid=qid, run_idx=run_idx,
+            lang=lang, on_unexpected=on_unexpected, judge_kind=judge_kind,
+            t0=t0, citation_trace=citation_traces[-1])
+        per_run.append(entry)
+        if judge_usage is not None:
+            tokens_in += judge_usage.get("input_tokens", 0)
+            tokens_out += judge_usage.get("output_tokens", 0)
+        if entry.get("latency_s"):
+            latencies.append(entry["latency_s"])
 
     detail = {
         "question_id": qid,
@@ -453,11 +436,78 @@ async def run_question(router, item: dict[str, Any], retriever: Retriever,
         "trace_completeness": trace,
         "trace_answer_cite": _aggregate_citation_traces(citation_traces),
         "evidence": evidence,
+        "context_chars": len(context),
         "p50_latency_s": round(statistics.median(latencies), 2) if latencies else 0.0,
         "tokens_in": tokens_in,
         "tokens_out": tokens_out,
     }
     return per_run, detail
+
+
+async def _judge_once(router, item: dict[str, Any], answer: str,
+                      chain_text: str, *, qid: str, run_idx: int,
+                      lang: str, on_unexpected: str, judge_kind: str,
+                      t0: float,
+                      citation_trace: dict[str, Any],
+                      ) -> tuple[dict[str, Any], dict[str, int] | None]:
+    """Judge one generated answer (the judge half of the run loop, T-22).
+
+    Returns ``(per_run_entry, judge_usage)``; the entry follows the exact
+    record shape ``run_question`` always produced (verdict, platform-fault
+    isolation, count_fail runner errors), so extraction cannot drift the
+    scoring contract. ``judge_usage`` is None exactly when no judge call
+    was metered (unavailable judge).
+    """
+    # Judge retries hard on platform faults: an unavailable judge is not
+    # a verdict "failed", and we do not pay for a partial run's answer
+    # without a verdict - the run is marked platform_fault and excluded
+    # from the acc denominator instead of silently counted wrong.
+    try:
+        judge_prompt = render_judge_prompt(item, answer, chain_text, lang=lang)
+        judge_raw, judge_usage = await _call_with_retry(
+            router, judge_prompt, kind=judge_kind, tier=JUDGE_TIER,
+            qid=qid, run_idx=run_idx, label="judge",
+            on_unexpected=on_unexpected)
+    except Exception as exc:
+        # Non-platform judge error: re-raise by default (a code bug must
+        # surface); count_fail records it as a failed judged observation.
+        if on_unexpected == "count_fail":
+            return ({"question_id": qid, "pass": 0, "run": run_idx,
+                     "type": item.get("type"),
+                     "error": "runner_error", "platform_fault": False,
+                     "reason": f"judge runner error: {exc}"[:200]}, None)
+        raise
+    if judge_raw is None:
+        return ({"question_id": qid, "pass": None, "run": run_idx,
+                 "type": item.get("type"),
+                 "error": "judge_unavailable", "platform_fault": True}, None)
+    judge_usage = judge_usage or {"input_tokens": 0, "output_tokens": 0}
+
+    verdict = parse_judge_output(judge_raw)
+    if verdict.get("parse_error"):
+        # The judge returned empty or truncated output: that is a judge
+        # failure, not a wrong answer from the model under test. Keeping
+        # it out of the denominator is the same honesty rule as the
+        # platform-fault path (E0 limitation 3 generalised to grading).
+        logger.warning("judge output unparseable for %s run %d: %s",
+                       qid, run_idx, verdict.get("reason", "")[:120])
+        return ({"question_id": qid, "pass": None, "run": run_idx,
+                 "type": item.get("type"),
+                 "error": "judge_unparseable", "platform_fault": True,
+                 "reason": verdict.get("reason", "")[:200]}, judge_usage)
+    latency = time.monotonic() - t0
+    return ({
+        "question_id": qid,
+        "pass": verdict["pass"],
+        "run": run_idx,
+        "total": verdict["total"],
+        "type": item.get("type"),
+        "latency_s": round(latency, 2),
+        "answer": answer[:2000],
+        "trace_answer_cite": citation_trace,
+        "reason": verdict.get("reason", ""),
+        "parse_error": verdict.get("parse_error", False),
+    }, judge_usage)
 
 
 def _aggregate_citation_traces(
