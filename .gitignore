@@ -100,3 +100,5 @@ agent_repository_frontend
 # Added by code-review-graph
 .code-review-graph/
 .agents/
+# T-21 pdftotext cache (regenerated on demand, never committed)
+competition/.alignment-cache/

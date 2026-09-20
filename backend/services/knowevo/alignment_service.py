@@ -121,9 +121,14 @@ UNCHANGED_SIM = 0.98
 MAX_ASSIGN_CELLS = 40000
 
 # Markdown-ish heading or numbering prefixes, e.g. "第3章", "3.2", "3.2.1".
+# The numeric token must be followed by an explicit separator (or end the
+# line): without that guard ordinary body lines such as "2型糖尿病防治指南",
+# "2024年指南更新" or "500mg起始剂量" would be misread as headings, which on a
+# real guideline produced thousands of phantom sections (measured 2026-09-20).
 _NUM_RE = re.compile(
     r"^(?P<num>(第\s*[0-9一二三四五六七八九十百]+\s*[章节篇])"
     r"|(?P<dec>\d{1,2}(?:\.\d{1,2}){0,3}))"
+    r"(?=$|[\s、.．,，:：/])"
     r"\s*[、.．,，:：]?\s*(?P<title>.*)$"
 )
 _CN_NUM_RE = re.compile(r"^[（(]\s*[0-9一二三四五六七八九十]+\s*[)）]\s*")
@@ -367,6 +372,8 @@ def _heading_number(line: str) -> tuple[str, str, int] | None:
         return None
     num = re.sub(r"\s+", "", match.group("num"))
     title = (match.group("title") or "").strip()
+    if title[:1].isdigit():
+        return None
     if match.group("dec"):
         level = num.count(".") + 1
     else:
@@ -1007,7 +1014,9 @@ def calibrate_pr(
         if key in remaining:
             remaining.discard(key)
             matched += 1
-    precision = (matched / len(machine_real)) if machine_real else None
+    # With no evaluable gold row there is nothing to measure against: report
+    # None rather than 0.0, which would read as "precision is zero".
+    precision = (matched / len(machine_real)) if (machine_real and eligible) else None
     recall = (matched / len(eligible)) if eligible else None
     return Calibration(
         precision=precision,

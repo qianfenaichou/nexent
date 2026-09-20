@@ -91,11 +91,31 @@ POSTGRES_HOST=localhost ... RUN_POSTGRES_INTEGRATION=1 \
 .venv/bin/python -m pytest ../test/backend/services/knowevo/ -q --no-header
 → 653 passed, 1 warning in 50.11s
 ```
+**验收命令 3/4 真跑结果（2026-09-20，`--no-llm` 确定性路径；缓存文本见 `competition/.alignment-cache/`）**:
+```
+python -m services.knowevo.pipeline.diff_guidelines --old guide-2020 --new guide-2024 \
+  --tenant 6756b0ab-39c0-462a-9745-aa12e1511fcd --gold ../competition/corpus/guideline_diff_seed.md \
+  --out ../competition/deliverables/alignment-diff.json --no-llm
+→ changes 697 {ADD 317, DELETE 338, UPDATE 8, MOVE 33, RENUMBER 1}
+→ sections matched=34 added=215 deleted=184 moved=33 renumbered=1
+→ table_changes 35 {ADD 22, DELETE 12, UPDATE 1}（行列 hash，零 LLM）
+→ impact resolved_spans=1, index_queries=1, entities=0, relations=0, cards=0
+→ update_set selected=0 excluded=0 loss_estimate=0
+→ calibration NOT MEASURED (16/16 gold rows unverified)
+→ persist diff_id=dc2d6b45-b156-423e-bedf-adf11c88208c round_id=ace940f1-8f49-40dc-ac66-fe4a30383322
+
+python -m services.knowevo.pipeline.diff_guidelines --old guide-2020 --new guide-2024 \
+  --tenant 6756b0ab-... --impact-only --out ../competition/deliverables/alignment-impact.json
+→ 写出 367273 bytes 报告
+```
+落库已用 psql 复核：`evolution_round_t` 行 trigger_source=standard_update、ops_summary 含 change_counts/table_changes/affected_*=0。
+
 **尚未产出（下一轮继续，不得在此写"通过"）**:
-- 验收命令 3/4：CLI `pipeline/diff_guidelines.py` 真跑 `guide-2020` vs `guide-2024` → `deliverables/alignment-diff.json` / `alignment-impact.json`（CLI 未实现，未跑）
-- P/R 数字：**未测**——`guideline_diff_seed.md` 16 条尚无逐条 PDF 核验结论（`unverified` 条目按诚实规则不得计入 P/R），故本轮不报任何 precision/recall
+- P/R 数字：**未测**——`guideline_diff_seed.md` 16 条尚无逐条 PDF 核验结论（`unverified` 条目按诚实规则不得计入 P/R）。核验子智能体连续 3 次失败（2× provider 错误 + 1× 订阅额度耗尽），改由主线程下轮做
 - `/alignment/*` HTTP 路由与 RBAC（未实现）
-- `evolution-log.md` 第一轮演进登记（未写）
+- STEP3 LLM 裁决真跑：**当前被模型访问挡住**——`kind=align` 经 `llm_client` 路由到 `z-ai/glm-5.3-free`，本环境令牌返回 `403 no access to model`（3 次尝试后按设计降级为确定性标签，未污染数据，`llm_calls=0`）。需先修 align 档模型路由/配置
+- 表格匹配偏弱（22 ADD / 12 DELETE 多为"同一张表因 caption 文字不同被当成增删"）：改进方向=按章节 + 列签名匹配
+- 受影响面在真实库为空（1 span → 0 实体/0 卡）：根因是图谱稀疏（全库 82 证据行、多数为夹具/合成数据），非查询缺陷；两次索引查询机制由 Layer2 真 PG 测试承载
 
 **实现期发现的简报假设 vs 仓库实际（已在代码 docstring 记录）**:
 1. `kg_evidence_t` **无 `evidence_span` 列**——实为 `span_loc` JSONB(`chunk_idx`) + `span_text`，实体关联走 `entity_refs` ARRAY(stable_id)。受影响面按 `(doc_id, span_loc->>'chunk_idx')` 实现。
