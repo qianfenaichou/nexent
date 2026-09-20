@@ -69,7 +69,40 @@ cd backend && POSTGRES_HOST=localhost POSTGRES_PORT=5434 POSTGRES_USER=root POST
 - [ ] 零新依赖；零新增 env；**未复制/导出受版权语料**（deliverables 只放派生的变更清单，不放 PDF 片段原文）
 - [ ] 双语 prompt 成对
 
-**Evidence**: <粘贴 pytest 输出 / diff 真跑统计（变更条数 by type）/ P/R 数字 / 受影响面规模 / 最小更新集大小 / evolution-log 行>
+**Evidence**（2026-09-20 首轮实现，诚实口径——未跑的项明确标注）:
+```
+# 1) 单测 Layer 1（纯函数，零 DB 零网络）
+cd backend && .venv/bin/python -m pytest ../test/backend/services/knowevo/test_alignment_service.py -q --no-header
+→ 99 passed, 3 skipped
+
+# 1b) Layer 2 真 PG（含租户隔离 / 两次索引查询 / 落库）
+POSTGRES_HOST=localhost POSTGRES_PORT=5434 POSTGRES_USER=root POSTGRES_DB=nexent \
+NEXENT_POSTGRES_PASSWORD=<pw> RUN_POSTGRES_INTEGRATION=1 \
+.venv/bin/python -m pytest ../test/backend/services/knowevo/test_alignment_service.py -q --no-header
+→ 102 passed
+
+# 2) ruff
+.venv/bin/python -m ruff check services/knowevo/alignment_service.py \
+  ../test/backend/services/knowevo/test_alignment_service.py
+→ All checks passed!
+
+# 5) PG 集成全量（零回归证明；T-21 之前为 549 passed）
+POSTGRES_HOST=localhost ... RUN_POSTGRES_INTEGRATION=1 \
+.venv/bin/python -m pytest ../test/backend/services/knowevo/ -q --no-header
+→ 653 passed, 1 warning in 50.11s
+```
+**尚未产出（下一轮继续，不得在此写"通过"）**:
+- 验收命令 3/4：CLI `pipeline/diff_guidelines.py` 真跑 `guide-2020` vs `guide-2024` → `deliverables/alignment-diff.json` / `alignment-impact.json`（CLI 未实现，未跑）
+- P/R 数字：**未测**——`guideline_diff_seed.md` 16 条尚无逐条 PDF 核验结论（`unverified` 条目按诚实规则不得计入 P/R），故本轮不报任何 precision/recall
+- `/alignment/*` HTTP 路由与 RBAC（未实现）
+- `evolution-log.md` 第一轮演进登记（未写）
+
+**实现期发现的简报假设 vs 仓库实际（已在代码 docstring 记录）**:
+1. `kg_evidence_t` **无 `evidence_span` 列**——实为 `span_loc` JSONB(`chunk_idx`) + `span_text`，实体关联走 `entity_refs` ARRAY(stable_id)。受影响面按 `(doc_id, span_loc->>'chunk_idx')` 实现。
+2. `llm_client` **无 embedding 接口**——STEP2 用可注入 `embed` callable + 确定性词法兜底（同义句 1.0 / 仅标点差异 ≥0.98 / 无关 0）。
+3. 简报称"复用 T-20 排序"——T-20 无排序实现，既有排序是 `ontology_service.score_formula`（加权线性、非 VOI）。**VOI 系新实现**。
+4. `evolution_round_t` **无 `knowledge_stamp` 列**——知识戳改由 `ops_summary.knowledge_stamp` 承载（代码内注明）。
+5. `create_row()` 返回 `{"id": ...}` 且自带 session/commit（非模型对象），落库路径据此实现。
 
 ---
 
