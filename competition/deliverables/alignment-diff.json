@@ -5,17 +5,17 @@
     "old_sections": 218,
     "new_sections": 249,
     "matched_sections": 34,
-    "table_changes": 35,
-    "llm_calls": 0,
+    "table_changes": 29,
+    "llm_calls": 7,
     "llm_parse_failures": 0,
-    "llm_budget": 40,
+    "llm_budget": 20,
     "llm_budget_exhausted": false,
     "change_counts": {
-      "UPDATE": 8,
-      "DELETE": 338,
-      "ADD": 317,
-      "MOVE": 33,
-      "RENUMBER": 1
+      "UPDATE": 9,
+      "RENUMBER": 4,
+      "DELETE": 333,
+      "ADD": 312,
+      "MOVE": 33
     }
   },
   "sections": {
@@ -777,9 +777,11 @@
       "new_section_id": "preamble",
       "similarity": 0.6081636405595374,
       "points": [
-        "similarity 0.608"
+        "指南名称由“中国 2 型糖尿病防治指南（2020 年版）”改为“中国糖尿病防治指南（2024 版）”。",
+        "新增通信作者郭立新及其单位与邮箱。",
+        "删除了原“本指南由《中华糖尿病杂志》和《中华内分泌代谢杂志》于 2021 年 4 月同步发表”的表述。"
       ],
-      "source": "deterministic",
+      "source": "llm",
       "old_span": [
         "guide-2020",
         2
@@ -790,15 +792,17 @@
       ]
     },
     {
-      "change_type": "UPDATE",
+      "change_type": "RENUMBER",
       "section_anchor": "(preamble)",
       "old_section_id": "preamble",
       "new_section_id": "preamble",
       "similarity": 0.8001976040538967,
       "points": [
-        "similarity 0.800"
+        "期刊年份由 2021 年改为 2025 年。",
+        "卷期由第 13 卷第 4 期改为第 17 卷第 1 期。",
+        "页码由 317 改为 17。"
       ],
-      "source": "deterministic",
+      "source": "llm",
       "old_span": [
         "guide-2020",
         0
@@ -1439,9 +1443,9 @@
       "new_section_id": "2|#2",
       "similarity": 0.782608695652174,
       "points": [
-        "similarity 0.783"
+        "期刊年份由 2021 年更新为 2025 年，卷期由第 13 卷第 4 期更新为第 17 卷第 1 期，月份由 4 月更新为 1 月，页码由 325 更新为 20。"
       ],
-      "source": "deterministic",
+      "source": "llm",
       "old_span": [
         "guide-2020",
         2
@@ -1554,9 +1558,9 @@
       "new_section_id": "2|#3",
       "similarity": 0.782608695652174,
       "points": [
-        "similarity 0.783"
+        "新版期刊信息更新为2025年1月第17卷第1期，页码改为45页。"
       ],
-      "source": "deterministic",
+      "source": "llm",
       "old_span": [
         "guide-2020",
         4
@@ -1775,15 +1779,17 @@
       ]
     },
     {
-      "change_type": "UPDATE",
+      "change_type": "RENUMBER",
       "section_anchor": "",
       "old_section_id": "2|#5",
       "new_section_id": "2|#5",
       "similarity": 0.782608695652174,
       "points": [
-        "similarity 0.783"
+        "页码由 386 更新为 84。",
+        "出版时间由 2021 年 4 月更新为 2025 年 1 月。",
+        "卷期由第 13 卷第 4 期更新为第 17 卷第 1 期。"
       ],
-      "source": "deterministic",
+      "source": "llm",
       "old_span": [
         "guide-2020",
         7
@@ -3352,9 +3358,10 @@
       "new_section_id": "3|伴有急性并发症或严重慢性并发症时慎行",
       "similarity": 0.782608695652174,
       "points": [
-        "similarity 0.783"
+        "期刊信息由 2021 年 4 月第 13 卷第 4 期更新为 2025 年 1 月第 17 卷第 1 期。",
+        "页码由 334 更新为 35。"
       ],
-      "source": "deterministic",
+      "source": "llm",
       "old_span": [
         "guide-2020",
         2
@@ -4021,15 +4028,16 @@
       ]
     },
     {
-      "change_type": "UPDATE",
+      "change_type": "RENUMBER",
       "section_anchor": "4 HbA1c 联合自我血糖监测（SMBG）和持续葡",
       "old_section_id": "10|自我血糖监测smbg和持续葡萄糖监测",
       "new_section_id": "4|hba1c联合自我血糖监测smbg和持续葡",
       "similarity": 0.782608695652174,
       "points": [
-        "similarity 0.783"
+        "页码从 364 变为 30。",
+        "期刊年份、卷期从 2021 年 4 月第 13 卷第 4 期变为 2025 年 1 月第 17 卷第 1 期。"
       ],
-      "source": "deterministic",
+      "source": "llm",
       "old_span": [
         "guide-2020",
         2
@@ -10085,13 +10093,17 @@
       "new_span": null
     },
     {
-      "change_type": "ADD",
+      "change_type": "UPDATE",
       "section_anchor": "表1我国9次全国性糖尿病流行病学调查结果汇总",
       "old_section_id": null,
       "new_section_id": null,
       "similarity": 0.0,
       "points": [
-        "table added: 表1   我国 9 次全国性糖尿病流行病学调查结果汇总"
+        "row 0: changed",
+        "row 2: changed",
+        "row 3: changed",
+        "row 4: changed",
+        "row 5: changed"
       ],
       "source": "deterministic",
       "old_span": null,
@@ -10124,13 +10136,13 @@
       "new_span": null
     },
     {
-      "change_type": "ADD",
+      "change_type": "UPDATE",
       "section_anchor": "表52型糖尿病患者常见检查的推荐频率",
       "old_section_id": null,
       "new_section_id": null,
       "similarity": 0.0,
       "points": [
-        "table added: 表5      2 型糖尿病患者常见检查的推荐频率"
+        "row 0: changed"
       ],
       "source": "deterministic",
       "old_span": null,
@@ -10150,39 +10162,27 @@
       "new_span": null
     },
     {
-      "change_type": "ADD",
-      "section_anchor": "表8不同身体活动水平的成人糖尿病患者每日能量供给量kjkcalkg标准体重",
-      "old_section_id": null,
-      "new_section_id": null,
-      "similarity": 0.0,
-      "points": [
-        "table added: 表8   不同身体活动水平的成人糖尿病患者每日能量供给量［kJ（kcal）/kg 标准体重］"
-      ],
-      "source": "deterministic",
-      "old_span": null,
-      "new_span": null
-    },
-    {
-      "change_type": "ADD",
+      "change_type": "UPDATE",
       "section_anchor": "表9毛细血管血糖监测时不同监测时间点的适用范围",
       "old_section_id": null,
       "new_section_id": null,
       "similarity": 0.0,
       "points": [
-        "table added: 表9    毛细血管血糖监测时不同监测时间点的适用范围"
+        "row 2: changed",
+        "row 3: changed"
       ],
       "source": "deterministic",
       "old_span": null,
       "new_span": null
     },
     {
-      "change_type": "ADD",
+      "change_type": "UPDATE",
       "section_anchor": "表10不同治疗方案人群毛细血管血糖监测的原则",
       "old_section_id": null,
       "new_section_id": null,
       "similarity": 0.0,
       "points": [
-        "table added: 表 10   不同治疗方案人群毛细血管血糖监测的原则"
+        "row 5: changed"
       ],
       "source": "deterministic",
       "old_span": null,
@@ -10386,19 +10386,6 @@
     },
     {
       "change_type": "DELETE",
-      "section_anchor": "表1我国8次全国性糖尿病流行病学调查情况汇总",
-      "old_section_id": null,
-      "new_section_id": null,
-      "similarity": 0.0,
-      "points": [
-        "table removed: 表1     我国 8 次全国性糖尿病流行病学调查情况汇总"
-      ],
-      "source": "deterministic",
-      "old_span": null,
-      "new_span": null
-    },
-    {
-      "change_type": "DELETE",
       "section_anchor": "表5中国糖尿病风险评分表",
       "old_section_id": null,
       "new_section_id": null,
@@ -10412,64 +10399,12 @@
     },
     {
       "change_type": "DELETE",
-      "section_anchor": "表62型糖尿病患者常见检查的推荐频率",
-      "old_section_id": null,
-      "new_section_id": null,
-      "similarity": 0.0,
-      "points": [
-        "table removed: 表6   2 型糖尿病患者常见检查的推荐频率"
-      ],
-      "source": "deterministic",
-      "old_span": null,
-      "new_span": null
-    },
-    {
-      "change_type": "DELETE",
       "section_anchor": "表7中国2型糖尿病的综合控制目标",
       "old_section_id": null,
       "new_section_id": null,
       "similarity": 0.0,
       "points": [
         "table removed: 表7    中国 2 型糖尿病的综合控制目标"
-      ],
-      "source": "deterministic",
-      "old_span": null,
-      "new_span": null
-    },
-    {
-      "change_type": "DELETE",
-      "section_anchor": "表9不同身体活动水平的成人糖尿病患者每日能量供给量kjkcalkg标准体重",
-      "old_section_id": null,
-      "new_section_id": null,
-      "similarity": 0.0,
-      "points": [
-        "table removed: 表9   不同身体活动水平的成人糖尿病患者每日能量供给量［kJ（kcal）/kg 标准体重］"
-      ],
-      "source": "deterministic",
-      "old_span": null,
-      "new_span": null
-    },
-    {
-      "change_type": "DELETE",
-      "section_anchor": "表11毛细血管血糖监测时不同监测时间点的适用范围",
-      "old_section_id": null,
-      "new_section_id": null,
-      "similarity": 0.0,
-      "points": [
-        "table removed: 表 11     毛细血管血糖监测时不同监测时间点的适用范围"
-      ],
-      "source": "deterministic",
-      "old_span": null,
-      "new_span": null
-    },
-    {
-      "change_type": "DELETE",
-      "section_anchor": "表12不同治疗方案人群毛细血管血糖监测的原则",
-      "old_section_id": null,
-      "new_section_id": null,
-      "similarity": 0.0,
-      "points": [
-        "table removed: 表 12    不同治疗方案人群毛细血管血糖监测的原则"
       ],
       "source": "deterministic",
       "old_span": null,
@@ -10544,18 +10479,28 @@
   "table_changes": [
     {
       "section_id": "表1我国9次全国性糖尿病流行病学调查结果汇总",
-      "kind": "ADD",
+      "kind": "UPDATE",
       "rows_changed": [
         0,
-        1,
         2,
         3,
         4,
         5,
-        6
+        6,
+        7,
+        8,
+        9
       ],
       "detail": [
-        "table added: 表1   我国 9 次全国性糖尿病流行病学调查结果汇总"
+        "row 0: changed",
+        "row 2: changed",
+        "row 3: changed",
+        "row 4: changed",
+        "row 5: changed",
+        "row 6: changed",
+        "row 7: removed",
+        "row 8: removed",
+        "row 9: removed"
       ]
     },
     {
@@ -10590,16 +10535,12 @@
     },
     {
       "section_id": "表52型糖尿病患者常见检查的推荐频率",
-      "kind": "ADD",
+      "kind": "UPDATE",
       "rows_changed": [
-        0,
-        1,
-        2,
-        3,
-        4
+        0
       ],
       "detail": [
-        "table added: 表5      2 型糖尿病患者常见检查的推荐频率"
+        "row 0: changed"
       ]
     },
     {
@@ -10614,47 +10555,25 @@
       ]
     },
     {
-      "section_id": "表8不同身体活动水平的成人糖尿病患者每日能量供给量kjkcalkg标准体重",
-      "kind": "ADD",
-      "rows_changed": [
-        0,
-        1,
-        2,
-        3,
-        4
-      ],
-      "detail": [
-        "table added: 表8   不同身体活动水平的成人糖尿病患者每日能量供给量［kJ（kcal）/kg 标准体重］"
-      ]
-    },
-    {
       "section_id": "表9毛细血管血糖监测时不同监测时间点的适用范围",
-      "kind": "ADD",
+      "kind": "UPDATE",
       "rows_changed": [
-        0,
-        1,
         2,
-        3,
-        4,
-        5
+        3
       ],
       "detail": [
-        "table added: 表9    毛细血管血糖监测时不同监测时间点的适用范围"
+        "row 2: changed",
+        "row 3: changed"
       ]
     },
     {
       "section_id": "表10不同治疗方案人群毛细血管血糖监测的原则",
-      "kind": "ADD",
+      "kind": "UPDATE",
       "rows_changed": [
-        0,
-        1,
-        2,
-        3,
-        4,
         5
       ],
       "detail": [
-        "table added: 表 10   不同治疗方案人群毛细血管血糖监测的原则"
+        "row 5: changed"
       ]
     },
     {
@@ -10864,25 +10783,6 @@
       ]
     },
     {
-      "section_id": "表1我国8次全国性糖尿病流行病学调查情况汇总",
-      "kind": "DELETE",
-      "rows_changed": [
-        0,
-        1,
-        2,
-        3,
-        4,
-        5,
-        6,
-        7,
-        8,
-        9
-      ],
-      "detail": [
-        "table removed: 表1     我国 8 次全国性糖尿病流行病学调查情况汇总"
-      ]
-    },
-    {
       "section_id": "表5中国糖尿病风险评分表",
       "kind": "DELETE",
       "rows_changed": [
@@ -10890,20 +10790,6 @@
       ],
       "detail": [
         "table removed: 表5      中国糖尿病风险评分表"
-      ]
-    },
-    {
-      "section_id": "表62型糖尿病患者常见检查的推荐频率",
-      "kind": "DELETE",
-      "rows_changed": [
-        0,
-        1,
-        2,
-        3,
-        4
-      ],
-      "detail": [
-        "table removed: 表6   2 型糖尿病患者常见检查的推荐频率"
       ]
     },
     {
@@ -10915,50 +10801,6 @@
       ],
       "detail": [
         "table removed: 表7    中国 2 型糖尿病的综合控制目标"
-      ]
-    },
-    {
-      "section_id": "表9不同身体活动水平的成人糖尿病患者每日能量供给量kjkcalkg标准体重",
-      "kind": "DELETE",
-      "rows_changed": [
-        0,
-        1,
-        2,
-        3,
-        4
-      ],
-      "detail": [
-        "table removed: 表9   不同身体活动水平的成人糖尿病患者每日能量供给量［kJ（kcal）/kg 标准体重］"
-      ]
-    },
-    {
-      "section_id": "表11毛细血管血糖监测时不同监测时间点的适用范围",
-      "kind": "DELETE",
-      "rows_changed": [
-        0,
-        1,
-        2,
-        3,
-        4,
-        5
-      ],
-      "detail": [
-        "table removed: 表 11     毛细血管血糖监测时不同监测时间点的适用范围"
-      ]
-    },
-    {
-      "section_id": "表12不同治疗方案人群毛细血管血糖监测的原则",
-      "kind": "DELETE",
-      "rows_changed": [
-        0,
-        1,
-        2,
-        3,
-        4,
-        5
-      ],
-      "detail": [
-        "table removed: 表 12    不同治疗方案人群毛细血管血糖监测的原则"
       ]
     },
     {
@@ -11026,20 +10868,44 @@
       ]
     }
   ],
-  "affected": null,
-  "update_set": null,
-  "calibration": {
-    "precision": null,
-    "recall": null,
-    "matched": 0,
-    "gold_total": 0,
-    "machine_total": 697,
-    "unverified_excluded": 16
+  "affected": {
+    "changed_spans": [
+      [
+        "guide-2020",
+        0
+      ]
+    ],
+    "entity_count": 0,
+    "relation_count": 0,
+    "decision_card_count": 0,
+    "index_queries": 1,
+    "entities": [],
+    "decision_cards": [],
+    "notes": []
   },
-  "persisted": {},
+  "update_set": {
+    "epsilon": 0.1,
+    "loss_estimate": 0,
+    "selected": [],
+    "excluded": []
+  },
+  "calibration": {
+    "precision": 0.001447178002894356,
+    "recall": 0.1111111111111111,
+    "matched": 1,
+    "gold_total": 9,
+    "machine_total": 691,
+    "unverified_excluded": 7
+  },
+  "persisted": {
+    "diff_id": "a51342e4-f734-443d-9c0e-d697aff252d6",
+    "round_id": "f73b4a2f-2490-454c-a9c6-389129b48816",
+    "old_doc": "ec300a7f-f6d7-42eb-b76e-50f4a7622b48",
+    "new_doc": "6571e51a-62d0-4e78-9955-468da238b080"
+  },
   "run": {
-    "llm_enabled": false,
-    "max_llm_calls": 40,
+    "llm_enabled": true,
+    "max_llm_calls": 20,
     "lang": "zh",
     "gold_file": "../competition/corpus/guideline_diff_seed.md",
     "mode": "full"

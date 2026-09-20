@@ -63,3 +63,15 @@ T-22 交付 A1→A4 四级消融 runner + E8 版本钉住 on/off 双臂（`backe
   1. **STEP3 的 LLM 通道当前不可用**：走 `llm_client` 时 `kind=align` 路由到 `z-ai/glm-5.3-free`，本环境令牌返回 **403 "no access to model"**（重试 3 次后降级为确定性标签，`parse_failures=0`，未污染）。需先修 align 档模型路由（或改配可用模型）才能真跑 LLM 裁决带。
   2. **表格 caption 匹配偏弱**：两版表格标题文字不同（"表1我国9次…" vs 2024 版改写），按 caption 归一化键匹配导致 22 ADD / 12 DELETE 多为"同一张表被当成新增+删除"。改进方向：按所属章节 + 列签名匹配，而非 caption 文本。
   3. **标题识别曾把正文误判为章节**（「2型糖尿病…」「2024年…」「500mg…」→ 幻影章节），修复前 7010 条变更 / 751 matched，修复后 697 / 34（同一对文档，同一命令）——已加"数字编号必须带分隔符"守卫并留注释记录实测。
+
+
+## T-21 官方重跑与 P/R 首测（2026-09-20 r14，表格修复后第二演进轮）
+
+- **机器口径**：`evolution_round_t.id = f73b4a2f-2490-454c-a9c6-389129b48816`（trigger_ref → `doc_version_diff_t.id = a51342e4-f734-443d-9c0e-d697aff252d6`），租户 6756b0ab，trigger_source=standard_update。
+- **变更检测（表格修复 bd876a987 落地后）**：**691** 条（ADD 312 / DELETE 333 / UPDATE 9 / MOVE 33 / RENUMBER 4，LLM 段 7/20 调用后）；章节 matched 34 / added 215 / deleted 184；**表格确定性 diff 29**（35→29：5 对同表从幻影 ADD+DELETE 转为行级 UPDATE，UPDATE 1→5；剩余 ADD/DELETE 为诚实差异：2024 新表、2020 真删除/替换、或表头提取垃圾致双信号不可恢复的 4 对）。
+- **STEP3 LLM 段首度真跑**：**7/20 次调用，parse_failures=0**（带 `KW_LLM_MID_MODEL_ID=7` env；此前 403 根因 = 无 env 时回退租户默认配置，r14 探针实证）。诚实缺口：`evolution_round_t.cost.tokens` 记 0——`_ask_llm` 经 `LlmRouter.__call__`（返回 str）路径不捕获 usage；下轮可将对齐调用换 `call_with_usage` 补计数。
+- **P/R 首测（9 条 verified 金标可评估，7 条排除）**：`precision=0.00145（1/691）recall=0.111（1/9）matched=1`。**结构性口径限制（如实声明，不得照搬 0.9/0.85 目标）**：①粒度——机器按段落发 691 项变更 vs 金标 9 条话题级行，precision 上界≈1.3%；②类型词汇——金标话题级 UPD 与机器段落级实际（691 项中仅 9 项 UPDATE，其余 ADD/DELETE）按类型对不上（如二甲双胍变更机器记为 ADD/DELETE 而非 UPDATE，两种粒度都是实话）；③机器 section 标题受正文污染（`parse_sections` 把正文行当标题）。辅助诚实信号：话题 token 覆盖（无类型约束）4/9（HbA1c/GLP-1RA 新药/胰岛素/注射装置）。**校准重构（按 (change_type, 章节) 聚合 + token 重叠匹配）为下轮候选，实现后须评审再重测**。
+- **金标核验（主线程，零 LLM）**：16 条全部逐条 PDF 原文核对——9 verified / 6 partial / 1 unverified；**2 条"新增"声明被原文证伪**（#3 体重管理 2020 已有第十一章独立章节、#14 心理小节 2020 已有同名节"七、糖尿病相关心理压力与应对"）。行号级证据在 `.task_b_status/t21-gold-findings.md`（不在仓库）；种子已回填 `章节锚点`+`核验结论` 两列并提交 5c0c01090。
+- **受影响面仍为空**（图谱稀疏：1 span → 0 实体 / 0 卡；全库 82 证据行多为夹具），两次索引查询机制由 Layer2 真 PG 测试承载；impact 报告（`alignment-impact.json` 362KB）按确定性变更集（UPDATE 12 / RENUMBER 1，与 LLM 版 9/4 差异为 LLM 裁决覆盖确定性标签所致，如实注明）生成。
+- **诚实修复**：首轮（dc2d6b45，NOT MEASURED）落库的 precision=0 修正为 NULL（"未测"≠0）。
+- **成本**：LLM 调用 7 次（usage tokens 未捕获）；`evolution_round_t.cost` 如实记。

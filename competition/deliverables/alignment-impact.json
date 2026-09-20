@@ -5,15 +5,15 @@
     "old_sections": 218,
     "new_sections": 249,
     "matched_sections": 34,
-    "table_changes": 35,
+    "table_changes": 29,
     "llm_calls": 0,
     "llm_parse_failures": 0,
     "llm_budget": 40,
     "llm_budget_exhausted": false,
     "change_counts": {
-      "UPDATE": 8,
-      "DELETE": 338,
-      "ADD": 317,
+      "UPDATE": 12,
+      "DELETE": 333,
+      "ADD": 312,
       "MOVE": 33,
       "RENUMBER": 1
     }
@@ -10085,13 +10085,17 @@
       "new_span": null
     },
     {
-      "change_type": "ADD",
+      "change_type": "UPDATE",
       "section_anchor": "表1我国9次全国性糖尿病流行病学调查结果汇总",
       "old_section_id": null,
       "new_section_id": null,
       "similarity": 0.0,
       "points": [
-        "table added: 表1   我国 9 次全国性糖尿病流行病学调查结果汇总"
+        "row 0: changed",
+        "row 2: changed",
+        "row 3: changed",
+        "row 4: changed",
+        "row 5: changed"
       ],
       "source": "deterministic",
       "old_span": null,
@@ -10124,13 +10128,13 @@
       "new_span": null
     },
     {
-      "change_type": "ADD",
+      "change_type": "UPDATE",
       "section_anchor": "表52型糖尿病患者常见检查的推荐频率",
       "old_section_id": null,
       "new_section_id": null,
       "similarity": 0.0,
       "points": [
-        "table added: 表5      2 型糖尿病患者常见检查的推荐频率"
+        "row 0: changed"
       ],
       "source": "deterministic",
       "old_span": null,
@@ -10150,39 +10154,27 @@
       "new_span": null
     },
     {
-      "change_type": "ADD",
-      "section_anchor": "表8不同身体活动水平的成人糖尿病患者每日能量供给量kjkcalkg标准体重",
-      "old_section_id": null,
-      "new_section_id": null,
-      "similarity": 0.0,
-      "points": [
-        "table added: 表8   不同身体活动水平的成人糖尿病患者每日能量供给量［kJ（kcal）/kg 标准体重］"
-      ],
-      "source": "deterministic",
-      "old_span": null,
-      "new_span": null
-    },
-    {
-      "change_type": "ADD",
+      "change_type": "UPDATE",
       "section_anchor": "表9毛细血管血糖监测时不同监测时间点的适用范围",
       "old_section_id": null,
       "new_section_id": null,
       "similarity": 0.0,
       "points": [
-        "table added: 表9    毛细血管血糖监测时不同监测时间点的适用范围"
+        "row 2: changed",
+        "row 3: changed"
       ],
       "source": "deterministic",
       "old_span": null,
       "new_span": null
     },
     {
-      "change_type": "ADD",
+      "change_type": "UPDATE",
       "section_anchor": "表10不同治疗方案人群毛细血管血糖监测的原则",
       "old_section_id": null,
       "new_section_id": null,
       "similarity": 0.0,
       "points": [
-        "table added: 表 10   不同治疗方案人群毛细血管血糖监测的原则"
+        "row 5: changed"
       ],
       "source": "deterministic",
       "old_span": null,
@@ -10386,19 +10378,6 @@
     },
     {
       "change_type": "DELETE",
-      "section_anchor": "表1我国8次全国性糖尿病流行病学调查情况汇总",
-      "old_section_id": null,
-      "new_section_id": null,
-      "similarity": 0.0,
-      "points": [
-        "table removed: 表1     我国 8 次全国性糖尿病流行病学调查情况汇总"
-      ],
-      "source": "deterministic",
-      "old_span": null,
-      "new_span": null
-    },
-    {
-      "change_type": "DELETE",
       "section_anchor": "表5中国糖尿病风险评分表",
       "old_section_id": null,
       "new_section_id": null,
@@ -10412,64 +10391,12 @@
     },
     {
       "change_type": "DELETE",
-      "section_anchor": "表62型糖尿病患者常见检查的推荐频率",
-      "old_section_id": null,
-      "new_section_id": null,
-      "similarity": 0.0,
-      "points": [
-        "table removed: 表6   2 型糖尿病患者常见检查的推荐频率"
-      ],
-      "source": "deterministic",
-      "old_span": null,
-      "new_span": null
-    },
-    {
-      "change_type": "DELETE",
       "section_anchor": "表7中国2型糖尿病的综合控制目标",
       "old_section_id": null,
       "new_section_id": null,
       "similarity": 0.0,
       "points": [
         "table removed: 表7    中国 2 型糖尿病的综合控制目标"
-      ],
-      "source": "deterministic",
-      "old_span": null,
-      "new_span": null
-    },
-    {
-      "change_type": "DELETE",
-      "section_anchor": "表9不同身体活动水平的成人糖尿病患者每日能量供给量kjkcalkg标准体重",
-      "old_section_id": null,
-      "new_section_id": null,
-      "similarity": 0.0,
-      "points": [
-        "table removed: 表9   不同身体活动水平的成人糖尿病患者每日能量供给量［kJ（kcal）/kg 标准体重］"
-      ],
-      "source": "deterministic",
-      "old_span": null,
-      "new_span": null
-    },
-    {
-      "change_type": "DELETE",
-      "section_anchor": "表11毛细血管血糖监测时不同监测时间点的适用范围",
-      "old_section_id": null,
-      "new_section_id": null,
-      "similarity": 0.0,
-      "points": [
-        "table removed: 表 11     毛细血管血糖监测时不同监测时间点的适用范围"
-      ],
-      "source": "deterministic",
-      "old_span": null,
-      "new_span": null
-    },
-    {
-      "change_type": "DELETE",
-      "section_anchor": "表12不同治疗方案人群毛细血管血糖监测的原则",
-      "old_section_id": null,
-      "new_section_id": null,
-      "similarity": 0.0,
-      "points": [
-        "table removed: 表 12    不同治疗方案人群毛细血管血糖监测的原则"
       ],
       "source": "deterministic",
       "old_span": null,
@@ -10544,18 +10471,28 @@
   "table_changes": [
     {
       "section_id": "表1我国9次全国性糖尿病流行病学调查结果汇总",
-      "kind": "ADD",
+      "kind": "UPDATE",
       "rows_changed": [
         0,
-        1,
         2,
         3,
         4,
         5,
-        6
+        6,
+        7,
+        8,
+        9
       ],
       "detail": [
-        "table added: 表1   我国 9 次全国性糖尿病流行病学调查结果汇总"
+        "row 0: changed",
+        "row 2: changed",
+        "row 3: changed",
+        "row 4: changed",
+        "row 5: changed",
+        "row 6: changed",
+        "row 7: removed",
+        "row 8: removed",
+        "row 9: removed"
       ]
     },
     {
@@ -10590,16 +10527,12 @@
     },
     {
       "section_id": "表52型糖尿病患者常见检查的推荐频率",
-      "kind": "ADD",
+      "kind": "UPDATE",
       "rows_changed": [
-        0,
-        1,
-        2,
-        3,
-        4
+        0
       ],
       "detail": [
-        "table added: 表5      2 型糖尿病患者常见检查的推荐频率"
+        "row 0: changed"
       ]
     },
     {
@@ -10614,47 +10547,25 @@
       ]
     },
     {
-      "section_id": "表8不同身体活动水平的成人糖尿病患者每日能量供给量kjkcalkg标准体重",
-      "kind": "ADD",
-      "rows_changed": [
-        0,
-        1,
-        2,
-        3,
-        4
-      ],
-      "detail": [
-        "table added: 表8   不同身体活动水平的成人糖尿病患者每日能量供给量［kJ（kcal）/kg 标准体重］"
-      ]
-    },
-    {
       "section_id": "表9毛细血管血糖监测时不同监测时间点的适用范围",
-      "kind": "ADD",
+      "kind": "UPDATE",
       "rows_changed": [
-        0,
-        1,
         2,
-        3,
-        4,
-        5
+        3
       ],
       "detail": [
-        "table added: 表9    毛细血管血糖监测时不同监测时间点的适用范围"
+        "row 2: changed",
+        "row 3: changed"
       ]
     },
     {
       "section_id": "表10不同治疗方案人群毛细血管血糖监测的原则",
-      "kind": "ADD",
+      "kind": "UPDATE",
       "rows_changed": [
-        0,
-        1,
-        2,
-        3,
-        4,
         5
       ],
       "detail": [
-        "table added: 表 10   不同治疗方案人群毛细血管血糖监测的原则"
+        "row 5: changed"
       ]
     },
     {
@@ -10864,25 +10775,6 @@
       ]
     },
     {
-      "section_id": "表1我国8次全国性糖尿病流行病学调查情况汇总",
-      "kind": "DELETE",
-      "rows_changed": [
-        0,
-        1,
-        2,
-        3,
-        4,
-        5,
-        6,
-        7,
-        8,
-        9
-      ],
-      "detail": [
-        "table removed: 表1     我国 8 次全国性糖尿病流行病学调查情况汇总"
-      ]
-    },
-    {
       "section_id": "表5中国糖尿病风险评分表",
       "kind": "DELETE",
       "rows_changed": [
@@ -10890,20 +10782,6 @@
       ],
       "detail": [
         "table removed: 表5      中国糖尿病风险评分表"
-      ]
-    },
-    {
-      "section_id": "表62型糖尿病患者常见检查的推荐频率",
-      "kind": "DELETE",
-      "rows_changed": [
-        0,
-        1,
-        2,
-        3,
-        4
-      ],
-      "detail": [
-        "table removed: 表6   2 型糖尿病患者常见检查的推荐频率"
       ]
     },
     {
@@ -10915,50 +10793,6 @@
       ],
       "detail": [
         "table removed: 表7    中国 2 型糖尿病的综合控制目标"
-      ]
-    },
-    {
-      "section_id": "表9不同身体活动水平的成人糖尿病患者每日能量供给量kjkcalkg标准体重",
-      "kind": "DELETE",
-      "rows_changed": [
-        0,
-        1,
-        2,
-        3,
-        4
-      ],
-      "detail": [
-        "table removed: 表9   不同身体活动水平的成人糖尿病患者每日能量供给量［kJ（kcal）/kg 标准体重］"
-      ]
-    },
-    {
-      "section_id": "表11毛细血管血糖监测时不同监测时间点的适用范围",
-      "kind": "DELETE",
-      "rows_changed": [
-        0,
-        1,
-        2,
-        3,
-        4,
-        5
-      ],
-      "detail": [
-        "table removed: 表 11     毛细血管血糖监测时不同监测时间点的适用范围"
-      ]
-    },
-    {
-      "section_id": "表12不同治疗方案人群毛细血管血糖监测的原则",
-      "kind": "DELETE",
-      "rows_changed": [
-        0,
-        1,
-        2,
-        3,
-        4,
-        5
-      ],
-      "detail": [
-        "table removed: 表 12    不同治疗方案人群毛细血管血糖监测的原则"
       ]
     },
     {
@@ -11050,7 +10884,7 @@
   "calibration": null,
   "persisted": {},
   "run": {
-    "llm_enabled": true,
+    "llm_enabled": false,
     "max_llm_calls": 40,
     "lang": "zh",
     "gold_file": null,

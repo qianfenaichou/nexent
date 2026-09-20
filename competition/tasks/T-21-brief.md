@@ -110,11 +110,28 @@ python -m services.knowevo.pipeline.diff_guidelines --old guide-2020 --new guide
 ```
 落库已用 psql 复核：`evolution_round_t` 行 trigger_source=standard_update、ops_summary 含 change_counts/table_changes/affected_*=0。
 
+**r14 官方重跑（2026-09-20，表格修复 bd876a987 落地 + 金标 9 行可评估 + 小 LLM 预算；命令见 `.task_b_status/t21-final-run.sh`）**:
+```
+python -m services.knowevo.pipeline.diff_guidelines --old guide-2020 --new guide-2024 \
+  --tenant 6756b0ab-... --gold ../competition/corpus/guideline_diff_seed.md \
+  --out ../competition/deliverables/alignment-diff.json --max-llm-calls 20
+→ changes 691 {ADD 312, DELETE 333, UPDATE 9, MOVE 33, RENUMBER 4}
+→ sections matched=34 added=215 deleted=184 moved=33 renumbered=1 tables=29
+→ llm_calls=7/20 parse_failures=0 changed_paragraphs={guide-2020: 117, guide-2024: 86}
+→ table_changes 29（表格修复：5 对同表从幻影 ADD+DELETE 转为行级 UPDATE；UPDATE 1→5）
+→ impact resolved_spans=1 index_queries=1 entities=0 relations=0 cards=0
+→ update_set selected=0 excluded=0 loss_estimate=0
+→ calibration precision=0.00145 recall=0.111 matched=1 evaluable_gold=9 unverified_excluded=7
+→ persist diff_id=a51342e4-... round_id=f73b4a2f-...
+→ out alignment-diff.json (363616 bytes) + alignment-impact.json（impact-only 同参重跑）
+```
+**P/R 诚实口径（重要，不得照搬"0.9/0.85"目标）**: 官方数字由 `calibrate_loose` 按 **ChangeItem 粒度** 计算（precision=matched/691 条机器变更项、recall=matched/9 条可评估金标行），其结构性问题 = ①粒度：机器逐段落发 691 项 vs 金标 9 条话题级行 → precision 上界≈1.3%；②类型词汇：金标话题级 "UPD" 与机器段落级实际（691 项中仅 9 项 UPDATE，其余为 ADD/DELETE）无法按类型对上（例：二甲双胍变更机器记为 ADD/DELETE 而非 UPDATE——两种粒度都是实话）；③机器 section 标题被正文污染（`parse_sections` 将正文行误判为标题，如"1 二甲双胍为 T2DM 患者控制高血糖的一线用"），字符串匹配失效。**辅助诚实信号（离线话题覆盖）**：按话题 token 重叠、无类型约束，9 条金标中 4 条（HbA1c/GLP-1RA 新药/胰岛素/注射装置）能在机器变更中找到对应内容。**结论：P≥0.90/R≥0.85 目标在该粒度下不可达，须将校准重构为"按 (change_type, 章节) 聚合 + token 重叠匹配"并评审后重测（下轮候选）**；本轮官方数字如实记录，不虚构达标。
+
 **尚未产出（下一轮继续，不得在此写"通过"）**:
-- P/R 数字：**未测**——`guideline_diff_seed.md` 16 条尚无逐条 PDF 核验结论（`unverified` 条目按诚实规则不得计入 P/R）。核验子智能体连续 3 次失败（2× provider 错误 + 1× 订阅额度耗尽），改由主线程下轮做
-- `/alignment/*` HTTP 路由与 RBAC（未实现）
-- STEP3 LLM 裁决真跑：**当前被模型访问挡住**——`kind=align` 经 `llm_client` 路由到 `z-ai/glm-5.3-free`，本环境令牌返回 `403 no access to model`（3 次尝试后按设计降级为确定性标签，未污染数据，`llm_calls=0`）。需先修 align 档模型路由/配置
-- 表格匹配偏弱（22 ADD / 12 DELETE 多为"同一张表因 caption 文字不同被当成增删"）：改进方向=按章节 + 列签名匹配
+- P/R 数字：**已测但有结构性口径限制**（见上 P/R 诚实口径节）——金标 16 条已全部逐条 PDF 核验（9 verified 计入 / 7 排除，含 2 条"新增"声明被原文证伪：#3 体重管理 2020 已有独立章节、#14 心理小节 2020 已有同名节，核验报告在 `.task_b_status/t21-gold-findings.md`，种子已回填提交 5c0c01090）；校准粒度重构（按章节聚合+token 重叠）待下轮实现并评审
+- `/alignment/*` HTTP 路由与 RBAC：**✅ 已完成并提交 07df8a486**——`POST /knowevo/alignment/diff`（body 见 AlignmentDiffRequest，403/400/502 错误映射）+ `GET /knowevo/alignment/diff/list`（只读租户隔离）；6 条 Layer1 路由测试；`AlignmentService.list_diffs()` 新增；全量 **659 passed**（真 PG）零回归
+- STEP3 LLM 裁决真跑：**✅ 根因已定位并可真跑**（r14 实测）——带 `KW_LLM_MID_MODEL_ID=7` 环境变量后 `kind="align"` 一次调用成功；此前 403 是无 env 时回退租户默认配置所致。官方重跑已真跑 **7/20 次 LLM 裁决，parse_failures=0**（余 13 次配额内让位于 tpm 窗口）；LLM 裁决仅影响 0.6-0.85 相似度段，确定性路径始终保底
+- 表格匹配偏弱：**✅ 已修复**（bd876a987）——`diff_tables()` 改为确定性四层瀑布匹配（表题相等 → 精确(章节上下文,表头token集,列数) → 同章节容列 Jaccard≥0.6 → 跨章节内容确认），9 个新测试；真数据 table_changes 35→29（幻影对转行级 UPDATE）
 - 受影响面在真实库为空（1 span → 0 实体/0 卡）：根因是图谱稀疏（全库 82 证据行、多数为夹具/合成数据），非查询缺陷；两次索引查询机制由 Layer2 真 PG 测试承载
 
 **实现期发现的简报假设 vs 仓库实际（已在代码 docstring 记录）**:
