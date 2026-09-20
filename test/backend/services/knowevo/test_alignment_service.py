@@ -100,6 +100,40 @@ DOC_TABLE_OLD = (
 )
 DOC_TABLE_NEW = DOC_TABLE_OLD.replace("500mg", "1000mg")
 
+# The T-21 table-match fix: the same table with a reworded caption across
+# versions must not become a phantom ADD + DELETE. Sections are identical
+# here; only the caption text differs (2020 "8 次...调查情况" vs 2024
+# "9 次...调查结果" style drift). DOC_SAME_TABLE_NEW also carries one row
+# change so the matched pair still reports a row-level UPDATE.
+DOC_SAME_TABLE_OLD = (
+    "3 治疗\n"
+    "3.1 流行病学\n"
+    "表 1 我国 8 次全国性糖尿病流行病学调查情况汇总\n"
+    "| 调查年份 | 患病率 |\n"
+    "| --- | --- |\n"
+    "| 1980 | 0.67% |\n"
+    "| 1994 | 2.51% |\n"
+)
+DOC_SAME_TABLE_NEW = (
+    "3 治疗\n"
+    "3.1 流行病学\n"
+    "表 1 我国 9 次全国性糖尿病流行病学调查结果汇总\n"
+    "| 调查年份 | 患病率 |\n"
+    "| --- | --- |\n"
+    "| 1980 | 0.67% |\n"
+    "| 1994 | 2.51% |\n"
+    "| 2002 | 4.5% |\n"
+)
+DOC_SAME_TABLE_UNCHANGED_NEW = (
+    "3 治疗\n"
+    "3.1 流行病学\n"
+    "表 1 我国 9 次全国性糖尿病流行病学调查结果汇总\n"
+    "| 调查年份 | 患病率 |\n"
+    "| --- | --- |\n"
+    "| 1980 | 0.67% |\n"
+    "| 1994 | 2.51% |\n"
+)
+
 # One old / one new paragraph engineered for the 0.6-0.85 LLM band.
 P_OLD = "二甲双胍是2型糖尿病的一线首选药物，推荐起始剂量为每日500毫克。"
 P_NEW = "二甲双胍仍是2型糖尿病的一线首选药物，推荐起始剂量调整为每日1000毫克，分两次服用。"
@@ -655,6 +689,104 @@ class TestDiffTables:
 
 
 # ---------------------------------------------------------------------------
+# Layer 1: diff_tables matches on section context + column signature
+# (T-21 fix: caption-only matching turned identical tables with reworded
+# captions into phantom ADD + DELETE; the match key is now the table's
+# section context plus its column signature, all deterministic, zero LLM)
+# ---------------------------------------------------------------------------
+
+class TestDiffTablesSectionContextMatching:
+    def test_renamed_caption_identical_table_is_neither_add_nor_delete(self):
+        # ① Same table, caption reworded across versions, same section and
+        #    same column signature: must NOT be reported as ADD + DELETE.
+        old = _table("表 1 我国 8 次全国性糖尿病流行病学调查情况汇总",
+                     [["调查年份", "患病率"], ["1980", "0.67%"]])
+        new = _table("表 1 我国 9 次全国性糖尿病流行病学调查结果汇总",
+                     [["调查年份", "患病率"], ["1980", "0.67%"]])
+        changes = als.diff_tables([old], [new],
+                                  old_sections=["流行病学"],
+                                  new_sections=["流行病学"])
+        assert changes == []
+
+    def test_renamed_caption_row_change_is_row_level_update(self):
+        # ① + ③ Same table, reworded caption, one row changed: one matched
+        #    table with a row-level UPDATE, never a table ADD or DELETE.
+        old = _table("表 9 每日能量供给量",
+                     [["身体活动水平", "能量"], ["久坐", "100"]])
+        new = _table("表 8 每日能量供给量（修订）",
+                     [["身体活动水平", "能量"], ["久坐", "110"]])
+        changes = als.diff_tables([old], [new],
+                                  old_sections=["营养治疗"],
+                                  new_sections=["营养治疗"])
+        assert len(changes) == 1
+        assert changes[0].kind == "UPDATE"
+        assert changes[0].rows_changed == [1]
+
+    def test_genuinely_different_columns_still_add_delete(self):
+        # ② A genuinely different column set is a different table: the old
+        #    one is DELETE and the new one ADD even in the same section.
+        old = _table("表 1 旧", [["年份", "患病率"], ["1980", "0.67%"]])
+        new = _table("表 1 新", [["药物", "剂量"], ["二甲双胍", "500mg"]])
+        changes = als.diff_tables([old], [new],
+                                  old_sections=["治疗"],
+                                  new_sections=["治疗"])
+        assert [c.kind for c in changes] == ["ADD", "DELETE"]
+
+    def test_same_columns_in_different_sections_are_not_merged(self):
+        # ④ Coincidentally identical column signature is NOT enough: tables
+        #    in clearly different sections with different content stay
+        #    separate tables (ADD + DELETE), never one merged pair.
+        old = _table("表 A 监测方案",
+                     [["时间点", "适用范围"], ["空腹", "确诊"]])
+        new = _table("表 B 营养方案",
+                     [["时间点", "适用范围"], ["早餐", "蛋白质"]])
+        changes = als.diff_tables([old], [new],
+                                  old_sections=["血糖监测"],
+                                  new_sections=["医学营养治疗"])
+        assert [c.kind for c in changes] == ["ADD", "DELETE"]
+
+    def test_column_tolerant_match_still_detects_row_changes(self):
+        # ③ Column merge/split within the same section still matches the
+        #    table, and the row-hash diff keeps working on the pair.
+        old = _table("表 6 检查频率",
+                     [["检查", "频率"], ["糖化血红蛋白", "1 次/3 月"]])
+        new = _table("表 5 检查频率",
+                     [["检查", "频率", "备注"],
+                      ["HbA1c", "1 次/3 月", "等同糖化血红蛋白"]])
+        changes = als.diff_tables([old], [new],
+                                  old_sections=["随访"],
+                                  new_sections=["随访"])
+        assert len(changes) == 1
+        assert changes[0].kind == "UPDATE"
+        assert all(isinstance(i, int) for i in changes[0].rows_changed)
+
+    def test_cross_section_content_confirmed_table_still_matches(self):
+        # ③ When section titles drift between versions but the header and
+        #    body content prove the same table, the pair is matched and the
+        #    row-level diff runs instead of a phantom ADD + DELETE.
+        old = _table("表 9 每日能量供给量",
+                     [["身体活动水平", "能量"],
+                      ["久坐", "100"], ["轻度", "120"]])
+        new = _table("表 8 每日能量供给量（2024 版）",
+                     [["身体活动水平", "能量"],
+                      ["久坐", "100"], ["轻度", "125"]])
+        changes = als.diff_tables([old], [new],
+                                  old_sections=["营养治疗"],
+                                  new_sections=["糖尿病医学营养治疗"])
+        assert len(changes) == 1
+        assert changes[0].kind == "UPDATE"
+
+    def test_section_context_parallel_lists_are_optional(self):
+        # Backward compatibility: calling without section contexts keeps the
+        # same-section pairing working (existing callers / tests).
+        old = _table("表 1 常用降糖药物", [["二甲双胍", "500mg"]])
+        new = _table("表 1 常用降糖药物", [["二甲双胍", "1000mg"]])
+        changes = als.diff_tables([old], [new])
+        assert len(changes) == 1
+        assert changes[0].kind == "UPDATE"
+
+
+# ---------------------------------------------------------------------------
 # Layer 1: VOI
 # ---------------------------------------------------------------------------
 
@@ -946,6 +1078,36 @@ class TestTableChannelZeroLlm:
                                   old_asset_no="a", new_asset_no="b")
         assert result.table_changes
         assert all(c.source == "deterministic" for c in result.changes)
+
+
+# ---------------------------------------------------------------------------
+# Layer 1: detect() table matching across reworded captions (T-21 fix)
+# ---------------------------------------------------------------------------
+
+class TestTableSectionContextDetect:
+    @pytest.mark.asyncio
+    async def test_reworded_caption_identical_rows_is_no_phantom(self):
+        svc = als.AlignmentService(tenant_id=TENANT_A, llm=None)
+        result = await svc.detect(DOC_SAME_TABLE_OLD, DOC_SAME_TABLE_UNCHANGED_NEW,
+                                  old_asset_no="a", new_asset_no="b")
+        assert result.table_changes == []
+
+    @pytest.mark.asyncio
+    async def test_reworded_caption_with_row_change_is_single_row_level_change(self):
+        # The 2020/2024 表1 case: same table, reworded caption, a row added
+        # (the 9th survey). The pair is matched, so exactly ONE row-level
+        # change is reported - never the phantom table ADD + DELETE pair.
+        svc = als.AlignmentService(tenant_id=TENANT_A, llm=None)
+        result = await svc.detect(DOC_SAME_TABLE_OLD, DOC_SAME_TABLE_NEW,
+                                  old_asset_no="a", new_asset_no="b")
+        assert len(result.table_changes) == 1
+        change = result.table_changes[0]
+        assert change.kind == "ADD"
+        assert change.rows_changed == [4]  # the 2002 row (after the --- row)
+        assert all(
+            "table added:" not in d and "table removed:" not in d
+            for d in change.detail
+        )
 
 
 # ---------------------------------------------------------------------------
