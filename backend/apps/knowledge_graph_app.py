@@ -343,3 +343,157 @@ async def list_skill_templates(
             status_code=502,
             detail="skill template store unavailable") from exc
     return {"templates": rows, "count": len(rows)}
+
+
+# ── alignment (T-21) ──────────────────────────────────────────────────
+
+
+class AlignmentDiffRequest(BaseModel):
+    """Body of POST /alignment/diff.
+
+    The old/new document pair is identified by asset_no; the texts may be
+    supplied inline or resolved from the corpus registry by the route.
+    ``tenant_id`` deliberately comes from the session, never the body, so a
+    caller cannot run alignment inside another tenant's knowledge. The LLM
+    path is optional: when it is unavailable the deterministic fallback is
+    used and the report's run.llm_enabled says so (honest degradation, the
+    service never fabricates a verdict).
+    """
+
+    old_asset_no: str = Field(min_length=1, max_length=40)
+    new_asset_no: str = Field(min_length=1, max_length=40)
+    old_text: str | None = Field(
+        default=None, description="Inline old-document text; falls back to corpus"
+    )
+    new_text: str | None = Field(
+        default=None, description="Inline new-document text; falls back to corpus"
+    )
+    gold: list[dict] | None = Field(
+        default=None, description="Gold rows {change_type, section_anchor, status}"
+    )
+    no_llm: bool = Field(
+        default=False, description="Force the deterministic STEP 3 path"
+    )
+    persist: bool = Field(default=True, description="Write doc_version_diff_t + round")
+    epsilon: float = Field(0.1, ge=0.0, description="VOI loss threshold")
+    cost: float = Field(1.0, ge=0.0, description="Per-item VOI selection cost")
+    max_llm_calls: int = Field(20, ge=0, le=200, description="STEP 3 LLM budget")
+
+
+def _alignment_service(tenant_id: str, llm=None, max_llm_calls: int = 20):
+    """One AlignmentService per request (T-21 routes).
+
+    Same lazy-import discipline as _decision_service: alignment opens DB
+    sessions lazily and never at app-import time. The LLM is optional and
+    built by the caller only when the request asks for it.
+    """
+    from services.knowevo.alignment_service import AlignmentService
+
+    return AlignmentService(
+        tenant_id=tenant_id, llm=llm, max_llm_calls=max_llm_calls
+    )
+
+
+def _corpus_text(asset_no: str) -> str:
+    """Resolve a registered asset's text from the competition corpus.
+
+    Reuses the CLI's registry/PDF resolution (pdftotext -layout, cached
+    under competition/.alignment-cache). The corpus tree is a competition
+    fixture, not a runtime guarantee - a missing asset is a clean 400,
+    never a silent empty document.
+    """
+    from pathlib import Path
+
+    from services.knowevo.pipeline.diff_guidelines import document_text
+
+    repo = Path(__file__).resolve().parents[3]
+    return document_text(
+        asset_no,
+        repo / "competition" / "corpus",
+        repo / "competition" / ".alignment-cache",
+    )
+
+
+@router.post("/alignment/diff")
+async def run_alignment_diff(
+    request: AlignmentDiffRequest,
+    authorization: str | None = Header(None),
+):
+    """Run the three-stage diff (+ impact when the store is reachable).
+
+    Errors: 403 without workbench permission; 400 when an asset_no cannot
+    be resolved to text; 502 when persistence or the store fails. The LLM
+    is attempted only when the request allows it; any model-routing failure
+    degrades to the deterministic path and is visible in run.llm_enabled.
+    """
+    _, tenant_id, _ = _require_workbench_context(authorization)
+    llm = None
+    if not request.no_llm:
+        try:
+            from services.knowevo.llm_client import build_llm_callable
+
+            llm = build_llm_callable(tenant_id)
+        except Exception as exc:  # noqa: BLE001 - LLM is optional here
+            logger.warning(
+                "alignment llm build failed, using deterministic path: %s", exc
+            )
+            llm = None
+    svc = _alignment_service(
+        tenant_id, llm=llm, max_llm_calls=request.max_llm_calls
+    )
+    try:
+        old_text = request.old_text or _corpus_text(request.old_asset_no)
+        new_text = request.new_text or _corpus_text(request.new_asset_no)
+    except SystemExit as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    from services.knowevo import alignment_service as als
+
+    try:
+        result = await svc.run(
+            old_asset_no=request.old_asset_no,
+            new_asset_no=request.new_asset_no,
+            old_text=old_text,
+            new_text=new_text,
+            gold=request.gold or None,
+            epsilon=request.epsilon,
+            cost=request.cost,
+            persist=request.persist,
+            knowledge_stamp={"ontology_version": ""},
+        )
+    except Exception as exc:
+        logger.warning("alignment diff failed: %s", exc)
+        raise HTTPException(
+            status_code=502, detail="alignment store unavailable"
+        ) from exc
+    report = als.to_report_json(result)
+    report["run"] = {
+        "llm_enabled": llm is not None,
+        "max_llm_calls": request.max_llm_calls,
+        "lang": "zh",
+        "gold_file": None,
+        "mode": "full",
+    }
+    return report
+
+
+@router.get("/alignment/diff/list")
+def list_alignment_diffs(
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    authorization: str | None = Header(None),
+):
+    """Read-only listing of persisted alignment diffs for the tenant.
+
+    Mirrors /skill-template/list: only this tenant's rows, a store failure
+    is a 502 rather than a fake empty list. A plain ``def`` route so
+    FastAPI runs the sync DB call in its threadpool.
+    """
+    _, tenant_id, _ = _require_workbench_context(authorization)
+    svc = _alignment_service(tenant_id)
+    try:
+        rows = svc.list_diffs(limit=limit)
+    except Exception as exc:
+        logger.warning("alignment diff listing failed: %s", exc)
+        raise HTTPException(
+            status_code=502, detail="alignment store unavailable"
+        ) from exc
+    return {"diffs": rows, "count": len(rows)}

@@ -1100,3 +1100,149 @@ class TestPgAffectedSurface:
         finally:
             self._cleanup(tenant_a)
             self._cleanup(tenant_b)
+
+
+# ---------------------------------------------------------------------------
+# Layer 1: /alignment/* HTTP boundary (apps.knowledge_graph_app)
+# ---------------------------------------------------------------------------
+
+
+def _alignment_auth(monkeypatch, tenant="33333333-3333-3333-3333-333333333333",
+                    kb_manage=True, graph_manage=True):
+    """Patch the app's auth seams to a known tenant (sibling-test idiom)."""
+    monkeypatch.setattr(
+        "apps.knowledge_graph_app.get_current_user_context",
+        lambda _authorization: ("user@x", tenant, "ADMIN"))
+
+    def fake_check(role, category, ptype, subtype=None):
+        if (category, ptype) in (("RESOURCE", "KNOWLEDGE_GRAPH"),
+                                 ("RESOURCE", "KB")):
+            return kb_manage or graph_manage
+        return False
+
+    monkeypatch.setattr(
+        "apps.knowledge_graph_app.check_role_permission", fake_check)
+
+
+class FakeAlignmentService:
+    """Canned stand-in for AlignmentService at the app boundary."""
+
+    def __init__(self, tenant_id, llm=None):
+        self.tenant_id = tenant_id
+        self.llm = llm
+        self.runs = []
+
+    async def run(self, **kwargs):
+        self.runs.append(kwargs)
+        return als.AlignmentResult(
+            detect=als.DetectResult(
+                "guide-2020", "guide-2024", als.SectionAlign()
+            )
+        )
+
+    def list_diffs(self, limit=50):
+        return [{
+            "diff_id": "d1",
+            "old_asset_no": "guide-2020",
+            "new_asset_no": "guide-2024",
+            "change_counts": {"ADD": 1},
+            "created_at": None,
+        }]
+
+
+class TestAlignmentRoutes:
+    def _post(self, request, authorization="t"):
+        import asyncio
+
+        from apps import knowledge_graph_app
+
+        return asyncio.run(
+            knowledge_graph_app.run_alignment_diff(request, authorization=authorization)
+        )
+
+    def test_run_requires_workbench_permission(self, monkeypatch):
+        from fastapi import HTTPException
+
+        from apps import knowledge_graph_app
+
+        _alignment_auth(monkeypatch, kb_manage=False, graph_manage=False)
+        with pytest.raises(HTTPException) as exc:
+            self._post(knowledge_graph_app.AlignmentDiffRequest(
+                old_asset_no="a", new_asset_no="b",
+                old_text="x", new_text="y"))
+        assert exc.value.status_code == 403
+
+    def test_run_delegates_and_marks_llm_disabled(self, monkeypatch):
+        from apps import knowledge_graph_app
+
+        _alignment_auth(monkeypatch)
+        fake = FakeAlignmentService("t")
+        monkeypatch.setattr(
+            knowledge_graph_app, "_alignment_service",
+            lambda tenant, llm=None, max_llm_calls=20: fake)
+        report = self._post(knowledge_graph_app.AlignmentDiffRequest(
+            old_asset_no="guide-2020", new_asset_no="guide-2024",
+            old_text="a", new_text="b", no_llm=True))
+        assert fake.runs[0]["old_asset_no"] == "guide-2020"
+        assert fake.runs[0]["old_text"] == "a"
+        assert report["run"]["llm_enabled"] is False
+        assert report["old_asset_no"] == "guide-2020"
+
+    def test_run_missing_corpus_text_maps_to_400(self, monkeypatch):
+        from fastapi import HTTPException
+
+        from apps import knowledge_graph_app
+
+        _alignment_auth(monkeypatch)
+
+        def boom(asset_no):
+            raise SystemExit(f"asset_no {asset_no!r} is not in the registry")
+
+        monkeypatch.setattr(knowledge_graph_app, "_corpus_text", boom)
+        with pytest.raises(HTTPException) as exc:
+            self._post(knowledge_graph_app.AlignmentDiffRequest(
+                old_asset_no="missing", new_asset_no="guide-2024"))
+        assert exc.value.status_code == 400
+        assert "not in the registry" in exc.value.detail
+
+    def test_run_store_failure_maps_to_502(self, monkeypatch):
+        from fastapi import HTTPException
+
+        from apps import knowledge_graph_app
+
+        _alignment_auth(monkeypatch)
+
+        class BoomService:
+            async def run(self, **kwargs):
+                raise RuntimeError("db down")
+
+        monkeypatch.setattr(
+            knowledge_graph_app, "_alignment_service",
+            lambda tenant, llm=None, max_llm_calls=20: BoomService())
+        with pytest.raises(HTTPException) as exc:
+            self._post(knowledge_graph_app.AlignmentDiffRequest(
+                old_asset_no="a", new_asset_no="b",
+                old_text="x", new_text="y"))
+        assert exc.value.status_code == 502
+
+    def test_list_requires_permission(self, monkeypatch):
+        from fastapi import HTTPException
+
+        from apps import knowledge_graph_app
+
+        _alignment_auth(monkeypatch, kb_manage=False, graph_manage=False)
+        with pytest.raises(HTTPException) as exc:
+            knowledge_graph_app.list_alignment_diffs(authorization="t")
+        assert exc.value.status_code == 403
+
+    def test_list_happy_path(self, monkeypatch):
+        from apps import knowledge_graph_app
+
+        _alignment_auth(monkeypatch)
+        fake = FakeAlignmentService("t")
+        monkeypatch.setattr(
+            knowledge_graph_app, "_alignment_service",
+            lambda tenant, llm=None, max_llm_calls=20: fake)
+        body = knowledge_graph_app.list_alignment_diffs(authorization="t")
+        assert body["count"] == 1
+        assert body["diffs"][0]["diff_id"] == "d1"

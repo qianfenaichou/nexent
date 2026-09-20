@@ -1669,6 +1669,56 @@ class AlignmentService:
             "new_doc": str(new_id),
         }
 
+    def list_diffs(self, *, limit: int = 50) -> list[dict[str, Any]]:
+        """List persisted alignment diffs for this tenant, newest first."""
+        from collections import Counter
+
+        from database.knowevo_db import DocAsset, DocVersionDiff
+
+        with self._session() as session:
+            rows = session.execute(
+                select(
+                    DocVersionDiff.id,
+                    DocVersionDiff.old_doc,
+                    DocVersionDiff.new_doc,
+                    DocVersionDiff.created_at,
+                    DocVersionDiff.changes,
+                    DocAsset.asset_no.label("old_asset_no"),
+                )
+                .join(DocAsset, DocAsset.id == DocVersionDiff.old_doc)
+                .where(DocVersionDiff.tenant_id == self.tenant_id)
+                .order_by(DocVersionDiff.created_at.desc())
+                .limit(limit)
+            ).all()
+            new_rows = session.execute(
+                select(DocAsset.id, DocAsset.asset_no).where(
+                    DocAsset.tenant_id == self.tenant_id,
+                    DocAsset.id.in_([row.new_doc for row in rows]),
+                )
+            ).all()
+        new_by_id = {row.id: row.asset_no for row in new_rows}
+        diffs: list[dict[str, Any]] = []
+        for row in rows:
+            counts = dict(
+                Counter(
+                    item.get("change_type")
+                    for item in (row.changes or [])
+                    if isinstance(item, dict) and item.get("change_type")
+                )
+            )
+            diffs.append(
+                {
+                    "diff_id": str(row.id),
+                    "old_asset_no": row.old_asset_no,
+                    "new_asset_no": new_by_id.get(row.new_doc),
+                    "created_at": (
+                        row.created_at.isoformat() if row.created_at else None
+                    ),
+                    "change_counts": counts,
+                }
+            )
+        return diffs
+
     async def run(
         self,
         *,
