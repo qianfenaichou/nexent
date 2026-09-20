@@ -860,25 +860,219 @@ def _row_hash(row: Sequence[str]) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
 
 
+# Deterministic table-matching thresholds (zero LLM). Measured against the
+# 2020/2024 guideline pair (2026-09-20): the same table reworded across
+# versions keeps a header-token Jaccard >= 0.6 and a body-token Jaccard
+# >= 0.6, while genuinely different tables stay far below both (e.g. the
+# DR-grading and DME-grading tables at 0.50/0.17).
+TABLE_COL_JACCARD_FLOOR = 0.6   # header token-set overlap for "same columns"
+TABLE_NCOLS_TOLERANCE = 2       # |old_cols - new_cols| (column merge/split)
+TABLE_SECTION_SIM_FLOOR = 0.75  # section context similarity that confirms
+TABLE_CONTENT_FLOOR = 0.6       # body token-set overlap that confirms content
+
+# Deterministic tokenisation: any CJK run or latin/digit word >= 2 chars.
+_CELL_TOKEN_RE = re.compile(r"[^\w\u4e00-\u9fff]+")
+
+
+def _cell_tokens(cell: str) -> set[str]:
+    """Normalized tokens of one cell (the column-signature feature space)."""
+    norm = _normalise_cell(cell)
+    tokens: set[str] = set()
+    for token in _CELL_TOKEN_RE.split(norm):
+        if token and len(token) > 1:
+            tokens.add(token)
+    return tokens
+
+
+def _column_signature(table: TableBlock) -> tuple[frozenset[str], int]:
+    """Deterministic column signature: header-row token set + column count."""
+    if not table.rows:
+        return frozenset(), 0
+    tokens: set[str] = set()
+    for cell in table.rows[0]:
+        tokens.update(_cell_tokens(cell))
+    return frozenset(tokens), len(table.rows[0])
+
+
+def _body_tokens(table: TableBlock) -> frozenset[str]:
+    """Deterministic content signature over the non-header cells."""
+    tokens: set[str] = set()
+    for row in table.rows[1:]:
+        for cell in row:
+            tokens.update(_cell_tokens(cell))
+    return frozenset(tokens)
+
+
+def _set_jaccard(left: frozenset[str], right: frozenset[str]) -> float:
+    union = left | right
+    if not union:
+        return 0.0
+    return len(left & right) / len(union)
+
+
+def _pad_contexts(
+    contexts: Sequence[str] | None, size: int
+) -> list[str]:
+    """Normalise a parallel section-context list to one entry per table."""
+    if not contexts:
+        return [""] * size
+    return [str(c) for c in contexts[:size]] + [""] * max(0, size - len(contexts))
+
+
 def diff_tables(
-    old_tables: Sequence[TableBlock], new_tables: Sequence[TableBlock]
+    old_tables: Sequence[TableBlock],
+    new_tables: Sequence[TableBlock],
+    *,
+    old_sections: Sequence[str] | None = None,
+    new_sections: Sequence[str] | None = None,
 ) -> list[TableChange]:
-    """Deterministic table comparison by row hash (zero LLM, reproducible)."""
+    """Deterministic table comparison by row hash (zero LLM, reproducible).
+
+    Tables are matched on ``(section context, column signature)`` rather
+    than on caption text, so a table whose caption was reworded between
+    versions is still recognised as the same table. The column signature is
+    the header row's normalized token set plus the column count; the row
+    hash diff (``_row_hash``) below is unchanged.
+
+    Matching is a deterministic four-tier cascade (the same input always
+    pairs the same tables):
+
+    0. caption  - identical normalized caption (a table keeps its own name;
+       this is the strongest signal and restores caption behaviour for the
+       many tables whose titles did not change between versions);
+    1. exact  - equal ``(section context, header tokens, column count)``;
+    2. tolerant - same section context, header token Jaccard >=
+       ``TABLE_COL_JACCARD_FLOOR`` and ``|d column count| <=
+       TABLE_NCOLS_TOLERANCE`` (covers column renames and merge/split);
+    3. content-confirmed - unmatched leftovers whose columns still overlap
+       at the floor are paired when the section titles are similar (>=
+       ``TABLE_SECTION_SIM_FLOOR``) *or* the non-header cell tokens overlap
+       at ``TABLE_CONTENT_FLOOR``. This tier exists because on the real
+       2020/2024 text the parsed section titles are polluted by the PDF
+       layout, so section-context equality alone cannot confirm cross-version
+       pairs; body-content overlap is the deterministic proof that they are
+       the same table (never a caption-less guess).
+
+    ``old_sections`` / ``new_sections`` are parallel lists of section
+    contexts (normalized title of the section holding each table). They are
+    optional for backward compatibility; when omitted every table gets an
+    empty context and matching falls back to column signature alone.
+
+    Output keeps the frozen ``TableChange`` contract
+    (``section_id/kind/rows_changed/detail``).
+    """
     changes: list[TableChange] = []
-    old_by_caption = {normalize_title(t.caption): t for t in old_tables}
-    new_by_caption = {normalize_title(t.caption): t for t in new_tables}
-    for key, new_table in new_by_caption.items():
-        old_table = old_by_caption.get(key)
-        if old_table is None:
+    n_old, n_new = len(old_tables), len(new_tables)
+    old_ctx = _pad_contexts(old_sections, n_old)
+    new_ctx = _pad_contexts(new_sections, n_new)
+    old_sig = [_column_signature(t) for t in old_tables]
+    new_sig = [_column_signature(t) for t in new_tables]
+
+    matches: dict[int, int] = {}
+    used_old: set[int] = set()
+    used_new: set[int] = set()
+
+    # Tier 0: identical normalized caption (the table kept its own name).
+    new_by_caption: dict[str, list[int]] = {}
+    for j, table in enumerate(new_tables):
+        key = normalize_title(table.caption) or table.caption
+        new_by_caption.setdefault(key, []).append(j)
+    for i, table in enumerate(old_tables):
+        key = normalize_title(table.caption) or table.caption
+        for j in new_by_caption.get(key, ()):
+            if j not in used_new:
+                matches[i] = j
+                used_old.add(i)
+                used_new.add(j)
+                break
+
+    # Tier 1: exact (section context, header tokens, column count).
+    new_by_key: dict[tuple[Any, Any, int], list[int]] = {}
+    for j, (ctx, (tokens, ncols)) in enumerate(zip(new_ctx, new_sig)):
+        new_by_key.setdefault((ctx, tokens, ncols), []).append(j)
+    for i, (ctx, (tokens, ncols)) in enumerate(zip(old_ctx, old_sig)):
+        for j in new_by_key.get((ctx, tokens, ncols), ()):
+            if j not in used_new:
+                matches[i] = j
+                used_old.add(i)
+                used_new.add(j)
+                break
+
+    # Tier 2: same section context, column-tolerant.
+    if n_old - len(used_old) and n_new - len(used_new):
+        candidates: list[tuple[float, int, int]] = []
+        for i in range(n_old):
+            if i in used_old:
+                continue
+            tokens_i, ncols_i = old_sig[i]
+            for j in range(n_new):
+                if j in used_new or new_ctx[j] != old_ctx[i]:
+                    continue
+                tokens_j, ncols_j = new_sig[j]
+                if abs(ncols_i - ncols_j) > TABLE_NCOLS_TOLERANCE:
+                    continue
+                sim = _set_jaccard(tokens_i, tokens_j)
+                if sim >= TABLE_COL_JACCARD_FLOOR:
+                    candidates.append((sim, i, j))
+        for _, i, j in sorted(candidates, key=lambda x: (-x[0], x[1], x[2])):
+            if i in used_old or j in used_new:
+                continue
+            matches[i] = j
+            used_old.add(i)
+            used_new.add(j)
+
+    # Tier 3: cross-section, content-confirmed.
+    if n_old - len(used_old) and n_new - len(used_new):
+        old_body = [_body_tokens(t) for t in old_tables]
+        new_body = [_body_tokens(t) for t in new_tables]
+        candidates = []
+        for i in range(n_old):
+            if i in used_old:
+                continue
+            tokens_i, ncols_i = old_sig[i]
+            for j in range(n_new):
+                if j in used_new:
+                    continue
+                tokens_j, ncols_j = new_sig[j]
+                if abs(ncols_i - ncols_j) > TABLE_NCOLS_TOLERANCE:
+                    continue
+                if _set_jaccard(tokens_i, tokens_j) < TABLE_COL_JACCARD_FLOOR:
+                    continue
+                section_sim = lexical_similarity(old_ctx[i], new_ctx[j])
+                content_sim = _set_jaccard(old_body[i], new_body[j])
+                if (
+                    section_sim >= TABLE_SECTION_SIM_FLOOR
+                    or content_sim >= TABLE_CONTENT_FLOOR
+                ):
+                    candidates.append(
+                        (max(section_sim, content_sim), i, j)
+                    )
+        for _, i, j in sorted(
+            candidates, key=lambda x: (-x[0], x[1], x[2])
+        ):
+            if i in used_old or j in used_new:
+                continue
+            matches[i] = j
+            used_old.add(i)
+            used_new.add(j)
+
+    # Row-level diff for every matched pair, then unmatched tables as ADD /
+    # DELETE. Iteration order is stable: new tables first (row diffs and
+    # ADDs in new-document order), then old-only tables as DELETEs.
+    for j, new_table in enumerate(new_tables):
+        i = next((o for o, m in matches.items() if m == j), None)
+        if i is None:
             changes.append(
                 TableChange(
-                    section_id=key or new_table.caption,
+                    section_id=normalize_title(new_table.caption)
+                    or new_table.caption,
                     kind="ADD",
                     rows_changed=list(range(len(new_table.rows))),
                     detail=[f"table added: {new_table.caption}"],
                 )
             )
             continue
+        old_table = old_tables[i]
         old_hashes = [_row_hash(r) for r in old_table.rows]
         new_hashes = [_row_hash(r) for r in new_table.rows]
         if old_hashes == new_hashes:
@@ -914,22 +1108,25 @@ def diff_tables(
             ]
         changes.append(
             TableChange(
-                section_id=key or new_table.caption,
+                section_id=normalize_title(new_table.caption)
+                or new_table.caption,
                 kind=kind,
                 rows_changed=rows_changed,
                 detail=detail,
             )
         )
-    for key, old_table in old_by_caption.items():
-        if key not in new_by_caption:
-            changes.append(
-                TableChange(
-                    section_id=key or old_table.caption,
-                    kind="DELETE",
-                    rows_changed=list(range(len(old_table.rows))),
-                    detail=[f"table removed: {old_table.caption}"],
-                )
+    for i, old_table in enumerate(old_tables):
+        if i in used_old:
+            continue
+        changes.append(
+            TableChange(
+                section_id=normalize_title(old_table.caption)
+                or old_table.caption,
+                kind="DELETE",
+                rows_changed=list(range(len(old_table.rows))),
+                detail=[f"table removed: {old_table.caption}"],
             )
+        )
     return changes
 
 
@@ -1252,6 +1449,8 @@ class AlignmentService:
         table_changes = diff_tables(
             [t for s in old_sections for t in s.tables],
             [t for s in new_sections for t in s.tables],
+            old_sections=[s.norm_title for s in old_sections for _ in s.tables],
+            new_sections=[s.norm_title for s in new_sections for _ in s.tables],
         )
         for change in table_changes:
             changes.append(
