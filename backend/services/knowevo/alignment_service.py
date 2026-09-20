@@ -83,16 +83,21 @@ __all__ = [
     "SectionNode",
     "TableBlock",
     "TableChange",
+    "TopicCalibration",
+    "TopicGroup",
     "UpdateCandidate",
+    "aggregate_change_groups",
     "align_sections",
     "assign_paragraphs",
     "calibrate_pr",
+    "calibrate_topic",
     "diff_tables",
     "lexical_similarity",
     "minimal_update_set",
     "normalize_title",
     "parse_sections",
     "similarity_matrix",
+    "topic_tokens",
     "voi",
 ]
 
@@ -328,6 +333,7 @@ class AlignmentResult:
     affected: AffectedSurface | None = None
     update_set: MinimalUpdateSet | None = None
     calibration: Calibration | None = None
+    topic_calibration: TopicCalibration | None = None
     persisted: dict[str, Any] = field(default_factory=dict)
 
 
@@ -1226,6 +1232,193 @@ def calibrate_pr(
 
 
 # ---------------------------------------------------------------------------
+# Topic-level calibration (T-21 calibration refactor)
+# ---------------------------------------------------------------------------
+
+_CJK_RUN_RE = re.compile(r"[\u4e00-\u9fff]+")
+_ASCII_WORD_RE = re.compile(r"[A-Za-z][A-Za-z0-9_-]{1,}")
+
+
+def topic_tokens(text: str | None) -> set[str]:
+    """Topic-signal tokens for gold<->machine matching (deterministic).
+
+    ASCII words of length >= 2 are kept as written. CJK has no delimiter, so
+    a run is shingled into character trigrams: tokenising a CJK run as one
+    token made a whole clause a single un-matchable unit (the r14 calibration
+    bug), while a segmenter would add a dependency. Trigrams are the smallest
+    shingle that still discriminates topics ("控制目" vs "代谢手") without
+    one. Nothing here reads the gold seed, so the same text always yields the
+    same tokens.
+    """
+    if not text:
+        return set()
+    tokens: set[str] = {w.lower() for w in _ASCII_WORD_RE.findall(text)}
+    for run in _CJK_RUN_RE.findall(text):
+        for i in range(len(run) - 2):
+            tokens.add(run[i : i + 3])
+    return tokens
+
+
+@dataclass
+class TopicGroup:
+    """Machine change items collapsed by (change_type, normalised section)."""
+
+    change_type: str
+    section_anchor: str
+    count: int = 0
+    tokens: set[str] = field(default_factory=set)
+
+
+@dataclass
+class TopicCalibration:
+    """Topic-level P/R for a topical, non-exhaustive gold seed.
+
+    The gold seed lists *topics* that changed between two document versions,
+    while the detector emits *paragraph-level* items. Joining them item by
+    item is a granularity mismatch that measures neither side: on the real
+    691-item run it produced precision=0.00145 / recall=0.111, numbers driven
+    by the 691x9 denominator mismatch rather than by detection quality.
+
+    This calibration collapses the machine side into (change_type, section)
+    groups and matches gold topics to groups on discriminative-token overlap,
+    so both sides are compared at topic level:
+
+    * ``recall`` - share of evaluable gold topics with >= 1 matching group.
+    * ``precision_lower_bound`` - share of machine groups matching some gold
+      topic. The gold seed is a curated sample, not an exhaustive annotation
+      of the diff, so a group with no gold counterpart is not necessarily
+      wrong; this number is a **lower bound** and must be quoted as one.
+
+    Honesty rules are those of :func:`calibrate_pr`: rows without a
+    ``verified``/``corrected`` verdict take part in neither numerator nor
+    denominator, and UNCHANGED items are not changes.
+    """
+
+    recall: float | None
+    precision_lower_bound: float | None
+    matched_topics: int
+    gold_total: int
+    matched_groups: int
+    machine_groups: int
+    machine_total: int
+    unverified_excluded: int
+    max_df_fraction: float
+    min_shared_tokens: int
+    topic_match_counts: dict[str, int] = field(default_factory=dict)
+
+
+def aggregate_change_groups(machine: Sequence[ChangeItem]) -> list[TopicGroup]:
+    """Collapse paragraph-level changes into (change_type, section) groups.
+
+    One section commonly carries many paragraph items (an ADD/DELETE pair per
+    edited paragraph); the gold seed describes one change per topic, so the
+    groups are the comparable unit.
+    """
+    buckets: dict[tuple[str, str], TopicGroup] = {}
+    for item in machine:
+        if item.change_type == "UNCHANGED":
+            continue
+        key = (item.change_type, normalize_title(item.section_anchor))
+        group = buckets.get(key)
+        if group is None:
+            group = TopicGroup(
+                change_type=item.change_type,
+                section_anchor=item.section_anchor,
+            )
+            buckets[key] = group
+        group.count += 1
+        group.tokens |= topic_tokens(item.section_anchor)
+        for point in item.points:
+            group.tokens |= topic_tokens(point)
+    return list(buckets.values())
+
+
+def calibrate_topic(
+    machine: Sequence[ChangeItem],
+    gold: Sequence[dict[str, Any]],
+    *,
+    max_df_fraction: float = 0.05,
+    min_shared_tokens: int = 2,
+) -> TopicCalibration:
+    """Topic-level P/R with discriminative-token matching.
+
+    A gold topic matches a machine group when they share at least
+    ``min_shared_tokens`` *discriminative* tokens - tokens appearing in more
+    than ``max_df_fraction`` of the groups are section boilerplate ("糖尿病",
+    "治疗") and cannot carry a match on their own.
+
+    Sensitivity on the real 691-item run (for the record, not a guarantee):
+    recall is 9/9 for df fractions 0.05-1.0 with ``min_shared_tokens=2``,
+    but drops to 7/9 already at df=0.02 and to 3/9 at ``min_shared_tokens=3``
+    - the defaults sit on a plateau, not a cliff, but the plateau has edges.
+    Negative controls must be chosen from topics that do not occur anywhere
+    in the diff: a topic whose text genuinely appears in the corpus matches
+    whatever the gold seed says (the gold seed is non-exhaustive, so this is
+    expected, not a defect). Both parameters are reported on the result so
+    the number can be reproduced or challenged.
+    """
+    if not (0.0 <= max_df_fraction <= 1.0):
+        raise ValueError(f"max_df_fraction must be in [0, 1], got {max_df_fraction!r}")
+    if min_shared_tokens < 1:
+        raise ValueError(
+            f"min_shared_tokens must be >= 1, got {min_shared_tokens!r}"
+        )
+    groups = aggregate_change_groups(machine)
+    eligible = [
+        g
+        for g in gold
+        if str(g.get("status", "")).lower() in ("verified", "corrected")
+    ]
+    unverified = len(gold) - len(eligible)
+    matched_groups: set[int] = set()
+    match_counts: dict[str, int] = {}
+    matched_topics = 0
+
+    if groups and eligible:
+        df: dict[str, int] = {}
+        for group in groups:
+            for token in group.tokens:
+                df[token] = df.get(token, 0) + 1
+        df_limit = max(3, int(len(groups) * max_df_fraction))
+        for row in eligible:
+            gold_tokens = topic_tokens(
+                str(row.get("section_anchor", ""))
+            ) | topic_tokens(str(row.get("field", "") or ""))
+            hits = 0
+            for index, group in enumerate(groups):
+                shared = {
+                    token
+                    for token in (gold_tokens & group.tokens)
+                    if df.get(token, 0) <= df_limit
+                }
+                if len(shared) >= min_shared_tokens:
+                    hits += 1
+                    matched_groups.add(index)
+            match_counts[str(row.get("id") or row.get("section_anchor") or "")] = hits
+            if hits:
+                matched_topics += 1
+
+    # With no evaluable gold row there is nothing to match against: both
+    # rates are not measurable and must be None, not 0.0 - mirroring
+    # calibrate_pr, and never implying a measured (zero) precision.
+    return TopicCalibration(
+        recall=(matched_topics / len(eligible)) if eligible else None,
+        precision_lower_bound=(
+            (len(matched_groups) / len(groups)) if (groups and eligible) else None
+        ),
+        matched_topics=matched_topics,
+        gold_total=len(eligible),
+        matched_groups=len(matched_groups),
+        machine_groups=len(groups),
+        machine_total=sum(g.count for g in groups),
+        unverified_excluded=unverified,
+        max_df_fraction=max_df_fraction,
+        min_shared_tokens=min_shared_tokens,
+        topic_match_counts=match_counts,
+    )
+
+
+# ---------------------------------------------------------------------------
 # LLM verdicts for STEP 3
 # ---------------------------------------------------------------------------
 
@@ -1796,6 +1989,7 @@ class AlignmentService:
         affected: AffectedSurface | None = None,
         update_set: MinimalUpdateSet | None = None,
         calibration: Calibration | None = None,
+        topic_calibration: TopicCalibration | None = None,
         knowledge_stamp: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Write doc_version_diff_t + evolution_round_t rows."""
@@ -1832,8 +2026,22 @@ class AlignmentService:
             new_doc=new_id,
             section_align=asdict(detect.sections),
             changes=[_jsonable(asdict(c)) for c in detect.changes],
-            precision=(calibration.precision if calibration else None),
-            recall=(calibration.recall if calibration else None),
+            # ``precision`` holds a true precision only; the topic-level
+            # lower bound is not one (the gold seed is a curated sample, so
+            # an unmatched group is not proven wrong), hence NULL here with
+            # the number carried in ops_summary.calibration under an explicit
+            # ``precision_is_lower_bound`` label. recall is kept: topic recall
+            # IS a recall (share of gold topics covered).
+            precision=(
+                None
+                if topic_calibration
+                else (calibration.precision if calibration else None)
+            ),
+            recall=(
+                topic_calibration.recall
+                if topic_calibration
+                else (calibration.recall if calibration else None)
+            ),
         )
         ops_summary = {
             "changes": _count_by_type(detect.changes),
@@ -1847,6 +2055,60 @@ class AlignmentService:
             "knowledge_stamp": knowledge_stamp or {},
             "loss_estimate": update_set.loss_estimate if update_set else None,
         }
+        if topic_calibration or calibration:
+            # ``precision`` above is the topic-level *lower bound* whenever
+            # ``topic_calibration`` exists: the gold seed is a curated sample,
+            # so unmatched groups are not proven wrong. The label travels with
+            # the numbers to keep that from being lost downstream.
+            ops_summary["calibration"] = {
+                "mode": (
+                    "topic_aggregate" if topic_calibration else "item_anchor"
+                ),
+                "precision_is_lower_bound": bool(topic_calibration),
+                "recall_topic": (
+                    topic_calibration.recall if topic_calibration else None
+                ),
+                "precision_lower_bound": (
+                    topic_calibration.precision_lower_bound
+                    if topic_calibration
+                    else None
+                ),
+                "matched_topics": (
+                    topic_calibration.matched_topics if topic_calibration else None
+                ),
+                "evaluable_gold": (
+                    topic_calibration.gold_total
+                    if topic_calibration
+                    else (calibration.gold_total if calibration else None)
+                ),
+                "machine_groups": (
+                    topic_calibration.machine_groups if topic_calibration else None
+                ),
+                "machine_items": (
+                    topic_calibration.machine_total
+                    if topic_calibration
+                    else (calibration.machine_total if calibration else None)
+                ),
+                "unverified_excluded": (
+                    topic_calibration.unverified_excluded
+                    if topic_calibration
+                    else (calibration.unverified_excluded if calibration else None)
+                ),
+                # Item-level comparison is kept for audit only; it mixes the
+                # gold's topic-level labels with paragraph-level items, so its
+                # precision is not a true precision (it cannot be). Produced
+                # by calibrate_pr (run()) or calibrate_loose (CLI).
+                "item_level_baseline": (
+                    {
+                        "precision": calibration.precision,
+                        "recall": calibration.recall,
+                        "matched": calibration.matched,
+                        "machine_total": calibration.machine_total,
+                    }
+                    if calibration
+                    else None
+                ),
+            }
         round_row = create_row(
             EvolutionRound,
             tenant_id=self.tenant_id,
@@ -1953,11 +2215,15 @@ class AlignmentService:
             affected, proposals, epsilon=epsilon, cost=cost
         )
         calibration = calibrate_pr(detect.changes, list(gold or [])) if gold else None
+        topic_calibration = (
+            calibrate_topic(detect.changes, list(gold or [])) if gold else None
+        )
         result = AlignmentResult(
             detect=detect,
             affected=affected,
             update_set=update_set,
             calibration=calibration,
+            topic_calibration=topic_calibration,
         )
         if persist:
             result.persisted = self.persist(
@@ -1965,6 +2231,7 @@ class AlignmentService:
                 affected=affected,
                 update_set=update_set,
                 calibration=calibration,
+                topic_calibration=topic_calibration,
                 knowledge_stamp=knowledge_stamp,
             )
         return result
@@ -2037,6 +2304,9 @@ def to_report_json(result: AlignmentResult) -> dict[str, Any]:
         ),
         "calibration": (
             asdict(result.calibration) if result.calibration else None
+        ),
+        "topic_calibration": (
+            asdict(result.topic_calibration) if result.topic_calibration else None
         ),
         "persisted": result.persisted,
     }

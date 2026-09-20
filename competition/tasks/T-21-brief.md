@@ -128,11 +128,44 @@ python -m services.knowevo.pipeline.diff_guidelines --old guide-2020 --new guide
 **P/R 诚实口径（重要，不得照搬"0.9/0.85"目标）**: 官方数字由 `calibrate_loose` 按 **ChangeItem 粒度** 计算（precision=matched/691 条机器变更项、recall=matched/9 条可评估金标行），其结构性问题 = ①粒度：机器逐段落发 691 项 vs 金标 9 条话题级行 → precision 上界≈1.3%；②类型词汇：金标话题级 "UPD" 与机器段落级实际（691 项中仅 9 项 UPDATE，其余为 ADD/DELETE）无法按类型对上（例：二甲双胍变更机器记为 ADD/DELETE 而非 UPDATE——两种粒度都是实话）；③机器 section 标题被正文污染（`parse_sections` 将正文行误判为标题，如"1 二甲双胍为 T2DM 患者控制高血糖的一线用"），字符串匹配失效。**辅助诚实信号（离线话题覆盖）**：按话题 token 重叠、无类型约束，9 条金标中 4 条（HbA1c/GLP-1RA 新药/胰岛素/注射装置）能在机器变更中找到对应内容。**结论：P≥0.90/R≥0.85 目标在该粒度下不可达，须将校准重构为"按 (change_type, 章节) 聚合 + token 重叠匹配"并评审后重测（下轮候选）**；本轮官方数字如实记录，不虚构达标。
 
 **尚未产出（下一轮继续，不得在此写"通过"）**:
-- P/R 数字：**已测但有结构性口径限制**（见上 P/R 诚实口径节）——金标 16 条已全部逐条 PDF 核验（9 verified 计入 / 7 排除，含 2 条"新增"声明被原文证伪：#3 体重管理 2020 已有独立章节、#14 心理小节 2020 已有同名节，核验报告在 `.task_b_status/t21-gold-findings.md`，种子已回填提交 5c0c01090）；校准粒度重构（按章节聚合+token 重叠）待下轮实现并评审
+- P/R 数字：**已重构口径并重测（r16，2026-09-21）**——见下"r16 校准重构"节；金标 16 条已全部逐条 PDF 核验（9 verified 计入 / 7 排除，核验报告在 `.task_b_status/t21-gold-findings.md`，种子已回填提交 5c0c01090）
 - `/alignment/*` HTTP 路由与 RBAC：**✅ 已完成并提交 07df8a486**——`POST /knowevo/alignment/diff`（body 见 AlignmentDiffRequest，403/400/502 错误映射）+ `GET /knowevo/alignment/diff/list`（只读租户隔离）；6 条 Layer1 路由测试；`AlignmentService.list_diffs()` 新增；全量 **659 passed**（真 PG）零回归
 - STEP3 LLM 裁决真跑：**✅ 根因已定位并可真跑**（r14 实测）——带 `KW_LLM_MID_MODEL_ID=7` 环境变量后 `kind="align"` 一次调用成功；此前 403 是无 env 时回退租户默认配置所致。官方重跑已真跑 **7/20 次 LLM 裁决，parse_failures=0**（余 13 次配额内让位于 tpm 窗口）；LLM 裁决仅影响 0.6-0.85 相似度段，确定性路径始终保底
 - 表格匹配偏弱：**✅ 已修复**（bd876a987）——`diff_tables()` 改为确定性四层瀑布匹配（表题相等 → 精确(章节上下文,表头token集,列数) → 同章节容列 Jaccard≥0.6 → 跨章节内容确认），9 个新测试；真数据 table_changes 35→29（幻影对转行级 UPDATE）
 - 受影响面在真实库为空（1 span → 0 实体/0 卡）：根因是图谱稀疏（全库 82 证据行、多数为夹具/合成数据），非查询缺陷；两次索引查询机制由 Layer2 真 PG 测试承载
+
+**r16 校准重构（2026-09-21，评审后重测 P/R 的官方口径）**:
+```
+实现（commit 待填）：
+- alignment_service.py 新增 topic_tokens（CJK 三元组 + ASCII 词，修复 r14 整串中文当单 token 的 bug）
+  / TopicGroup / TopicCalibration / aggregate_change_groups / calibrate_topic（纯函数，零 DB 零 LLM）
+- 口径：机器 691 条段落级变更 → 按 (change_type, 归一化章节) 聚合成 517 组；
+  金标 9 条话题级行 ↔ 组，用判别性 token 重叠匹配（文档频率 ≤5% 过滤通用词，min_shared≥2）
+- 报告：recall_topic（话题级，官方） + precision_lower_bound（组级下界，因金标非穷尽样本）
+  + item_level_baseline（条目级基线，如实保留不隐藏）；两组参数随结果落盘可复现
+- persist：doc_version_diff_t.precision 列只存真精确率——话题级下界不是精确率，该列写 NULL、
+  数字进 ops_summary.calibration（mode=topic_aggregate / precision_is_lower_bound=true /
+  item_level_baseline）；recall 列写话题级召回（9/9 是真召回）
+
+官方重跑（--max-llm-calls 20，带租户，落库）：
+→ changes 691 不变 {UPDATE 10, RENUMBER 3, DELETE 333, ADD 312, MOVE 33}
+→ llm_calls=7/20 parse_failures=0
+→ recall_topic=1.0 matched_topics=9/9 machine_groups=517 (from 691 items)
+→ precision_lower_bound=0.12379110251450677 matched_groups=64 unverified_excluded=7
+→ item_level_baseline precision=0.001447 recall=0.111 matched=1（口径错配基线，非官方数字）
+→ persist diff_id=7cb61e09… round_id=466c6ff5…
+→ psql 复核：doc_version_diff_t.precision=NULL recall=1；ops_summary.calibration 标签齐全
+
+稳健性验证（防"凑数"，S2 评审子智能体独立复算，结论 NEEDS_CHANGES→已全部修复）：
+- 负对照：指南中不存在的话题（航天工程/量子计算/区块链/汽车制造等 14 个）全部 0 匹配；
+  「运动康复」类正文真实出现的话题会命中（金标非穷尽，属预期非缺陷）
+- df 参数扫描：recall 在 df∈[0.05,1.0] 保持 9/9，df=0.02 掉到 7/9、min_shared=3 掉到 3/9——
+  工作点在平台期而非悬崖，但平台有边缘，docstring 已如实改写（不再声称"plateau rather than knife edge"）
+- 评审 P1 修复：无可评估金标时 precision_lower_bound 返回 None 而非 0.0（诚实条款，新测试锁住）
+- 评审 P2 修复：无金标不报伪造 0 精确率；高 df 通用词不足以构成匹配（负向测试）；
+  参数非法值 ValueError 拒绝（min_shared_tokens=0 / df 越界）
+- 新增 20 个 Layer-1 单测（134 passed）；PG 集成全量 688 passed 零回归（r14 668）
+```
 
 **实现期发现的简报假设 vs 仓库实际（已在代码 docstring 记录）**:
 1. `kg_evidence_t` **无 `evidence_span` 列**——实为 `span_loc` JSONB(`chunk_idx`) + `span_text`，实体关联走 `entity_refs` ARRAY(stable_id)。受影响面按 `(doc_id, span_loc->>'chunk_idx')` 实现。

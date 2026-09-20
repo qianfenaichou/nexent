@@ -11,10 +11,10 @@
     "llm_budget": 20,
     "llm_budget_exhausted": false,
     "change_counts": {
-      "UPDATE": 9,
-      "RENUMBER": 4,
+      "UPDATE": 10,
       "DELETE": 333,
       "ADD": 312,
+      "RENUMBER": 3,
       "MOVE": 33
     }
   },
@@ -777,9 +777,8 @@
       "new_section_id": "preamble",
       "similarity": 0.6081636405595374,
       "points": [
-        "指南名称由“中国 2 型糖尿病防治指南（2020 年版）”改为“中国糖尿病防治指南（2024 版）”。",
-        "新增通信作者郭立新及其单位与邮箱。",
-        "删除了原“本指南由《中华糖尿病杂志》和《中华内分泌代谢杂志》于 2021 年 4 月同步发表”的表述。"
+        "指南名称与版本由《中国2型糖尿病防治指南（2020年版）》更新为《中国糖尿病防治指南（2024版）》。",
+        "通信作者信息更新：朱大龙的联系方式有调整，并新增郭立新为通信作者。"
       ],
       "source": "llm",
       "old_span": [
@@ -792,15 +791,15 @@
       ]
     },
     {
-      "change_type": "RENUMBER",
+      "change_type": "UPDATE",
       "section_anchor": "(preamble)",
       "old_section_id": "preamble",
       "new_section_id": "preamble",
       "similarity": 0.8001976040538967,
       "points": [
-        "期刊年份由 2021 年改为 2025 年。",
-        "卷期由第 13 卷第 4 期改为第 17 卷第 1 期。",
-        "页码由 317 改为 17。"
+        "出版年份从2021年变为2025年。",
+        "卷期从第13卷第4期变为第17卷第1期。",
+        "页码从·317·变为·17·。"
       ],
       "source": "llm",
       "old_span": [
@@ -1443,7 +1442,7 @@
       "new_section_id": "2|#2",
       "similarity": 0.782608695652174,
       "points": [
-        "期刊年份由 2021 年更新为 2025 年，卷期由第 13 卷第 4 期更新为第 17 卷第 1 期，月份由 4 月更新为 1 月，页码由 325 更新为 20。"
+        "期刊年份卷期从2021年4月第13卷第4期更新为2025年1月第17卷第1期，页码从325变为20。"
       ],
       "source": "llm",
       "old_span": [
@@ -1558,7 +1557,8 @@
       "new_section_id": "2|#3",
       "similarity": 0.782608695652174,
       "points": [
-        "新版期刊信息更新为2025年1月第17卷第1期，页码改为45页。"
+        "期刊卷期从 2021 年第 13 卷第 4 期更新为 2025 年第 17 卷第 1 期。",
+        "页码从 326 变为 45。"
       ],
       "source": "llm",
       "old_span": [
@@ -1779,15 +1779,14 @@
       ]
     },
     {
-      "change_type": "RENUMBER",
+      "change_type": "UPDATE",
       "section_anchor": "",
       "old_section_id": "2|#5",
       "new_section_id": "2|#5",
       "similarity": 0.782608695652174,
       "points": [
-        "页码由 386 更新为 84。",
-        "出版时间由 2021 年 4 月更新为 2025 年 1 月。",
-        "卷期由第 13 卷第 4 期更新为第 17 卷第 1 期。"
+        "页码从386变为84。",
+        "出版时间从2021年4月第13卷第4期更新为2025年1月第17卷第1期。"
       ],
       "source": "llm",
       "old_span": [
@@ -3352,14 +3351,15 @@
       ]
     },
     {
-      "change_type": "UPDATE",
+      "change_type": "RENUMBER",
       "section_anchor": "3 伴有急性并发症或严重慢性并发症时，慎行",
       "old_section_id": "3|伴有急性并发症或严重慢性并发症时慎行运",
       "new_section_id": "3|伴有急性并发症或严重慢性并发症时慎行",
       "similarity": 0.782608695652174,
       "points": [
-        "期刊信息由 2021 年 4 月第 13 卷第 4 期更新为 2025 年 1 月第 17 卷第 1 期。",
-        "页码由 334 更新为 35。"
+        "刊名与英文刊名保持不变。",
+        "出版年份与月份由2021年4月更新为2025年1月。",
+        "卷期与页码标识由第13卷第4期、第334页更新为第17卷第1期、第35页。"
       ],
       "source": "llm",
       "old_span": [
@@ -4034,8 +4034,8 @@
       "new_section_id": "4|hba1c联合自我血糖监测smbg和持续葡",
       "similarity": 0.782608695652174,
       "points": [
-        "页码从 364 变为 30。",
-        "期刊年份、卷期从 2021 年 4 月第 13 卷第 4 期变为 2025 年 1 月第 17 卷第 1 期。"
+        "页码由 364 变为 30。",
+        "年份、卷期由 2021 年 4 月第 13 卷第 4 期变为 2025 年 1 月第 17 卷第 1 期。"
       ],
       "source": "llm",
       "old_span": [
@@ -10897,9 +10897,32 @@
     "machine_total": 691,
     "unverified_excluded": 7
   },
+  "topic_calibration": {
+    "recall": 1.0,
+    "precision_lower_bound": 0.12379110251450677,
+    "matched_topics": 9,
+    "gold_total": 9,
+    "matched_groups": 64,
+    "machine_groups": 517,
+    "machine_total": 691,
+    "unverified_excluded": 7,
+    "max_df_fraction": 0.05,
+    "min_shared_tokens": 2,
+    "topic_match_counts": {
+      "1": 18,
+      "2": 4,
+      "4": 7,
+      "6": 10,
+      "7": 11,
+      "10": 2,
+      "11": 6,
+      "13": 6,
+      "16": 1
+    }
+  },
   "persisted": {
-    "diff_id": "a51342e4-f734-443d-9c0e-d697aff252d6",
-    "round_id": "f73b4a2f-2490-454c-a9c6-389129b48816",
+    "diff_id": "7cb61e09-1a8f-4bc9-88d3-b623fa92a8d4",
+    "round_id": "466c6ff5-951f-4ba3-b01f-dd5ed2af0f1a",
     "old_doc": "ec300a7f-f6d7-42eb-b76e-50f4a7622b48",
     "new_doc": "6571e51a-62d0-4e78-9955-468da238b080"
   },

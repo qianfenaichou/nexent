@@ -75,3 +75,10 @@ T-22 交付 A1→A4 四级消融 runner + E8 版本钉住 on/off 双臂（`backe
 - **受影响面仍为空**（图谱稀疏：1 span → 0 实体 / 0 卡；全库 82 证据行多为夹具），两次索引查询机制由 Layer2 真 PG 测试承载；impact 报告（`alignment-impact.json` 362KB）按确定性变更集（UPDATE 12 / RENUMBER 1，与 LLM 版 9/4 差异为 LLM 裁决覆盖确定性标签所致，如实注明）生成。
 - **诚实修复**：首轮（dc2d6b45，NOT MEASURED）落库的 precision=0 修正为 NULL（"未测"≠0）。
 - **成本**：LLM 调用 7 次（usage tokens 未捕获）；`evolution_round_t.cost` 如实记。
+## 第二演化轮（2026-09-21 · T-21 校准口径重构后的官方重测）
+
+- **触发源**：`standard_update`（guide-2020 → guide-2024 重新对齐；diff_id=32eee78d… round_id=6ea4336f…）。
+- **校准口径重构（r16，S2 评审后定稿）**：机器段落级变更（691 项）按 (change_type, 归一化章节) 聚合成 517 组；金标话题级行（9 verified / 7 排除）↔ 组，判别性 token 重叠匹配（CJK 三元组 + ASCII 词；文档频率 ≤5% 过滤通用词，min_shared≥2）。修复 r14 分词 bug（整串中文当单 token）。
+- **新口径数字（官方，落库 doc_version_diff_t.precision=NULL / recall=1）**：`recall_topic=9/9`、`precision_lower_bound=64/517≈0.124`（明确标注为下界——金标是非穷尽样本）；item_level_baseline 条目级基线如实保留（0.00145/0.111，口径错配，非官方）。**precision 列写 NULL**——下界不是精确率，不冒充；数字与标签全在 ops_summary.calibration（mode / precision_is_lower_bound / item_level_baseline）。
+- **稳健性**：14 个不相关负对照话题全部 0 匹配（正文真实出现但金标未列的话题会命中，属预期）；df 参数扫描 df∈[0.05,1.0] recall 保持 9/9、df=0.02 掉 7/9、min_shared=3 掉 3/9（平台期有边缘，docstring 如实改写）。新增 20 个 Layer-1 单测（134 passed）；PG 集成全量 688 passed 零回归（r14 668）。
+- **诚实备注**：`precision_lower_bound` 不得被引为精确率；无金标时返回 None 不报伪造 0（评审 P1 修复，测试锁住）；LLM 调用 7 次（usage tokens 未捕获），成本同 r14 口径如实记。

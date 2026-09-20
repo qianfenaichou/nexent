@@ -940,6 +940,188 @@ class TestCalibratePr:
 
 
 # ---------------------------------------------------------------------------
+# Layer 1: topic-level calibration (the T-21 calibration refactor)
+# ---------------------------------------------------------------------------
+
+class TestTopicTokens:
+    def test_ascii_words_are_lowercased(self):
+        assert "hba1c" in als.topic_tokens("HbA1c 控制目标")
+
+    def test_cjk_run_becomes_trigrams_not_one_token(self):
+        # The r14 bug: a whole CJK clause became a single token, so two
+        # different texts could never share one. Trigrams must overlap.
+        a = als.topic_tokens("血糖控制目标")
+        b = als.topic_tokens("制定个体化的血糖控制目标")
+        assert "血糖控" in a
+        assert a & b
+
+    def test_empty_text_has_no_tokens(self):
+        assert als.topic_tokens(None) == set()
+        assert als.topic_tokens("") == set()
+
+
+class TestAggregateChangeGroups:
+    def test_items_of_one_section_and_type_collapse_to_one_group(self):
+        machine = [
+            _change("ADD", "胰岛素泵治疗"),
+            _change("ADD", "胰岛素泵治疗"),
+            _change("DELETE", "胰岛素泵治疗"),
+        ]
+        groups = als.aggregate_change_groups(machine)
+        assert len(groups) == 2
+        by_type = {g.change_type: g for g in groups}
+        assert by_type["ADD"].count == 2
+        assert by_type["DELETE"].count == 1
+
+    def test_unchanged_items_are_not_changes(self):
+        assert als.aggregate_change_groups([_change("UNCHANGED", "A")]) == []
+
+    def test_points_are_folded_into_group_tokens(self):
+        machine = [_change("ADD", "A", points=["新增司美格鲁肽相关信息"])]
+        group = als.aggregate_change_groups(machine)[0]
+        assert "司美格" in group.tokens
+
+
+class TestCalibrateTopic:
+    GOLD_TOPIC = _gold("g1", "ADD", "胰岛素泵治疗")
+    GOLD_UNVERIFIED = _gold("g3", "ADD", "代谢手术", status="unverified")
+
+    def test_verified_topic_is_matched_across_paragraph_items(self):
+        machine = [
+            _change("ADD", "1 胰岛素泵治疗的优势"),
+            _change("DELETE", "1 胰岛素泵治疗的适应证"),
+        ]
+        cal = als.calibrate_topic(machine, [self.GOLD_TOPIC])
+        assert cal.matched_topics == 1
+        assert cal.recall == pytest.approx(1.0)
+        assert cal.machine_groups == 2
+        assert cal.machine_total == 2
+
+    def test_absent_topic_does_not_match(self):
+        # Negative control: a topic the document does not discuss must yield
+        # zero matches, otherwise the rule would be matching anything.
+        machine = [_change("ADD", "1 胰岛素泵治疗的优势")]
+        gold = [_gold("n1", "ADD", "航天工程与火箭推进")]
+        cal = als.calibrate_topic(machine, gold)
+        assert cal.matched_topics == 0
+        assert cal.recall == pytest.approx(0.0)
+        assert cal.matched_groups == 0
+
+    def test_unverified_gold_leaves_both_sides(self):
+        machine = [_change("ADD", "1 代谢手术的术式选择")]
+        cal = als.calibrate_topic(machine, [self.GOLD_UNVERIFIED])
+        assert cal.unverified_excluded == 1
+        assert cal.gold_total == 0
+        assert cal.recall is None
+        assert cal.precision_lower_bound is None
+        assert cal.matched_topics == 0
+        # No evaluable gold row means no group can be attributed to one.
+        assert cal.matched_groups == 0
+
+    def test_no_gold_never_reports_zero_precision(self):
+        # With no evaluable gold row the lower bound is not measurable and
+        # must be None (0.0 would fabricate a measured zero): honesty rule
+        # shared with calibrate_pr.
+        cal = als.calibrate_topic(
+            [_change("ADD", "1 代谢手术的术式选择")],
+            [_gold("g1", "ADD", "代谢手术", status="unverified")],
+        )
+        assert cal.precision_lower_bound is None
+        cal = als.calibrate_topic([_change("ADD", "A")], [])
+        assert cal.precision_lower_bound is None
+        assert cal.machine_groups == 1
+        assert cal.recall is None
+
+    def test_high_df_boilerplate_alone_cannot_match(self):
+        # "糖尿病" appears in nearly every group: document-frequency filtering
+        # must stop a plain shared boilerplate token from counting as a match.
+        machine = [
+            _change("ADD", "糖尿病管理目标"),
+            _change("ADD", "2 糖尿病患者的血糖监测"),
+            _change("ADD", "3 糖尿病的治疗原则"),
+            _change("ADD", "4 糖尿病饮食指导"),
+            _change("ADD", "5 糖尿病运动建议"),
+        ]
+        gold = [_gold("g1", "ADD", "糖尿病流行病学")]
+        cal = als.calibrate_topic(machine, gold)
+        assert cal.matched_topics == 0
+        assert cal.matched_groups == 0
+
+    def test_negative_controls_with_noncorpus_topics(self):
+        # Controls chosen from topics that appear nowhere in the doc must
+        # match nothing; otherwise the rule would match any text at all.
+        absent = ["航天工程", "量子计算", "区块链", "汽车发动机", "拔罐疗法"]
+        machine = [_change("ADD", "1 胰岛素泵治疗的优势")]
+        for topic in absent:
+            cal = als.calibrate_topic(
+                machine, [_gold("n", "ADD", topic)]
+            )
+            assert cal.matched_topics == 0, topic
+            assert cal.matched_groups == 0, topic
+
+    def test_invalid_parameters_rejected(self):
+        with pytest.raises(ValueError):
+            als.calibrate_topic([_change("ADD", "A")], [self.GOLD_TOPIC],
+                                max_df_fraction=-0.1)
+        with pytest.raises(ValueError):
+            als.calibrate_topic([_change("ADD", "A")], [self.GOLD_TOPIC],
+                                max_df_fraction=1.5)
+        with pytest.raises(ValueError):
+            als.calibrate_topic([_change("ADD", "A")], [self.GOLD_TOPIC],
+                                min_shared_tokens=0)
+
+    def test_unverified_gold_is_not_a_hit_for_a_verified_one(self):
+        machine = [_change("ADD", "1 代谢手术的术式选择")]
+        cal = als.calibrate_topic(
+            machine, [self.GOLD_UNVERIFIED, self.GOLD_TOPIC]
+        )
+        assert cal.unverified_excluded == 1
+        assert cal.gold_total == 1
+        assert cal.recall == pytest.approx(0.0)
+
+    def test_lower_bound_counts_only_matched_groups(self):
+        machine = [
+            _change("ADD", "1 胰岛素泵治疗的优势"),
+            _change("ADD", "2 与本题无关的统计附录"),
+        ]
+        cal = als.calibrate_topic(machine, [self.GOLD_TOPIC])
+        assert cal.machine_groups == 2
+        assert cal.matched_groups == 1
+        assert cal.precision_lower_bound == pytest.approx(0.5)
+
+    def test_empty_machine_yields_no_precision_denominator(self):
+        cal = als.calibrate_topic([], [self.GOLD_TOPIC])
+        assert cal.machine_groups == 0
+        assert cal.precision_lower_bound is None
+        assert cal.recall == pytest.approx(0.0)
+
+    def test_parameters_are_reported_for_reproduction(self):
+        cal = als.calibrate_topic(
+            [_change("ADD", "胰岛素泵治疗")], [self.GOLD_TOPIC],
+            max_df_fraction=0.2, min_shared_tokens=3,
+        )
+        assert cal.max_df_fraction == pytest.approx(0.2)
+        assert cal.min_shared_tokens == 3
+
+    def test_same_text_gives_same_result(self):
+        machine = [_change("ADD", "1 胰岛素泵治疗的优势")]
+        assert als.calibrate_topic(machine, [self.GOLD_TOPIC]) == (
+            als.calibrate_topic(machine, [self.GOLD_TOPIC])
+        )
+
+    def test_field_order_is_frozen(self):
+        assert [f.name for f in dataclasses.fields(als.TopicCalibration)] == [
+            "recall", "precision_lower_bound", "matched_topics", "gold_total",
+            "matched_groups", "machine_groups", "machine_total",
+            "unverified_excluded", "max_df_fraction", "min_shared_tokens",
+            "topic_match_counts"]
+
+    def test_topic_group_field_order_is_frozen(self):
+        assert [f.name for f in dataclasses.fields(als.TopicGroup)] == [
+            "change_type", "section_anchor", "count", "tokens"]
+
+
+# ---------------------------------------------------------------------------
 # Layer 1: detect() without an LLM (deterministic degradation)
 # ---------------------------------------------------------------------------
 

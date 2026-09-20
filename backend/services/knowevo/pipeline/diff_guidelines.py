@@ -180,6 +180,9 @@ def _match_anchor(item: als.ChangeItem, gold_rows: list[dict]) -> str:
 
     Matching tries the change's own anchor first (section numbers/titles),
     then the gold row's domain label appearing anywhere in the section path.
+    This is the *item-level* baseline only; the official calibration is
+    :func:`services.knowevo.alignment_service.calibrate_topic`, because the
+    gold seed is topic-level while the detector emits paragraph-level items.
     """
     own = _gold_key(item.change_type, item.section_anchor)
     for row in gold_rows:
@@ -307,18 +310,33 @@ async def _run(args: argparse.Namespace) -> int:
         gold_path = Path(args.gold).resolve()
         gold = parse_gold(gold_path)
         result.calibration = calibrate_loose(detect.changes, gold)
+        result.topic_calibration = als.calibrate_topic(detect.changes, gold)
         calibration = result.calibration
-        if calibration.precision is None and calibration.recall is None:
+        topic = result.topic_calibration
+        if topic.gold_total == 0:
             print(
-                f"[calibration] NOT MEASURED: {calibration.unverified_excluded}/"
+                f"[calibration] NOT MEASURED: {topic.unverified_excluded}/"
                 f"{len(gold)} gold rows are unverified"
             )
         else:
+            # The topic-level numbers are the official ones (gold is topical);
+            # the item-level pair is printed too so the granularity mismatch
+            # stays visible instead of being quietly dropped.
             print(
-                f"[calibration] precision={calibration.precision} "
+                f"[calibration] recall_topic={topic.recall} "
+                f"matched_topics={topic.matched_topics}/{topic.gold_total} "
+                f"machine_groups={topic.machine_groups} "
+                f"(from {topic.machine_total} items) "
+                f"precision_lower_bound={topic.precision_lower_bound} "
+                f"matched_groups={topic.matched_groups} "
+                f"df<={topic.max_df_fraction} min_shared={topic.min_shared_tokens} "
+                f"unverified_excluded={topic.unverified_excluded}"
+            )
+            print(
+                f"[calibration] strict_item_level precision={calibration.precision} "
                 f"recall={calibration.recall} matched={calibration.matched} "
-                f"evaluable_gold={calibration.gold_total} "
-                f"unverified_excluded={calibration.unverified_excluded}"
+                f"machine_items={calibration.machine_total} "
+                "(granularity-mismatched baseline, not the official number)"
             )
 
     if args.tenant and not args.impact_only and not args.no_persist:
@@ -327,6 +345,7 @@ async def _run(args: argparse.Namespace) -> int:
             affected=result.affected,
             update_set=result.update_set,
             calibration=result.calibration,
+            topic_calibration=result.topic_calibration,
             knowledge_stamp={"ontology_version": args.knowledge_stamp or ""},
         )
         print(f"[persist] {result.persisted}")
