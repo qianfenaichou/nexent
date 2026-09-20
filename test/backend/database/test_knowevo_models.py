@@ -4,7 +4,7 @@ Unit and integration tests for backend/database/knowevo_db.py (T-03).
 Layer 1 (always runs): table metadata, bi-temporal predicate, and frozen
 const.py env-var assertions - no database required.
 
-Layer 2 (RUN_POSTGRES_INTEGRATION=1): real-Postgres CRUD smoke for all 12
+Layer 2 (RUN_POSTGRES_INTEGRATION=1): real-Postgres CRUD smoke for all 13
 tables, tenant isolation, bi-temporal current-view filtering, and migration
 idempotency. Follows the upstream pattern used by
 test/backend/database/test_memory_dreaming_postgres_integration.py.
@@ -46,12 +46,14 @@ EXPECTED_TABLES = {
     "kg_pending_entity_t", "doc_asset_t", "doc_version_diff_t",
     "decision_card_t", "evolution_round_t",
     "skill_template_t", "eval_run_t",
+    "kg_extract_run_t",  # T-06: ingest run tracking (v2.5.5_kw_002 migration)
 }
 
 MODEL_NAMES = [
     "OntologyVersion", "OntologyChangeProposal", "KgEntity", "KgRelation",
     "KgEvidence", "KgPendingEntity", "DocAsset", "DocVersionDiff",
     "DecisionCard", "EvolutionRound", "SkillTemplate", "EvalRun",
+    "KgExtractRun",
 ]
 
 
@@ -60,8 +62,8 @@ MODEL_NAMES = [
 # ---------------------------------------------------------------------------
 
 class TestTableMetadata:
-    def test_registry_has_exactly_12_tables(self):
-        assert len(KNOWEVO_MODELS) == 12
+    def test_registry_has_exactly_13_tables(self):
+        assert len(KNOWEVO_MODELS) == 13
 
     def test_table_names_match_frozen_ddl(self):
         assert {m.__tablename__ for m in KNOWEVO_MODELS} == EXPECTED_TABLES

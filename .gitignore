@@ -85,6 +85,10 @@ test/ext_components/aidp/mock_servers/_state/
 doc/mermaid
 _doc/
 
+# mimosa plugin hook state / finding ledger (local tool metadata, never committed)
+.mimosa/
+backend/.mimosa/
+
 .claude/skills/python-import-triage
 /deploy/env/.env
 /deploy/env/.env.bak
