@@ -58,13 +58,13 @@
 
 ### 3.2 抽取与实体对齐（两个正确性设计）
 
-- 本体锚定抽取：子图检索注入 fewshot，约束实体类别（A：真实摄取 6 run / 19 实体，类别分布 Disease×6 / Examination×6 / Population×4 / Indicator×2 / Symptom×1，0 缺 doc_id / 0 缺 valid_at，质量门禁全绿）。
+- 本体锚定抽取：子图检索注入 fewshot，约束实体类别（A：构建租户摄取 10/120 段、40 实体，类别分布 Disease×15 / Population×7 / Symptom×6 / Examination×6 / Indicator×4 / Drug×1 / Treatment×1，2026-09-21 快照；0 缺 doc_id / 0 缺 valid_at，质量门禁全绿）。
 - 三级实体对齐：外部主键 blocking（药品 ID/ATC 码等）+ 别名合并（重抽 merge 去重）。
 
 ### 3.3 bi-temporal 增量更新与冲突消解
 
 - 事实双时间轴（valid_at / published_at），supersede 不打删（A：批量 supersede p95=22.7ms @2万实体，PoC）。
-- 判定用 Code 判定按版本选金标（版本敏感题双金标设计，A：120 题测试集含 V 题 20 双金标）。
+- 判定用 Code 判定按版本选金标（版本敏感题双金标设计；E：120 题测试集含 V 题 20 双金标属规划，当前实态为 20 题 seed 落库，见 §5.5）。
 
 ### 3.4 版本化
 
@@ -92,7 +92,7 @@
 
 ### 4.4 压轴演示数据
 
-《中国2型糖尿病防治指南》2020 版 ↔ 2024 版对比（A：语料已入 registry，14 份指南类核查通过）——「同一问题、两版答案不同」的版本对比演示数据源。
+《中国2型糖尿病防治指南》2020 版 ↔ 2024 版对比（A：语料已入 registry，11 份指南类核查通过）——「同一问题、两版答案不同」的版本对比演示数据源。
 
 ---
 
@@ -144,8 +144,8 @@ A：置信度校准 ECE 目标 ≤0.10（无校准表诚实标 `calibration_appl
 |---|---|---|
 | E1 纯 RAG 基线 | ✅（诚实口径重跑） | acc=0.6667 / pass2=0.65 / n_judged=60/60（旧口径污染已修复：未答计错） |
 | 机制预验证四探针 | ✅（seed 固定可复跑） | P1 V 题 100% vs 20.6%/25.0%；P2 VOI 净差 +1~+6；P3 0.02ms；P4 98.8% |
-| E2 四级消融 | 🟡 待续跑 | e2-ablation-report.json partial:true（A3 0/20、E8 两臂 Δ=null，阻塞=构建租户图谱摄取中） |
-| PG 集成全量 | ✅ | 551 passed 零回归 |
+| E2 四级消融 | 🟡 partial（4/16 格有数） | A1 F .7857(14) / M .6667(15)；A2 F .75(12)；A4 F .5(6)；A3 全 insufficient_data；其余 M/V/X 格 insufficient_data；e8=null；报告 partial:true（阻塞=构建租户图谱摄取 10/120，b_2024plus=0 使 E8 版本分化不可观测） |
+| PG 集成全量 | ✅ | 688 passed 零回归（2026-09-21 r16 全量实测；r18 缺陷修复分支仅跑定向 21 单测 + 24 PG 集成，未再全量复跑） |
 
 ---
 

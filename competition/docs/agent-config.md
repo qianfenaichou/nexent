@@ -66,9 +66,9 @@
 
 | 工具名 | 类别 | 用途 |
 |---|---|---|
-| `knowledge_base_search` | knowledge-base | 平台知识库检索（ES 混合检索） |
+| `knowledge_base_search` | search | 平台知识库检索（ES 混合检索） |
 | `aidp_search` | search | AIDP 知识库 FusionSearch 多模态检索 |
-| `search_memory` / `store_memory` | memory | 平台记忆读写（Dreaming 记忆整理实据之一） |
+| `search_memory` / `store_memory` | search / database | 平台记忆读写（Dreaming 记忆整理实据之一；类别取 `ag_tool_info_t` 实测值） |
 | `postgres_database` / `mysql_database` / `mssql_database` | database | 结构化数据查询 |
 | `read_file` / `create_file` / `list_directory` 等 | file | 文件操作 |
 | `exa_search` / `tavily_search` / `linkup_search` | search | 联网检索 |
@@ -82,7 +82,7 @@
 |---|---|---|
 | 语料登记 | 58 份（`corpus/registry.csv`） | T-02 溯源核查通过 |
 | 语料构成 | 药品说明书 28 + 临床指南 11 + 诊疗路径 9 + 检验 2 + 科普 8（batch1-3 核查报告） | `docs/verification-reports/batch{1,2,3}-*.md` |
-| 图谱资产 | `kg_graph`（实体/关系 + `kg_evidence_t` doc_id 证据链），构建租户持续摄取（120 段语料分块） | 构建租户图谱摄取管线 |
+| 图谱资产 | `kg_graph`（实体/关系 + `kg_evidence_t` doc_id 证据链），构建租户持续摄取（120 段语料分块）；2026-09-21 快照：10/120 段、40 实体（Disease 15/Population 7/Symptom 6/Examination 6/Indicator 4/Drug 1/Treatment 1）、27 关系、19 证据行 | 构建租户图谱摄取管线 |
 | 本体 | 10 类 / 10 关系 / `fact_cutoff=2025-01-01`（ontology v1.1.0） | OntologyService.commit_version |
 | 平台记忆 | `memory_records_t`（Dreaming 整理） | 平台「可进化」实据之一 |
 
@@ -113,10 +113,10 @@
 
 ---
 
-## 7. 调试迭代经验（摘要，完整版引 pitfalls 台账 44 条）
+## 7. 调试迭代经验（摘要，完整版引 pitfalls 台账 54 条，2026-09-21 实数）
 
 - **诚实性血泪**：E1 基线曾因 eval 判定「忽略未答」导致分母污染——改为「未答计错」并全量重跑（pitfalls 台账首条级别）。
 - **LLM 契约坑**：平台 llm 契约要求返回解析后的 dict；`str` 返回会在 `_parse_extraction` 被拆字符炸掉——摄取驱动补了 str→JSON 适配层（仓库代码零改动）。
 - **429 风暴**：sensenova 网关 tpm 小配额，连续打 1-2 span 即撞 429；驱动内置风暴熔断 + 断点续跑（span_hash 幂等），空段绝不写死。
 - **双注册一致性**：Local MCP 与 FastMCP 共享单 schema（`tool_schemas()`/`handlers()`），保证工具名全平台唯一。
-- 其余 44 条踩坑记录见 `competition/docs/pitfalls.md`（「调试迭代经验」章节素材）。
+- 全部 54 条踩坑记录见 `competition/docs/pitfalls.md`（「调试迭代经验」章节素材）。

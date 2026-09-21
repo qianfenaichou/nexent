@@ -36,3 +36,9 @@
 | loop-r18-b | 2026-09-21 09:04 | 图谱抽取 | freeshare 5 (deepseek-v4.1-flash) | 未测量 | 未测量 | ~1 | 分段<480s | 构建租户摄取 9/120(+0)；**新发现**：模型 5 走 freeshare.cc.cd 独立配额（响应快 200 OK 但 max_tokens=4096 截断抽取 JSON → 解析失败 2 次 → 熔断） |
 | loop-r18-c | 2026-09-21 09:16 | 图谱抽取 | freeshare 6 + 紧凑指令(实验) | 0 | 0 | ~1 | 分段<480s | 构建租户摄取 9/120(+0)；紧凑版驱动（run_real_ingest_compact.py，COMPACT_SUFFIX）仍超时 2 次熔断 → freeshare 桶不适用于抽取大 prompt |
 | t22-a3-r18 | 2026-09-21 09:24 | 评测(E2 消融) | sensenova 7/8 | 未测量 | 未测量 | ~1 | 预算6min | A3_multihop 首跑诊断：F-001 首题 ~5min（轻量调用可过），随后 `429 insufficient_quota`（SDK 退避 148-236s）→ 进程清理，**0/20 落库**（报告未变，如实记录）；结论=配额硬耗尽，非滚动窗 |
+| r19-burst-a(automation) | 2026-09-21 10:02 | 图谱抽取 | 7 deepseek-v4-flash@sensenova (→8 升级) | 9834 | 16384 | 2 | 分段<900s | automation-9f4ebfe5 轮次的突发窗：2 次 HTTP 200 均空正文（5164/8192、4670/8192，`finish_reason=length` 型）**0 net span**；事后核库 extract_run 仍 10 行（10:13 的 `1 extracted` 记录未提交，未污染）；根因见 pitfalls #52 |
+| r19-model-compare-a | 2026-09-21 11:02 | 模型对比(诊断) | 租户默认 LLM glm-5.3-free@tokenrouter | 0 | 0 | 3 | ~3min | 三档 model_id 全部回退租户默认 → 令牌无该模型权限 403（0 token）；**实验方法学坑**：import 后改 os.environ 无效，见 pitfalls #53 |
+| r19-model-compare-b7 | 2026-09-21 11:12 | 模型对比(诊断) | 7 deepseek-v4-flash@sensenova | 9837 | 12145 | 3 | 307s | 三次调用全空正文（一次 out=8192 顶上限）；抽取结果 0 实体/0 边；span 保持可重试 |
+| r19-model-compare-b8 | 2026-09-21 11:18 | 模型对比(诊断) | 8 glm-5.2@sensenova | 3177 | 1695 | 1 | 31s | 单次调用返回、**未走升级路径**，抽取结果 0 实体/0 边——「无正文」与「无实体」需分开判定（原始响应探针定性） |
+| r19-model-compare-b9 | 2026-09-21 11:19 | 模型对比(诊断) | 9 deepseek-v4-pro@sensenova | 未测量 | 未测量 | 0 | 420s 超时 | 单次尝试超 420s 上限被杀（adapter timeouts=1/escalations=1）；无 token 回传，诚实标未测量 |
+| r19-raw-probe-sensenova-p1 | 2026-09-21 11:35 | 原始响应探针 | 7 deepseek-v4-flash@sensenova | 2765 | 8192 | 1 | 88.7s | **决定性证据**：content_len=0 / reasoning_len=30795 字符 / finish_reason=length / reasoning_tokens=8192 → 输出预算被推理吃满、正文从未生成（pitfalls #52 根因）；后续 target（glm-5.2、thinking 关闭变体）见 raw-probe-sensenova.json |
