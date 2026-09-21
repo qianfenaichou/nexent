@@ -173,21 +173,25 @@ export function useAuthorization(): AuthorizationContextType {
   const openAuthzPromptModal = useCallback(() => setIsAuthzPromptModalOpen(true), []);
   const closeAuthzPromptModal = useCallback(() => setIsAuthzPromptModalOpen(false), []);
 
-  // Check if current route has access
+  // Check if current route has access.
+  // authService lowercases accessibleRoutes (/knowledgeGraph -> /knowledgegraph)
+  // while cleanPath keeps the URL casing, so normalize the comparison side here
+  // to keep the guard case-insensitive.
   const cleanPath = getEffectiveRoutePath(pathname);
+  const normalizedCleanPath = cleanPath.toLowerCase();
 
   // Share pages are always accessible to any logged-in user (covers /share/...).
-  const isSharePage = cleanPath.startsWith("/share/");
+  const isSharePage = normalizedCleanPath.startsWith("/share/");
 
   // Support prefix matching so nested routes such as /evaluation/{id} are
   // covered by /evaluation.
   const isWithinAccessiblePrefix = accessibleRoutes.some(
-    (route) => route !== "/" && cleanPath.startsWith(route + "/")
+    (route) => route !== "/" && normalizedCleanPath.startsWith(route + "/")
   );
 
   const hasAccess =
     isSharePage ||
-    accessibleRoutes.includes(cleanPath) ||
+    accessibleRoutes.includes(normalizedCleanPath) ||
     isWithinAccessiblePrefix;
 
   // Route guard
@@ -223,9 +227,14 @@ export function useAuthorization(): AuthorizationContextType {
     return requiredPermissions.some((p) => permissions.includes(p));
   }, [permissions]);
 
-  const canAccessRoute = useCallback((route: string): boolean => {
-    return accessibleRoutes.includes(route);
-  }, [accessibleRoutes]);
+  const canAccessRoute = useCallback(
+    (route: string): boolean => {
+      // accessibleRoutes are lowercased by authService; normalize the input to
+      // keep the comparison case-insensitive (same contract as the route guard).
+      return accessibleRoutes.includes(route.toLowerCase());
+    },
+    [accessibleRoutes]
+  );
 
   // Internal group list query - fetches all groups for the user's tenant
   const { data: allGroupsData } = useGroupList(user?.tenantId ?? null);
