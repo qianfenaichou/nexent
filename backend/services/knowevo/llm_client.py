@@ -50,7 +50,15 @@ TIER_LARGE = "large"
 # quietly changed by this fix.
 _THINKING_DISABLED_KINDS = frozenset({"extract", "decision_card", "hop_plan"})
 _ABLATION_KIND_PREFIX = "ablation_"
-_NO_THINKING_EXTRA_BODY = {"thinking": {"type": "disabled"}}
+_NO_THINKING_EXTRA_BODY = {
+    "thinking": {"type": "disabled"},
+    # r24 field evidence (kw-cardfix, 1 real call): the sensenova gateway
+    # rejects a bare thinking:disabled with HTTP 400 "invalid thinking type,
+    # only be disabled when reasoning effort is none..." - the pair must
+    # travel together on every no-thinking call. This constant feeds ALL
+    # disabled kinds, so the r19 extract path gains the same correction.
+    "reasoning_effort": "none",
+}
 
 
 def _thinking_disabled(kind: str | None) -> bool:

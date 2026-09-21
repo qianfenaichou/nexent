@@ -21,6 +21,11 @@ import pytest
 TENANT_A = "11111111-1111-1111-1111-111111111111"
 TENANT_B = "22222222-2222-2222-2222-222222222222"
 
+# The exact no-thinking wire body (r24): sensenova rejects a bare
+# thinking:disabled with HTTP 400 unless reasoning_effort is "none", so the
+# assertions below compare against this pair, not the bare dict.
+_NO_THINK = {"thinking": {"type": "disabled"}, "reasoning_effort": "none"}
+
 # Plain dict model records keyed by (tenant_id, model_id).
 FAKE_MODELS = {
     (TENANT_A, 111): {
@@ -185,7 +190,7 @@ def test_extract_kind_disables_thinking(monkeypatch):
     router = llm_client.LlmRouter(tenant_id=TENANT_A)
     model = router._get_model(
         llm_client.TIER_MID, temperature=0.0, kind="extract")
-    assert model.kwargs["extra_body"] == {"thinking": {"type": "disabled"}}
+    assert model.kwargs["extra_body"] == _NO_THINK
     # No client-level cap for extraction. Fixture model 222 declares 8192
     # (r20 review P2-2), so this assertion is discriminating - and cleanup
     # only: the generate() path never forwarded this attribute, the wire cap
@@ -198,7 +203,7 @@ def test_extract_kind_disables_thinking(monkeypatch):
     FakeOpenAIModel.last_generate_kwargs = None
     asyncio.run(router.call_with_usage("prompt", kind="extract"))
     assert FakeOpenAIModel.last_generate_kwargs == {
-        "extra_body": {"thinking": {"type": "disabled"}}}
+        "extra_body": _NO_THINK}
 
 
 def test_other_kinds_send_no_provider_extras(monkeypatch):
@@ -298,7 +303,7 @@ def test_call_with_usage_routes_extract_to_thinking_disabled_client(monkeypatch)
     assert usage["finish_reason"] is None
     extract = router._get_model(
         llm_client.TIER_MID, temperature=0.0, kind="extract")
-    assert extract.kwargs["extra_body"] == {"thinking": {"type": "disabled"}}
+    assert extract.kwargs["extra_body"] == _NO_THINK
 
 
 def await_llm(callable_, prompt, **kwargs):
@@ -462,14 +467,14 @@ def test_additive_keys_do_not_change_extract_wire_or_cache(monkeypatch):
 
     asyncio.run(router.call_with_usage("p", kind="extract"))
     assert ScriptedOpenAIModel.last_generate_kwargs == {
-        "extra_body": {"thinking": {"type": "disabled"}}}
+        "extra_body": _NO_THINK}
     asyncio.run(router.call_with_usage("p", kind="judge"))
     assert ScriptedOpenAIModel.last_generate_kwargs == {}
 
     extract = router._get_model(llm_client.TIER_MID, 0.0, kind="extract")
     judge = router._get_model(llm_client.TIER_MID, 0.0, kind="judge")
     assert extract is not judge
-    assert extract.kwargs["extra_body"] == {"thinking": {"type": "disabled"}}
+    assert extract.kwargs["extra_body"] == _NO_THINK
 
 
 def test_last_usage_exposes_most_recent_call_diagnostics(monkeypatch):
