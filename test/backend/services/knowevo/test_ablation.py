@@ -471,6 +471,60 @@ class TestE8Section:
                     "run_id": "r", "metrics": _level_metrics({})}]
         assert ablation._e8_section(results) is None
 
+    def test_e8_reports_the_run_each_arm_came_from(self):
+        """``eval_run_id`` is the key the producer writes.
+
+        The block used to read ``run_id``, so every real report claimed null
+        provenance for both arms; the old fixtures carried ``run_id``, which
+        is exactly why the mismatch stayed invisible.
+        """
+        results = [
+            {"level": "A4_full", "pin": "on", "arm_gold": True,
+             "eval_run_id": "run-on-1", "invocation_id": "inv-a",
+             "recorded_at": "2026-09-19T00:56:00+00:00",
+             "metrics": _level_metrics({"F": {"acc": 0.6, "n_judged": 5}})},
+            {"level": "A4_full", "pin": "off", "arm_gold": True,
+             "eval_run_id": "run-off-2", "invocation_id": "inv-b",
+             "recorded_at": "2026-09-21T14:26:00+00:00",
+             "metrics": _level_metrics({"F": {"acc": 0.8, "n_judged": 5}})},
+        ]
+        e8 = ablation._e8_section(results)
+        assert e8["pin_on_run"] == "run-on-1"
+        assert e8["pin_off_run"] == "run-off-2"
+        vintage = e8["arm_vintage"]
+        assert vintage["pin_on"]["eval_run_id"] == "run-on-1"
+        assert vintage["pin_off"]["recorded_at"] == "2026-09-21T14:26:00+00:00"
+        # Two invocations, two dates: the delta is a juxtaposition, not a
+        # paired contrast, and the report now says so instead of implying
+        # one controlled experiment.
+        assert vintage["same_invocation"] is False
+
+    def test_e8_flags_a_genuinely_paired_contrast(self):
+        results = [
+            {"level": "A4_full", "pin": "on", "arm_gold": True,
+             "eval_run_id": "r1", "invocation_id": "inv-x",
+             "metrics": _level_metrics({"F": {"acc": 0.6, "n_judged": 5}})},
+            {"level": "A4_full", "pin": "off", "arm_gold": True,
+             "eval_run_id": "r2", "invocation_id": "inv-x",
+             "metrics": _level_metrics({"F": {"acc": 0.8, "n_judged": 5}})},
+        ]
+        assert ablation._e8_section(results)[
+            "arm_vintage"]["same_invocation"] is True
+
+    def test_e8_caveat_defers_counts_to_data_reality(self):
+        """The caveat must not freeze a data-reality snapshot.
+
+        It hardcoded 2026-09-19 numbers ("all:474", "only 121 with business
+        time") that the same report's measured ``data_reality`` came to
+        contradict - one JSON file asserting both "graph empty" and
+        "136 entities / 65 relations".
+        """
+        caveat = ablation.E8_CAVEAT
+        assert "data_reality" in caveat
+        assert "same_invocation" in caveat
+        for stale in ("474", "121"):
+            assert stale not in caveat, stale
+
 
 # ---------------------------------------------------------------------------
 # CLI plumbing
