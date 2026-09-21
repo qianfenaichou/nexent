@@ -203,6 +203,37 @@ def test_context_kb_fallback_allows_admin_until_t08_wiring(monkeypatch):
     assert ("ADMIN", "RESOURCE", "KB", "MANAGE") in calls
 
 
+# ── _ontology_service wiring (pitfalls #49) ──────────────────────────
+
+
+def test_ontology_service_injects_pgstore(monkeypatch):
+    """Regression for pitfalls #49: the factory used to return
+    OntologyService(store=None), which made every ontology endpoint answer
+    empty data. PgStore is stubbed out so the test never touches a
+    database - the assertion is about the wiring (store must be non-None),
+    not the store implementation."""
+    from services.knowevo import ontology_service as os_mod
+
+    marker = object()
+    monkeypatch.setattr(os_mod, "PgStore", lambda: marker)
+    svc = knowledge_graph_app._ontology_service()
+    assert isinstance(svc, OntologyService)
+    assert svc.store is not None
+    assert svc.store is marker
+
+
+def test_ontology_service_unstubbed_store_is_real_pgstore():
+    """Un-stubbed construction must not require a database: PgStore() opens
+    no session at construction (its DB imports live inside query methods),
+    so _ontology_service() runs fine in this no-DB unit environment and
+    yields a service wired to a real PgStore."""
+    from services.knowevo.ontology_service import PgStore
+
+    svc = knowledge_graph_app._ontology_service()
+    assert isinstance(svc.store, PgStore)
+    assert svc.store is not None
+
+
 # ── GET /ontology/proposals ───────────────────────────────────────────
 
 def test_proposals_queue_score_order_and_paging_cap(monkeypatch):
@@ -476,7 +507,6 @@ def test_active_version_scopes_to_session_tenant(monkeypatch):
 
     async def _record(tenant_id):
         seen["tenant_id"] = tenant_id
-        return None
 
     store.load_active_version_row = _record
     monkeypatch.setattr(
@@ -624,3 +654,25 @@ class TestPostgresReviewLoop:
         assert row["created_at"]
         # tenant B still sees nothing
         assert await svc.get_active_row(TENANT_B) is None
+
+    @pytest.mark.asyncio
+    @pytest.mark.skipif(
+        os.environ.get("RUN_POSTGRES_INTEGRATION") != "1",
+        reason="set RUN_POSTGRES_INTEGRATION=1 with a reachable PG",
+    )
+    async def test_build_tenant_active_ontology_is_wired_v11(self):
+        """End-to-end wiring proof for pitfalls #49: the build tenant's
+        published ontology (v1.1.0, 10 classes / 10 relations) is visible
+        through the real PgStore - the exact read the fixed
+        _ontology_service() serves. Read-only: this tenant is a live seed,
+        never cleaned up."""
+        BUILD_TENANT = "6756b0ab-39c0-462a-9745-aa12e1511fcd"
+        from services.knowevo.ontology_service import PgStore
+        svc = OntologyService(store=PgStore())
+        snap = await svc.store.load_active_snapshot(BUILD_TENANT)
+        assert len(snap.get("classes", [])) == 10
+        assert len(snap.get("rel_types", [])) == 10
+        # the row-level read is the /ontology/versions/active payload
+        row = await svc.get_active_row(BUILD_TENANT)
+        assert row is not None and row["version"] == "v1.1.0"
+        assert row["status"] == "published"

@@ -33,9 +33,19 @@ DECISION_SEED_TOP_K = 5
 
 
 def _ontology_service() -> OntologyService:
-    """One service instance per request; PgStore wiring stays lazy so the
-    app imports cleanly in unit tests without a live database client."""
-    return OntologyService(store=None)
+    """One service instance per request, wired to the real PgStore
+    (pitfalls #49 fix: previously store was hardcoded None, so every
+    ontology endpoint answered empty).
+
+    The PgStore import stays lazy (function body, same discipline as
+    _decision_service) so the module imports cleanly in unit tests without
+    a live database client - PgStore() opens no session at construction
+    (the DB import happens inside each query), so building one per request
+    is cheap and DB-free until a query actually runs.
+    """
+    from services.knowevo.ontology_service import PgStore
+
+    return OntologyService(store=PgStore())
 
 
 def _decision_service(tenant_id: str):
