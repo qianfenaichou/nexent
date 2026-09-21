@@ -8,6 +8,7 @@ request body, so the service layer stays free of request context.
 """
 import logging
 import time
+from datetime import datetime
 from typing import Annotated
 from uuid import UUID
 
@@ -239,6 +240,17 @@ class DecisionCardRequest(BaseModel):
         default=None,
         description="Pin the card to this knowledge version; None = latest",
     )
+    as_of: datetime | None = Field(
+        default=None,
+        description=(
+            "Pin the card to an explicit fact-time instant (business time); "
+            "None = latest. Distinct from ``ontology_version``: that pins a "
+            "committed ontology version, this pins the facts' own time axis "
+            "through the same T-18b clock entry the ablation arms use. It is "
+            "what a 2020-era vs 2024-era comparison needs, and it is the only "
+            "way to reach clock_source='explicit' from this surface."
+        ),
+    )
     mode: str = Field(
         "full", pattern="^(full|lite)$",
         description="full carries risks + counterfactual; lite skips them",
@@ -275,7 +287,7 @@ async def render_decision_card(
         hits = await lookup(tenant_id, request.question, DECISION_SEED_TOP_K)
         result = await svc.multi_hop(
             request.question, seeds=[h.stable_id for h in hits],
-            version=request.ontology_version)
+            version=request.ontology_version, as_of=request.as_of)
         chain = await svc.assemble_evidence(result)
     except Exception as exc:
         logger.warning("decision card evidence collection failed: %s", exc)
