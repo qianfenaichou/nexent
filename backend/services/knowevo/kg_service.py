@@ -714,11 +714,26 @@ class PgStore:
             return row is not None
 
     async def record_extract_run(self, tenant_id, run_id, span_hash,
-                                 channel, tokens_spent):
+                                 channel, tokens_spent, *, llm_calls=0,
+                                 empty_content_calls=0, reasoning_tokens=0,
+                                 finish_reasons=None):
+        """Write one span's ledger row, optionally with call diagnostics.
+
+        T-24 (pitfalls #52/#55 沉淀机制): ``llm_calls`` /
+        ``empty_content_calls`` / ``reasoning_tokens`` / ``finish_reasons``
+        are the span-level aggregate of the calls made while extracting this
+        span. They default to 0 / 0 / 0 / None, so any caller that does not
+        supply them (pre-kw_009 callers, the table channel, tests) keeps the
+        exact previous behaviour.
+        """
         from database.knowevo_db import KgExtractRun, create_row
         create_row(KgExtractRun, tenant_id=tenant_id, run_id=run_id,
                    span_hash=span_hash, channel=channel, status="done",
-                   tokens_spent=tokens_spent)
+                   tokens_spent=tokens_spent,
+                   llm_calls=int(llm_calls or 0),
+                   empty_content_calls=int(empty_content_calls or 0),
+                   reasoning_tokens=int(reasoning_tokens or 0),
+                   finish_reasons=finish_reasons)
         return True
 
 

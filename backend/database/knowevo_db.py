@@ -342,6 +342,20 @@ class KgExtractRun(KnowevoTableBase):
                      doc="llm | table")
     status = Column(String(16), nullable=False, server_default=text("'done'"))
     tokens_spent = Column(Integer, server_default=text("0"))
+    # T-24 extraction diagnostics (migration v2.5.5_kw_009): span-level
+    # aggregate that separates "no content" from "no entities" (pitfalls
+    # #52/#55). Additive columns with server defaults so pre-kw_009 rows stay
+    # readable (0 / 0 / 0, finish_reasons NULL).
+    llm_calls = Column(Integer, nullable=False, server_default=text("0"),
+                       doc="LLM calls issued for this span")
+    empty_content_calls = Column(Integer, nullable=False,
+                                 server_default=text("0"),
+                                 doc="Calls whose body was blank (#52 symptom)")
+    reasoning_tokens = Column(Integer, nullable=False,
+                              server_default=text("0"),
+                              doc="Summed provider reasoning tokens")
+    finish_reasons = Column(JSONB,
+                            doc="{finish_reason: count} over this span's calls")
     created_at = Column(TIMESTAMP(timezone=True), server_default=text("now()"))
 
 
