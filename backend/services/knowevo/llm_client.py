@@ -69,6 +69,88 @@ def _tier_model_id(tier: str) -> str:
     return globals()[_TIER_TO_MODEL_ID_ATTR[tier]]
 
 
+# Pitfalls #52/#55 observability: a process-level, thread-safe tally of how
+# often each call ``kind`` returns empty content, plus the per-call
+# ``finish_reason``/``reasoning_tokens`` that keep "no content" separable from
+# "no entities". ``call_with_usage`` runs inside ``asyncio.to_thread`` workers
+# and long eval batches, so the tally is lock-guarded and the read path hands
+# back a copy. Keys are the raw ``kind`` strings (e.g. "extract", "hop_plan").
+_EMPTY_CONTENT_LOCK = threading.Lock()
+_EMPTY_CONTENT_COUNTS: dict[str, dict[str, int]] = {}
+
+
+def _record_call_outcome(
+    kind: str, text: str, finish_reason: str | None, reasoning_tokens: int,
+) -> None:
+    """Tally one call; log a structured event when the body is empty.
+
+    Empty means ``str(text).strip() == ""`` - the symptom behind both #52 (a
+    reasoning chain consumed the whole output budget) and #55 (transient empty
+    generation). ``finish_reason``/``reasoning_tokens`` are this call's
+    measured values, so a "no content" line stays distinguishable from a
+    parsed-but-empty "no entities" body.
+    """
+    is_empty = not str(text).strip()
+    with _EMPTY_CONTENT_LOCK:
+        bucket = _EMPTY_CONTENT_COUNTS.setdefault(
+            kind, {"calls": 0, "empty_content": 0})
+        bucket["calls"] += 1
+        if is_empty:
+            bucket["empty_content"] += 1
+    if is_empty:
+        logger.warning(
+            "event=llm_empty_content kind=%s finish_reason=%s reasoning_tokens=%s",
+            kind, finish_reason, reasoning_tokens)
+
+
+def empty_content_counts() -> dict[str, dict[str, int]]:
+    """Read-only copy of the per-kind ``{calls, empty_content}`` tally."""
+    with _EMPTY_CONTENT_LOCK:
+        return {
+            kind: dict(bucket) for kind, bucket in _EMPTY_CONTENT_COUNTS.items()
+        }
+
+
+def _observe_call(model: Any, result: Any) -> tuple[str | None, int]:
+    """Return ``(finish_reason, reasoning_tokens)`` measured for one call.
+
+    ``call_with_usage`` reaches the provider through smolagents'
+    ``OpenAIModel.generate`` (non-streaming), so the returned
+    ``ChatMessage.raw`` is the provider ``ChatCompletion`` and this call's
+    ``finish_reason`` / ``usage.completion_tokens_details.reasoning_tokens``
+    live there (r21 probe on the generate path:
+    ``raw.choices[0].finish_reason == "length"``,
+    ``raw.usage.completion_tokens_details.reasoning_tokens == 8192``; the
+    adapter's ``last_response_diagnostics`` stays None because the streaming
+    ``__call__`` is not on this path). ``last_response_diagnostics`` is used
+    only when ``raw`` is not a completion payload - e.g. a caller that went
+    through the streaming adapter. Anything unmeasured stays ``None`` / ``0``:
+    never estimated, never fabricated.
+    """
+    raw = getattr(result, "raw", None)
+    if hasattr(raw, "choices") and hasattr(raw, "usage"):
+        choices = getattr(raw, "choices", None) or []
+        finish_reason = (
+            getattr(choices[0], "finish_reason", None) if choices else None)
+        reported = getattr(
+            getattr(raw.usage, "completion_tokens_details", None),
+            "reasoning_tokens", None)
+        reasoning_tokens = int(reported) if isinstance(reported, (int, float)) else 0
+        return (
+            str(finish_reason) if finish_reason is not None else None,
+            reasoning_tokens,
+        )
+    diagnostics = getattr(model, "last_response_diagnostics", None)
+    if isinstance(diagnostics, dict):
+        finish_reason = diagnostics.get("finish_reason")
+        reported = diagnostics.get("reasoning_tokens")
+        return (
+            str(finish_reason) if finish_reason is not None else None,
+            int(reported) if isinstance(reported, (int, float)) else 0,
+        )
+    return None, 0
+
+
 class LLMConfigurationError(RuntimeError):
     """Raised when no usable model is configured for the requested tier."""
 
@@ -171,16 +253,24 @@ class LlmRouter:
         kind: str,
         tier: str = TIER_MID,
         temperature: float = 0.0,
-    ) -> tuple[str, dict[str, int]]:
-        """Like ``__call__`` but also return the token counters.
+    ) -> tuple[str, dict[str, Any]]:
+        """Like ``__call__`` but also return token counters + observability.
 
         Additive sibling of the frozen ``(prompt, *, kind, tier,
         temperature) -> str`` contract: ``__call__`` stays byte-for-byte
         compatible for every existing caller, while the offline evaluation
         runner (T-10a-2) needs per-call tokens for the cost ledger and the
-        p95/token metrics. Counters come from ``ChatMessage.token_usage``,
-        which the SDK fills from the provider response (0 when the provider
-        omitted usage - reported as measured, never estimated).
+        p95/token metrics. ``input_tokens``/``output_tokens`` come from
+        ``ChatMessage.token_usage``, which the SDK fills from the provider
+        response (0 when the provider omitted usage - reported as measured,
+        never estimated).
+
+        The returned dict is purely additive over those two counters:
+        ``reasoning_tokens`` (int, 0 when the provider reports none) and
+        ``finish_reason`` (str | None) satisfy the pitfalls #52 沉淀机制 -
+        the extraction chain can now tell a ``length`` truncation that burned
+        the output budget on a reasoning chain apart from a genuine empty
+        body. Existing callers read via ``.get()`` and are unaffected.
         """
         model = self._get_model(tier, temperature, kind=kind)
         messages = [{"role": "user", "content": prompt}]
@@ -209,10 +299,15 @@ class LlmRouter:
         # set when usage reaches the stream-assembly path, so read the
         # message - the single source both paths write to.
         tu = getattr(result, "token_usage", None)
+        finish_reason, reasoning_tokens = _observe_call(model, result)
         usage = {
             "input_tokens": int(getattr(tu, "input_tokens", 0) or 0),
             "output_tokens": int(getattr(tu, "output_tokens", 0) or 0),
+            # Additive observability (pitfalls #52/#55); see _observe_call.
+            "reasoning_tokens": reasoning_tokens,
+            "finish_reason": finish_reason,
         }
+        _record_call_outcome(kind, text, finish_reason, reasoning_tokens)
         return text, usage
 
 
