@@ -202,24 +202,63 @@ def test_extract_kind_disables_thinking(monkeypatch):
 
 
 def test_other_kinds_send_no_provider_extras(monkeypatch):
-    """judge/align/route/render/hop keep the provider default (no extras)."""
+    """judge/align/route families keep the provider default (no extras).
+
+    The tuple lists the kinds that actually exist in the code paths today
+    (decision_service route_llm, eval judge/answer, plus their ablation_
+    prefixed forms via the harness wrapper). The card-chain kinds
+    (decision_card / hop_plan) are intentionally NOT here - see
+    test_card_chain_kinds_disable_thinking.
+    """
     import asyncio
 
     from services.knowevo import llm_client
 
     monkeypatch.setattr(llm_client, "KW_LLM_MID_MODEL_ID", "222")
     router = llm_client.LlmRouter(tenant_id=TENANT_A)
-    for kind in ("judge", "align", "route", "render", "hop"):
+    for kind in ("judge", "align", "route", "route_llm",
+                 "ablation_judge", "ablation_answer", "ablation_route_llm"):
         model = router._get_model(
             llm_client.TIER_MID, temperature=0.0, kind=kind)
         assert model.kwargs["extra_body"] is None, kind
-        # Fixture model 222 declares 8192, so this pins the non-extract
-        # branch to the configured cap (r20 review P2-2): only the extract
+        # Fixture model 222 declares 8192, so this pins the non-card branch
+        # to the configured cap (r20 review P2-2): only the thinking-disabled
         # branch may blank it.
         assert model.kwargs["max_output_tokens"] == 8192, kind
         FakeOpenAIModel.last_generate_kwargs = None
         asyncio.run(router.call_with_usage("prompt", kind=kind))
         assert FakeOpenAIModel.last_generate_kwargs == {}, kind
+
+
+def test_card_chain_kinds_disable_thinking(monkeypatch):
+    """pitfalls #59: the card chain burned the output cap into reasoning.
+
+    e8-paired.log recorded 24x empty content for the ablation card/hop kinds
+    (finish_reason=length rt=8192, and stop rt=3921 with empty content)
+    while the identical burn had already been fixed for extract (r19). The
+    JSON-object card kinds therefore join the disabled set - including the
+    ``ablation_`` prefixed forms the harness sends - while judge-like kinds
+    stay untouched (previous test).
+    """
+    import asyncio
+
+    from services.knowevo import llm_client
+
+    monkeypatch.setattr(llm_client, "KW_LLM_MID_MODEL_ID", "222")
+    router = llm_client.LlmRouter(tenant_id=TENANT_A)
+    disabled = llm_client._NO_THINKING_EXTRA_BODY
+    for kind in ("decision_card", "hop_plan",
+                 "ablation_decision_card", "ablation_hop_plan"):
+        model = router._get_model(
+            llm_client.TIER_MID, temperature=0.0, kind=kind)
+        assert model.kwargs["extra_body"] == disabled, kind
+        # Fixture model 222 declares 8192: the disabled branch blanks the
+        # client cap exactly like extract does (same code path).
+        assert model.kwargs["max_output_tokens"] is None, kind
+        FakeOpenAIModel.last_generate_kwargs = None
+        asyncio.run(router.call_with_usage("prompt", kind=kind))
+        assert FakeOpenAIModel.last_generate_kwargs == {
+            "extra_body": disabled}, kind
 
 
 def test_extract_and_chat_clients_cached_separately(monkeypatch):

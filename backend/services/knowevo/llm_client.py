@@ -35,24 +35,48 @@ TIER_SMALL = "small"
 TIER_MID = "mid"
 TIER_LARGE = "large"
 
-# Extraction asks for one JSON object; a hidden reasoning chain buys nothing
-# and on reasoning-heavy providers it consumes the whole output cap, so the
-# JSON never appears (r19 evidence: finish_reason=length with
-# reasoning_tokens == completion_tokens == max_output_tokens and
-# content_len == 0 - see pitfalls #52). Disable thinking for kind='extract'
-# only; every other kind (judge / route / render / hop / align) keeps the
-# provider default.
-_EXTRACT_EXTRA_BODY = {"thinking": {"type": "disabled"}}
-# Extraction leaves the client-level output cap unset. Honest attribution
-# (r20 review P2-4): the causal lever is the per-call `thinking` flag above.
-# The generate() path assembles its request body from self.kwargs, so this
-# client attribute never reached the wire for any kind (r19 wire probe:
-# max_tokens_on_wire=null); the 8192 that truncated the JSON was the
-# provider's own default. Leaving it unset is kept as a deliberate cleanup:
-# with thinking disabled the provider default measured comfortable (r19
-# probe: 956 content chars / 333 completion tokens / finish_reason=stop),
+# JSON-object kinds ask for one machine-readable object; a hidden reasoning
+# chain buys nothing and on reasoning-heavy providers it consumes the whole
+# output cap, so the JSON never appears (r19 evidence for kind='extract':
+# finish_reason=length with reasoning_tokens == completion_tokens ==
+# max_output_tokens and content_len == 0 - see pitfalls #52). The same burn
+# hit the decision-card chain in the E8 paired run (e8-paired.log: 24x
+# event=llm_empty_content kind=ablation_decision_card / ablation_hop_plan,
+# finish_reason=length rt=8192 AND finish_reason=stop rt=3921, content empty
+# every time) while judge / route / answer kinds never went empty - so the
+# disabled set grows to exactly the card-chain JSON kinds and nothing else
+# (pitfalls #59). Judge/align/route/route_llm keep the provider default:
+# nothing observed is broken there, and the judge's quality must not be
+# quietly changed by this fix.
+_THINKING_DISABLED_KINDS = frozenset({"extract", "decision_card", "hop_plan"})
+_ABLATION_KIND_PREFIX = "ablation_"
+_NO_THINKING_EXTRA_BODY = {"thinking": {"type": "disabled"}}
+
+
+def _thinking_disabled(kind: str | None) -> bool:
+    """True for the JSON-object kinds, incl. their ``ablation_`` forms.
+
+    The ablation harness wraps this router and prefixes every kind with
+    ``ablation_`` (``pipeline/ablation.py``), so the prefix is stripped
+    before set membership; an unlisted kind (judge / route / answer ...)
+    keeps the provider default.
+    """
+    if not kind:
+        return False
+    base = kind.removeprefix(_ABLATION_KIND_PREFIX)
+    return base in _THINKING_DISABLED_KINDS
+
+
+# Thinking-disabled kinds leave the client-level output cap unset. Honest
+# attribution (r20 review P2-4): the causal lever is the per-call `thinking`
+# flag above. The generate() path assembles its request body from
+# self.kwargs, so this client attribute never reached the wire for any kind
+# (r19 wire probe: max_tokens_on_wire=null); the 8192 that truncated the JSON
+# was the provider's own default. Leaving it unset is kept as a deliberate
+# cleanup: with thinking disabled the provider default measured comfortable
+# (r19 probe: 956 content chars / 333 completion tokens / finish_reason=stop),
 # and raising it to 32768 trips the gateway tpm/rpm budget (HTTP 429, r19
-# streaming probe). Non-extract kinds keep the previously configured value.
+# streaming probe). All other kinds keep the previously configured value.
 
 # Read live (not frozen at import) so env overrides and tests can patch
 # the module constants after import.
@@ -204,7 +228,7 @@ class LlmRouter:
 
     def _get_model(self, tier: str, temperature: float,
                    kind: str | None = None) -> OpenAIModel:
-        disable_thinking = kind == "extract"
+        disable_thinking = _thinking_disabled(kind)
         key = (tier, temperature, disable_thinking)
         with self._lock:
             model = self._models.get(key)
@@ -225,7 +249,7 @@ class LlmRouter:
                 # OpenAIModel.__call__ merges self.extra_body); the generate()
                 # path used below needs the per-call kwarg instead, see
                 # call_with_usage.
-                extra_body=_EXTRACT_EXTRA_BODY if disable_thinking else None,
+                extra_body=_NO_THINKING_EXTRA_BODY if disable_thinking else None,
                 # Output budget: extraction leaves the cap to the provider
                 # (see the note above _EXTRACT_EXTRA_BODY); other callers
                 # keep the bounded evaluation cap that prevents
@@ -295,7 +319,7 @@ class LlmRouter:
         """
         model = self._get_model(tier, temperature, kind=kind)
         messages = [{"role": "user", "content": prompt}]
-        # The extract extras must ride on the call, not on the client.
+        # The no-thinking extras must ride on the call, not on the client.
         # `generate()` (smolagents' OpenAIModel) assembles its request body
         # from `self.kwargs`, and a named constructor argument never lands
         # there, so an instance-level extra_body is silently dropped: the
@@ -306,7 +330,8 @@ class LlmRouter:
         # `completion_kwargs.update(kwargs)` and from there the SDK's
         # `extra_body` merge.
         call_kwargs = (
-            {"extra_body": _EXTRACT_EXTRA_BODY} if kind == "extract" else {})
+            {"extra_body": _NO_THINKING_EXTRA_BODY}
+            if _thinking_disabled(kind) else {})
         result = await asyncio.to_thread(
             model.generate, messages, **call_kwargs)
         content = getattr(result, "content", result)
