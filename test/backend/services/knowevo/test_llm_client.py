@@ -5,8 +5,11 @@ unconfigured error path, and the injected-``llm`` callable contract.
 No network and no real model: ``get_model_by_model_id`` and
 ``tenant_config_manager`` are monkey-patched to in-memory records.
 """
+import asyncio
+import logging
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 _REPO_ROOT = Path(__file__).resolve().parents[4]
 for _p in (str(_REPO_ROOT / "backend"), str(_REPO_ROOT)):
@@ -247,7 +250,13 @@ def test_call_with_usage_routes_extract_to_thinking_disabled_client(monkeypatch)
     text, usage = asyncio.run(
         router.call_with_usage("prompt", kind="extract"))
     assert text.startswith("ok:")
-    assert usage == {"input_tokens": 0, "output_tokens": 0}
+    # Core counters keep their meaning. The r21 P1-4 observability keys are
+    # additive: this fake reports neither a provider payload nor tokens, so
+    # they are honestly 0 / None (never fabricated).
+    assert usage["input_tokens"] == 0
+    assert usage["output_tokens"] == 0
+    assert usage["reasoning_tokens"] == 0
+    assert usage["finish_reason"] is None
     extract = router._get_model(
         llm_client.TIER_MID, temperature=0.0, kind="extract")
     assert extract.kwargs["extra_body"] == {"thinking": {"type": "disabled"}}
@@ -256,3 +265,169 @@ def test_call_with_usage_routes_extract_to_thinking_disabled_client(monkeypatch)
 def await_llm(callable_, prompt, **kwargs):
     import asyncio
     return asyncio.run(callable_(prompt, **kwargs))
+
+
+# ---------------------------------------------------------------------------
+# r21 P1-4 observability (pitfalls #52/#55 沉淀机制): finish_reason +
+# reasoning_tokens surfaced per call, and the kind x empty-body counter.
+# Everything below is scripted - no provider is ever contacted.
+# ---------------------------------------------------------------------------
+
+
+class _ScriptedUsageDetails:
+    def __init__(self, reasoning_tokens):
+        self.reasoning_tokens = reasoning_tokens
+
+
+class _ScriptedUsage:
+    def __init__(self, prompt_tokens, completion_tokens, reasoning_tokens):
+        self.prompt_tokens = prompt_tokens
+        self.completion_tokens = completion_tokens
+        self.completion_tokens_details = _ScriptedUsageDetails(reasoning_tokens)
+
+
+class _ScriptedRaw:
+    """Provider ChatCompletion shape: choices[0].finish_reason + usage."""
+
+    def __init__(self, finish_reason, reasoning_tokens):
+        self.choices = [SimpleNamespace(finish_reason=finish_reason)]
+        self.usage = _ScriptedUsage(3, 5, reasoning_tokens)
+
+
+class _ScriptedTokenUsage:
+    def __init__(self, input_tokens, output_tokens):
+        self.input_tokens = input_tokens
+        self.output_tokens = output_tokens
+
+
+class _ScriptedResult:
+    def __init__(self, content, finish_reason, reasoning_tokens):
+        self.content = content
+        self.token_usage = _ScriptedTokenUsage(3, 5)
+        self.raw = _ScriptedRaw(finish_reason, reasoning_tokens)
+
+
+class ScriptedOpenAIModel:
+    """OpenAIModel stand-in returning a scripted ChatMessage-shaped result.
+
+    Mirrors smolagents' ``generate`` (the path ``call_with_usage`` takes): the
+    provider payload is exposed via ``result.raw`` and tokens via
+    ``result.token_usage``.
+    """
+
+    next_content = "ok"
+    next_finish_reason = None
+    next_reasoning_tokens = None
+    last_generate_kwargs = None
+
+    def __init__(self, **kwargs):
+        self.kwargs = kwargs
+
+    def generate(self, messages, **kwargs):
+        ScriptedOpenAIModel.last_generate_kwargs = kwargs
+        return _ScriptedResult(
+            ScriptedOpenAIModel.next_content,
+            ScriptedOpenAIModel.next_finish_reason,
+            ScriptedOpenAIModel.next_reasoning_tokens,
+        )
+
+
+def _install_scripted_model(monkeypatch, *, content, finish_reason, reasoning):
+    from services.knowevo import llm_client
+
+    monkeypatch.setattr(llm_client, "KW_LLM_MID_MODEL_ID", "222")
+    monkeypatch.setattr(llm_client, "OpenAIModel", ScriptedOpenAIModel)
+    monkeypatch.setattr(
+        ScriptedOpenAIModel, "next_content", content, raising=False)
+    monkeypatch.setattr(
+        ScriptedOpenAIModel, "next_finish_reason", finish_reason, raising=False)
+    monkeypatch.setattr(
+        ScriptedOpenAIModel, "next_reasoning_tokens", reasoning, raising=False)
+    return llm_client
+
+
+def test_usage_carries_finish_reason_and_int_reasoning_tokens(monkeypatch):
+    """P1-4 ①③: caller reads this call's finish_reason + reasoning_tokens."""
+    llm_client = _install_scripted_model(
+        monkeypatch, content='{"entities": []}',
+        finish_reason="length", reasoning=8192)
+    router = llm_client.LlmRouter(tenant_id=TENANT_A)
+
+    text, usage = asyncio.run(router.call_with_usage("p", kind="extract"))
+
+    assert text == '{"entities": []}'
+    assert usage["finish_reason"] == "length"
+    assert isinstance(usage["reasoning_tokens"], int)
+    assert usage["reasoning_tokens"] == 8192
+    # Additive: the pre-existing counters keep their meaning.
+    assert usage["input_tokens"] == 3
+    assert usage["output_tokens"] == 5
+
+
+def test_reasoning_tokens_zero_when_provider_omits_them(monkeypatch):
+    """P1-4 ①: an unreported reasoning split is 0, never fabricated."""
+    llm_client = _install_scripted_model(
+        monkeypatch, content="body", finish_reason="stop", reasoning=None)
+    router = llm_client.LlmRouter(tenant_id=TENANT_A)
+
+    _text, usage = asyncio.run(router.call_with_usage("p", kind="judge"))
+
+    assert usage["reasoning_tokens"] == 0
+    assert usage["finish_reason"] == "stop"
+
+
+def test_empty_content_counter_is_per_kind(monkeypatch):
+    """P1-4 ②: empty body bumps empty_content; non-empty only bumps calls."""
+    llm_client = _install_scripted_model(
+        monkeypatch, content="   ", finish_reason="length", reasoning=8192)
+    router = llm_client.LlmRouter(tenant_id=TENANT_A)
+    kind = "p14_empty_probe"
+    before = llm_client.empty_content_counts().get(
+        kind, {"calls": 0, "empty_content": 0})
+
+    asyncio.run(router.call_with_usage("p", kind=kind))  # whitespace -> empty
+    monkeypatch.setattr(
+        ScriptedOpenAIModel, "next_content", "non-empty body", raising=False)
+    asyncio.run(router.call_with_usage("p", kind=kind))
+    asyncio.run(router.call_with_usage("p", kind=kind))
+
+    after = llm_client.empty_content_counts()[kind]
+    assert after["calls"] - before["calls"] == 3
+    assert after["empty_content"] - before["empty_content"] == 1
+
+
+def test_empty_content_emits_structured_event(monkeypatch, caplog):
+    """P1-4 ②: every empty body logs event=llm_empty_content with the fields."""
+    llm_client = _install_scripted_model(
+        monkeypatch, content="", finish_reason="length", reasoning=8192)
+    router = llm_client.LlmRouter(tenant_id=TENANT_A)
+
+    with caplog.at_level(logging.WARNING, logger=llm_client.__name__):
+        asyncio.run(router.call_with_usage("p", kind="p14_log_probe"))
+
+    logged = [
+        record.getMessage() for record in caplog.records
+        if "event=llm_empty_content" in record.getMessage()
+    ]
+    assert logged, "empty content must emit event=llm_empty_content"
+    assert "kind=p14_log_probe" in logged[-1]
+    assert "finish_reason=length" in logged[-1]
+    assert "reasoning_tokens=8192" in logged[-1]
+
+
+def test_additive_keys_do_not_change_extract_wire_or_cache(monkeypatch):
+    """P1-4 ④: extract still disables thinking and caches per kind-class."""
+    llm_client = _install_scripted_model(
+        monkeypatch, content="body", finish_reason="stop", reasoning=None)
+    router = llm_client.LlmRouter(tenant_id=TENANT_A)
+
+    asyncio.run(router.call_with_usage("p", kind="extract"))
+    assert ScriptedOpenAIModel.last_generate_kwargs == {
+        "extra_body": {"thinking": {"type": "disabled"}}}
+    asyncio.run(router.call_with_usage("p", kind="judge"))
+    assert ScriptedOpenAIModel.last_generate_kwargs == {}
+
+    extract = router._get_model(llm_client.TIER_MID, 0.0, kind="extract")
+    judge = router._get_model(llm_client.TIER_MID, 0.0, kind="judge")
+    assert extract is not judge
+    assert extract.kwargs["extra_body"] == {"thinking": {"type": "disabled"}}

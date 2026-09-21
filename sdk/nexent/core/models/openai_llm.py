@@ -516,6 +516,18 @@ class OpenAIModel(OpenAIServerModel):
                         token_tracker.record_completion(
                             input_tokens, output_tokens)
 
+                    # Pure-additive observability (pitfalls #52): surface the
+                    # provider's reasoning/output split when it reports one.
+                    # Providers that omit it stay at None - never estimated.
+                    reasoning_tokens = None
+                    if usage is not None:
+                        completion_details = getattr(
+                            usage, "completion_tokens_details", None)
+                        reported_reasoning = getattr(
+                            completion_details, "reasoning_tokens", None)
+                        if isinstance(reported_reasoning, int):
+                            reasoning_tokens = reported_reasoning
+
                     response_diagnostics = {
                         "finish_reason": finish_reason,
                         "chunk_count": len(chunk_list),
@@ -527,6 +539,7 @@ class OpenAIModel(OpenAIServerModel):
                         "nonstandard_chunk_count": nonstandard_chunk_count,
                         "input_tokens": input_tokens,
                         "output_tokens": output_tokens,
+                        "reasoning_tokens": reasoning_tokens,
                     }
                     self.last_response_diagnostics = response_diagnostics
                     self._monitoring.set_span_attributes(
