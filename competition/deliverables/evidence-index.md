@@ -23,7 +23,7 @@
 | **Skill 模板库页面截图** | 维度4 | ★★☆ | `deliverables/t23-shot-skill-template.png`（2026-09-21 04:03；**真实页面**：skill_template_t 落库模板） | ✅ 已有 |
 | **评测报告图（消融柱状图/曲线）** | 维度3 | ★★★ | `deliverables/t23-eval-report.png`（2026-09-21 11:54；由 `e2-ablation-report.json` 真实数字绘制，matplotlib；insufficient_data 格明确标注；E2 续跑后需重绘） | ✅ 已有 |
 | E1 纯 RAG 基线（acc=0.6667 / pass2=0.65 / n_judged=60/60） | 维度3（对照） | ★★★ | `deliverables/e1-baseline-report.json`；权威口径 = `docs/cost-ledger.md` 行 `e1-b64faa90-64ac-44bc-95e9-564ad4b99006` | ✅ 已有 |
-| E2 消融报告（A1/A2/A3/A4 × E8） | 维度3 | ★★★ | `deliverables/e2-ablation-report.json`（**partial:true**）：**A1_pure_rag** n_q=10 acc=0.7241 / pass2=0.70 / n_judged=29/30；**A2_graph** n_q=4 acc=0.75 / n_judged=12/12；**A4_full pin=on** n_q=2 acc=0.5 / n_judged=6/6（旧行 2026-09-19）；**A4_full pin=off** n_q=1 acc=0.5 / pass2=0.0 / n_judged=2/2（新行 2026-09-21）；**A3_multihop 待跑**（insufficient_data）；**E8 Δ 不可测**（`e8.arm_vintage.same_invocation=null`，两臂非同一次配对实验，pitfalls #56） | 🟡 待续跑 |
+| E2 消融报告（A1/A2/A3/A4 × E8） | 维度3 | ★★★ | `deliverables/e2-ablation-report.json`（**partial:true**）：**A1_pure_rag** n_q=10 acc=0.7241 / pass2=0.70 / n_judged=29/30；**A2_graph** n_q=4 acc=0.75 / n_judged=12/12；**A3_multihop 待跑**（insufficient_data）；**E8 配对终版**（`e2-ablation-paired2.json`，`same_invocation=true`、零空正文污染）：V 题 3 题×2runs 两臂各 acc=1.0 n=6/6 → **Δ=0.0**（取代 r22 并置 +0.3334，pitfalls #62；诚实限制：n=6 小样本+两臂满分，Δ=0 不反推机制无效） | 🟡 待续跑 |
 | 机制预验证四探针（P1 100% vs 20.6% / P2 VOI / P3 0.02ms / P4 98.8%） | 维度3 | ★★★ | `deliverables/algorithm-probes/probe_p{1..4}_*.json` | ✅ 已有 |
 | 版本钉住机制测试（TestVersionPinnedWalk） | 维度3 | ★★★ | `test/backend/services/knowevo/test_decision_service.py` | ✅ 已有 |
 | 消融单测 + PG 集成（688 passed，2026-09-21 r16 全量实测） | 维度3 | ★★★ | `pytest` 运行记录 | ✅ 已有 |
