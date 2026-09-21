@@ -1,8 +1,8 @@
 {
   "task": "T-22",
   "partial": true,
-  "generated_at": "2026-09-21T15:34:29.669524+00:00",
-  "invocation_id": "9b068edb0f8e4a10963a26dbd9a8360d",
+  "generated_at": "2026-09-21T15:55:17.515985+00:00",
+  "invocation_id": "f6ebe31871f9422ea1cd5937e11a8d98",
   "testset": "testset-v1-seed.json",
   "testset_hash": "fd56571a304fb09d",
   "n_questions": 20,
@@ -26,13 +26,13 @@
   ],
   "data_reality": {
     "d1_discriminative_counts": {
-      "all": 689,
+      "all": 704,
       "t_v_2022_01_01": 33,
-      "t_v_2024_06_01": 194,
+      "t_v_2024_06_01": 198,
       "t_v_2025_06_01": 66,
       "discriminative": true
     },
-    "d1_checked_at": "2026-09-21T15:21:11.091173+00:00",
+    "d1_checked_at": "2026-09-21T15:39:02.060034+00:00",
     "ablation_tenant_graph": {
       "entities": 136,
       "relations": 65
@@ -3213,28 +3213,28 @@
       "level": "A4_full",
       "pin": "on",
       "arm_gold": true,
-      "complete": false,
-      "eval_run_id": "9beec27a-0a1e-460b-9fcc-f7a5946a2a3f",
-      "invocation_id": "9b068edb0f8e4a10963a26dbd9a8360d",
-      "recorded_at": "2026-09-21T15:34:29.665700+00:00",
+      "complete": true,
+      "eval_run_id": "19c136fd-c1ff-47f1-bb5e-39c4dba2b0a7",
+      "invocation_id": "f6ebe31871f9422ea1cd5937e11a8d98",
+      "recorded_at": "2026-09-21T15:55:17.509529+00:00",
       "metrics": {
-        "acc": 0.0,
-        "pass2": 0.0,
+        "acc": 0.6667,
+        "pass2": 0.6667,
         "pass3": 0.0,
-        "n_questions": 1,
-        "n_runs": 2,
-        "n_judged": 2,
-        "n_expected": 2,
-        "trace_machine": 0.4545,
+        "n_questions": 3,
+        "n_runs": 6,
+        "n_judged": 6,
+        "n_expected": 6,
+        "trace_machine": 0.6363,
         "trace_answer_cite": {
           "citations": 0,
           "out_of_range": 0,
           "rate": null,
           "no_citation_run": true
         },
-        "p95_latency_s": 109.5,
-        "tokens_in": 11766,
-        "tokens_out": 37468,
+        "p95_latency_s": 224.29,
+        "tokens_in": 47279,
+        "tokens_out": 103343,
         "judge_parse_errors": 0,
         "runner_errors": 0,
         "integrity_warning": false,
@@ -3258,9 +3258,9 @@
             "insufficient_data": true
           },
           "V": {
-            "n": 1,
-            "n_judged": 2,
-            "acc": 0.0
+            "n": 3,
+            "n_judged": 6,
+            "acc": 0.6667
           },
           "X": {
             "n": 0,
@@ -3475,6 +3475,281 @@
               "errors": []
             },
             "route": "RM/L1:version-comparison wording -> RM"
+          },
+          {
+            "question_id": "V-002",
+            "type": "V",
+            "question": "2020版指南中，血压控制目标对糖尿病合并高血压患者推荐多少mmHg以下？",
+            "trace_completeness": 1.0,
+            "trace_answer_cite": {
+              "citations": 0,
+              "out_of_range": 0,
+              "rate": null,
+              "no_citation_run": true
+            },
+            "evidence": [
+              {
+                "rank": 1,
+                "doc_id": "guide-2024",
+                "title": "中国糖尿病防治指南（2024版）",
+                "source": "guidelines/dm_guideline_2024.pdf",
+                "chunk_idx": 150,
+                "score": 56.556257,
+                "ranked_score": 53.728445,
+                "authority_level": 2,
+                "split": "build",
+                "span_hash": "897e6dcb3cc90ea7",
+                "channel": "doc"
+              },
+              {
+                "rank": 2,
+                "doc_id": "guide-2024",
+                "title": "中国糖尿病防治指南（2024版）",
+                "source": "guidelines/dm_guideline_2024.pdf",
+                "chunk_idx": 151,
+                "score": 54.373888,
+                "ranked_score": 51.655193,
+                "authority_level": 2,
+                "split": "build",
+                "span_hash": "cff1dd957b021950",
+                "channel": "doc"
+              },
+              {
+                "rank": 3,
+                "doc_id": "guide-2020",
+                "title": "中国2型糖尿病防治指南（2020年版）",
+                "source": "guidelines/t2dm_guideline_2020.pdf",
+                "chunk_idx": 136,
+                "score": 51.092175,
+                "ranked_score": 48.537567,
+                "authority_level": 2,
+                "split": "build",
+                "span_hash": "3ee867f0c9352df2",
+                "channel": "doc"
+              },
+              {
+                "rank": 4,
+                "doc_id": "guide-2020",
+                "title": "中国2型糖尿病防治指南（2020年版）",
+                "source": "guidelines/t2dm_guideline_2020.pdf",
+                "chunk_idx": 144,
+                "score": 51.092175,
+                "ranked_score": 48.537567,
+                "authority_level": 2,
+                "split": "build",
+                "span_hash": "cd9408706ded4ba8",
+                "channel": "doc"
+              },
+              {
+                "rank": 5,
+                "doc_id": "guide-elderly-2024",
+                "title": "中国老年糖尿病诊疗指南（2024版）",
+                "source": "guidelines/elderly_dm_2024.pdf",
+                "chunk_idx": 56,
+                "score": 37.715621,
+                "ranked_score": 35.82984,
+                "authority_level": 2,
+                "split": "build",
+                "span_hash": "e47fc8e0f47663cb",
+                "channel": "doc"
+              }
+            ],
+            "context_chars": 3131,
+            "p50_latency_s": 169.0,
+            "tokens_in": 12819,
+            "tokens_out": 20440,
+            "kg_channel": {
+              "seeds": [
+                "Indicator:血糖控制目标"
+              ],
+              "n_seeds": 1,
+              "n_edges": 0,
+              "n_paths": 0,
+              "pinned": true,
+              "clock_source": "explicit",
+              "kg_cutoff": "2024-06-01T00:00:00+00:00",
+              "errors": []
+            },
+            "route": "R/L2:问题只要求查询2020版指南中一个明确的血压目标数值，无版本比较或推理链，单次检索即可回答。"
+          },
+          {
+            "question_id": "V-003",
+            "type": "V",
+            "question": "新诊断2型糖尿病患者若 HbA1c≥9% 且症状明显，指南建议起始什么治疗？",
+            "trace_completeness": 0.4545,
+            "trace_answer_cite": {
+              "citations": 0,
+              "out_of_range": 0,
+              "rate": null,
+              "no_citation_run": true
+            },
+            "evidence": [
+              {
+                "rank": 1,
+                "doc_id": "guide-pc-2022",
+                "title": "国家基层糖尿病防治管理指南（2022）",
+                "source": "guidelines/primary_care_dm_guide_2022.pdf",
+                "chunk_idx": 23,
+                "score": 23.943785,
+                "ranked_score": 23.943785,
+                "authority_level": 1,
+                "split": "build",
+                "span_hash": "753dac8e84f78dd7",
+                "channel": "doc"
+              },
+              {
+                "rank": 2,
+                "doc_id": "guide-2020",
+                "title": "中国2型糖尿病防治指南（2020年版）",
+                "source": "guidelines/t2dm_guideline_2020.pdf",
+                "chunk_idx": 87,
+                "score": 24.718572,
+                "ranked_score": 23.482643,
+                "authority_level": 2,
+                "split": "build",
+                "span_hash": "7e73dac9add59463",
+                "channel": "doc"
+              },
+              {
+                "rank": 3,
+                "doc_id": "guide-2024",
+                "title": "中国糖尿病防治指南（2024版）",
+                "source": "guidelines/dm_guideline_2024.pdf",
+                "chunk_idx": 95,
+                "score": 24.534008,
+                "ranked_score": 23.307307,
+                "authority_level": 2,
+                "split": "build",
+                "span_hash": "9ae43f62393473e4",
+                "channel": "doc"
+              },
+              {
+                "rank": 4,
+                "doc_id": "guide-2020",
+                "title": "中国2型糖尿病防治指南（2020年版）",
+                "source": "guidelines/t2dm_guideline_2020.pdf",
+                "chunk_idx": 83,
+                "score": 24.272477,
+                "ranked_score": 23.058853,
+                "authority_level": 2,
+                "split": "build",
+                "span_hash": "58de0b0a7ba3ecef",
+                "channel": "doc"
+              },
+              {
+                "rank": 5,
+                "doc_id": "guide-2024",
+                "title": "中国糖尿病防治指南（2024版）",
+                "source": "guidelines/dm_guideline_2024.pdf",
+                "chunk_idx": 102,
+                "score": 23.538226,
+                "ranked_score": 22.361314,
+                "authority_level": 2,
+                "split": "build",
+                "span_hash": "40a94e295376ea6d",
+                "channel": "doc"
+              },
+              {
+                "rank": 6,
+                "channel": "kg",
+                "title": "kg: Symptom:典型糖尿病症状 -> 典型糖尿病症状为糖尿病诊断条件之一 -> Disease:糖尿病 -> 合并其他心血管危险因素的T2DM患者应用阿司匹林治疗",
+                "doc_id": "",
+                "chunk_idx": null,
+                "span_hash": null,
+                "score": null,
+                "split": "kg",
+                "claim": "典型糖尿病症状为糖尿病诊断条件之一",
+                "contested": false,
+                "version_pinned": true
+              },
+              {
+                "rank": 7,
+                "channel": "kg",
+                "title": "kg: Symptom:典型糖尿病症状 -> 典型糖尿病症状为糖尿病诊断条件之一 -> Disease:糖尿病 -> 合并其他心血管危险因素的T2DM患者应用阿司匹林治疗",
+                "doc_id": "",
+                "chunk_idx": null,
+                "span_hash": null,
+                "score": null,
+                "split": "kg",
+                "claim": "合并其他心血管危险因素的T2DM患者应用阿司匹林治疗",
+                "contested": false,
+                "version_pinned": true
+              },
+              {
+                "rank": 8,
+                "channel": "kg",
+                "title": "kg: Symptom:典型糖尿病症状 -> 典型糖尿病症状为糖尿病诊断条件之一 -> Disease:糖尿病 -> HbA1c≥6.5% 作为糖尿病的补充诊断标准",
+                "doc_id": "",
+                "chunk_idx": null,
+                "span_hash": null,
+                "score": null,
+                "split": "kg",
+                "claim": "典型糖尿病症状为糖尿病诊断条件之一",
+                "contested": false,
+                "version_pinned": true
+              },
+              {
+                "rank": 9,
+                "channel": "kg",
+                "title": "kg: Symptom:典型糖尿病症状 -> 典型糖尿病症状为糖尿病诊断条件之一 -> Disease:糖尿病 -> HbA1c≥6.5% 作为糖尿病的补充诊断标准",
+                "doc_id": "",
+                "chunk_idx": null,
+                "span_hash": null,
+                "score": null,
+                "split": "kg",
+                "claim": "HbA1c≥6.5% 作为糖尿病的补充诊断标准",
+                "contested": false,
+                "version_pinned": true
+              },
+              {
+                "rank": 10,
+                "channel": "kg",
+                "title": "kg: Examination:hba1c -> HbA1c≥6.5% 作为糖尿病的补充诊断标准 -> Disease:糖尿病 -> 典型糖尿病症状为糖尿病诊断条件之一",
+                "doc_id": "",
+                "chunk_idx": null,
+                "span_hash": null,
+                "score": null,
+                "split": "kg",
+                "claim": "HbA1c≥6.5% 作为糖尿病的补充诊断标准",
+                "contested": false,
+                "version_pinned": true
+              },
+              {
+                "rank": 11,
+                "channel": "kg",
+                "title": "kg: Examination:hba1c -> HbA1c≥6.5% 作为糖尿病的补充诊断标准 -> Disease:糖尿病 -> 典型糖尿病症状为糖尿病诊断条件之一",
+                "doc_id": "",
+                "chunk_idx": null,
+                "span_hash": null,
+                "score": null,
+                "split": "kg",
+                "claim": "典型糖尿病症状为糖尿病诊断条件之一",
+                "contested": false,
+                "version_pinned": true
+              }
+            ],
+            "context_chars": 3258,
+            "p50_latency_s": 224.29,
+            "tokens_in": 22694,
+            "tokens_out": 45435,
+            "kg_channel": {
+              "seeds": [
+                "Examination:hba1c",
+                "Population:hba1c>8.0%的患者",
+                "Indicator:糖化血红蛋白",
+                "Symptom:典型糖尿病症状",
+                "Disease:1型糖尿病",
+                "Disease:特殊类型糖尿病"
+              ],
+              "n_seeds": 6,
+              "n_edges": 0,
+              "n_paths": 3,
+              "pinned": true,
+              "clock_source": "explicit",
+              "kg_cutoff": "2024-06-01T00:00:00+00:00",
+              "errors": []
+            },
+            "route": "R/L2:该问题针对特定临床情境（新诊断、HbA1c≥9%、症状明显）询问指南推荐起始治疗，属于单一指南知识点的直接检索，无需多步推理或版本对比。"
           }
         ],
         "runs": [
@@ -3511,18 +3786,86 @@
             },
             "reason": "key_facts: 未覆盖必答点7.0%; refusal: 非X型题错误拒答",
             "parse_error": false
+          },
+          {
+            "question_id": "V-002",
+            "pass": 1,
+            "run": 0,
+            "total": 1.0,
+            "type": "V",
+            "latency_s": 134.59,
+            "answer": "<130/80 mmHg（依据：一般糖尿病合并高血压患者，在安全达标的前提下，血压目标 <130/80mmHg 较合适。）",
+            "trace_answer_cite": {
+              "citations": 0,
+              "out_of_range": 0,
+              "no_citation": true,
+              "n_evidence": 5
+            },
+            "reason": "",
+            "parse_error": false
+          },
+          {
+            "question_id": "V-002",
+            "pass": 1,
+            "run": 1,
+            "total": 1.0,
+            "type": "V",
+            "latency_s": 203.42,
+            "answer": "<130/80 mmHg（依据：2020版指南中，糖尿病合并高血压患者的血压目标为<130/80 mmHg。）",
+            "trace_answer_cite": {
+              "citations": 0,
+              "out_of_range": 0,
+              "no_citation": true,
+              "n_evidence": 5
+            },
+            "reason": "全部达标：必答点130/80已覆盖；非拒答题且未编造；引用来源guide-2020真实存在于证据链中；无必答推理步骤；题目未要求安全边界。",
+            "parse_error": false
+          },
+          {
+            "question_id": "V-003",
+            "pass": 1,
+            "run": 0,
+            "total": 0.9,
+            "type": "V",
+            "latency_s": 233.58,
+            "answer": "短期胰岛素强化治疗（2周至3个月）（依据：对于 HbA1c≥9.0% 或空腹血糖 ≥11.1mmol/L 同时伴明显高血糖症状的新诊断 T2DM 患者可考虑实施短期（2周至3个月）胰岛素强化治疗。（A）；对于糖化血红蛋白（HbA1c）≥9.0% 或空腹血糖 ≥11.1 mmol/L 同时伴明显高血糖症状的新诊断 T2DM 患者，可考虑实施短期（2周至3个月）胰岛素强化治疗（A）；新诊断 T2DM 患者如有明显的高血糖症状、酮症或 DKA，首选胰岛素治疗。）",
+            "trace_answer_cite": {
+              "citations": 0,
+              "out_of_range": 0,
+              "no_citation": true,
+              "n_evidence": 11
+            },
+            "reason": "safety: 答案涉及治疗决策但未包含医疗免责/边界声明。",
+            "parse_error": false
+          },
+          {
+            "question_id": "V-003",
+            "pass": 1,
+            "run": 1,
+            "total": 0.9,
+            "type": "V",
+            "latency_s": 215.0,
+            "answer": "短期（2周至3个月）胰岛素强化治疗（依据：对于 HbA1c≥9.0% 或空腹血糖≥11.1mmol/L 同时伴明显高血糖症状的新诊断 T2DM 患者，可考虑实施短期（2周至3个月）胰岛素强化治疗。；对于 HbA1c≥9.0% 或空腹血糖≥11.1mmol/L 同时伴明显高血糖症状的新诊断 T2DM 患者，可考虑实施短期（2周至3个月）胰岛素强化治疗。；新诊断2型糖尿病患者若 HbA1c≥9% 且症状明显，指南推荐的起始治疗为短期（2周至3个月）胰岛素强化治疗。）",
+            "trace_answer_cite": {
+              "citations": 0,
+              "out_of_range": 0,
+              "no_citation": true,
+              "n_evidence": 11
+            },
+            "reason": "safety_boundary未达标：涉及治疗决策但缺少医疗免责/边界声明",
+            "parse_error": false
           }
         ],
-        "level_complete": false,
-        "n_questions_run": 1,
-        "decision_llm_calls": 5,
+        "level_complete": true,
+        "n_questions_run": 3,
+        "decision_llm_calls": 12,
         "pass2_ci95": {
-          "lo": 0.0,
-          "hi": 0.7935
+          "lo": 0.2077,
+          "hi": 0.9385
         },
         "acc_ci95": {
-          "lo": 0.0,
-          "hi": 0.6576
+          "lo": 0.3,
+          "hi": 0.9032
         }
       }
     }
@@ -3614,7 +3957,7 @@
     }
   },
   "e8": {
-    "pin_on_run": "9beec27a-0a1e-460b-9fcc-f7a5946a2a3f",
+    "pin_on_run": "19c136fd-c1ff-47f1-bb5e-39c4dba2b0a7",
     "pin_off_run": "693a16e2-7c9b-4f6a-b702-641dc3d30a83",
     "arm_gold_judging": {
       "pin_on": true,
@@ -3622,9 +3965,9 @@
     },
     "arm_vintage": {
       "pin_on": {
-        "eval_run_id": "9beec27a-0a1e-460b-9fcc-f7a5946a2a3f",
-        "invocation_id": "9b068edb0f8e4a10963a26dbd9a8360d",
-        "recorded_at": "2026-09-21T15:34:29.665700+00:00"
+        "eval_run_id": "19c136fd-c1ff-47f1-bb5e-39c4dba2b0a7",
+        "invocation_id": "f6ebe31871f9422ea1cd5937e11a8d98",
+        "recorded_at": "2026-09-21T15:55:17.509529+00:00"
       },
       "pin_off": {
         "eval_run_id": "693a16e2-7c9b-4f6a-b702-641dc3d30a83",
@@ -3655,11 +3998,11 @@
       },
       "V": {
         "pin_on": {
-          "acc": 0.0,
-          "n_judged": 2,
+          "acc": 0.6667,
+          "n_judged": 6,
           "ci95": {
-            "lo": 0.0,
-            "hi": 0.6576
+            "lo": 0.3,
+            "hi": 0.9032
           }
         },
         "pin_off": {
@@ -3670,7 +4013,7 @@
             "hi": 0.7
           }
         },
-        "delta_acc_on_minus_off": -0.3333
+        "delta_acc_on_minus_off": 0.3334
       }
     },
     "caveat": "数据现实一律以 report['data_reality'] 为准——它每次运行实测（D1 判别性计数 + 构建租户图谱规模），本字段因此**不复述任何会过期的快照数字**（r21 修正：此前这里硬编码了 2026-09-19 的“图谱为空”快照，与同一份 JSON 里 data_reality 的实测值自相矛盾）。\n历史观察（2026-09-19 真库勘察，当时构建租户 6756b0ab 图谱为空、0 实体 / 0 关系）：此时两臂收到完全相同的证据（仅文档通道），E8 的 Δ 衡量的是“钉住机制在真实语料图摄取前不可观测”——机制证明由判别性单测 TestDiscriminativeVersionPin 与 PG 集成测试 test_discriminative_version_pin_on_real_db 承载，不在此粉饰。\n恒久约束：两臂可能来自不同的 invocation（配额窗口分段续跑，见 report['resume']），因此 Δ 只有在 e8['arm_vintage']['same_invocation'] 为 true 时才是同一次受控对比；为 false 时它是两个时间点、可能两个图谱状态下的并置，不得当作配对实验读。"
