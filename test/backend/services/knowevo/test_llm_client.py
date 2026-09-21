@@ -431,3 +431,28 @@ def test_additive_keys_do_not_change_extract_wire_or_cache(monkeypatch):
     judge = router._get_model(llm_client.TIER_MID, 0.0, kind="judge")
     assert extract is not judge
     assert extract.kwargs["extra_body"] == {"thinking": {"type": "disabled"}}
+
+
+def test_last_usage_exposes_most_recent_call_diagnostics(monkeypatch):
+    """T-24 read surface: last_usage() mirrors the last call's usage dict
+    while __call__ keeps its frozen ``-> str`` contract."""
+    llm_client = _install_scripted_model(
+        monkeypatch, content="body", finish_reason="length", reasoning=8192)
+    router = llm_client.LlmRouter(tenant_id=TENANT_A)
+
+    assert router.last_usage() is None  # nothing measured yet
+
+    asyncio.run(router.call_with_usage("p", kind="extract"))
+    first = router.last_usage()
+    assert first["finish_reason"] == "length"
+    assert first["reasoning_tokens"] == 8192
+    # A copy: mutating the returned dict must not corrupt router state.
+    first["finish_reason"] = "mutated"
+    assert router.last_usage()["finish_reason"] == "length"
+
+    # __call__ still returns str, and refreshes the same read surface.
+    monkeypatch.setattr(
+        ScriptedOpenAIModel, "next_finish_reason", "stop", raising=False)
+    out = asyncio.run(router("p", kind="extract"))
+    assert isinstance(out, str)
+    assert router.last_usage()["finish_reason"] == "stop"

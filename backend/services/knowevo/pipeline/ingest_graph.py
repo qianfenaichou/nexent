@@ -33,6 +33,7 @@ import sys
 import time
 import uuid as uuid_mod
 from pathlib import Path
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +53,96 @@ class _EchoLLM:
     async def __call__(self, prompt: str, *, kind: str, **kwargs):
         self.calls.append({"prompt": prompt, "kind": kind, **kwargs})
         return {"entities": [], "edges": []}
+
+
+def _as_int(value: Any) -> int:
+    """Coerce a measured counter to int; an unmeasured value is 0, never
+    estimated."""
+    return int(value) if isinstance(value, (int, float)) else 0
+
+
+def _is_blank_body(raw: Any) -> bool:
+    """True when a call produced no body: blank string, empty dict, or None.
+
+    "No content" (pitfalls #52) and "no entities" (a parsed but empty body)
+    must stay distinguishable. A text LLM path returns raw ``str``, so a blank
+    or whitespace-only string is "no content". The offline echo path and the
+    paced ingest driver return a parsed ``dict``: there an *empty* dict is the
+    failure signal ("no content"), while a non-empty dict such as
+    ``{"entities": [], "edges": []}`` is "no entities" and is NOT blank.
+    """
+    if raw is None:
+        return True
+    if isinstance(raw, str):
+        return not raw.strip()
+    if isinstance(raw, dict):
+        return not raw
+    return False
+
+
+class _SpanDiagnostics:
+    """Span-scoped adapter that aggregates call-level LLM diagnostics.
+
+    pitfalls #52/#55 沉淀机制 (product side): one ``kg_extract_run_t`` row must
+    be able to answer "why did this span produce no entities?". A single span's
+    extraction window may issue several calls (retry / tier escalation), so the
+    ledger row carries the span-level aggregate:
+
+        llm_calls           - calls issued for this span
+        empty_content_calls - calls whose body was blank
+        reasoning_tokens    - summed provider reasoning tokens
+        finish_reasons      - ``{finish_reason: count}``
+
+    Blank-ness is decided from the returned body with the same rule the call
+    layer logs (``str(text).strip() == ""``), extended to the parsed-dict path
+    (``_is_blank_body``). ``reasoning_tokens`` / ``finish_reason`` are read
+    from the injected callable's additive ``last_usage()`` surface
+    (``LlmRouter`` exposes it). A callable without that surface (e.g. the
+    offline echo LLM) still gets the two fields that separate "no content" from
+    "no entities"; its reasoning/finish counters honestly stay empty.
+    """
+
+    def __init__(self, llm: Any):
+        self._llm = llm
+        self.reset()
+
+    def reset(self) -> None:
+        """Open a new span window (called once per span before extraction)."""
+        self.llm_calls = 0
+        self.empty_content_calls = 0
+        self.reasoning_tokens = 0
+        self.finish_reasons: dict[str, int] = {}
+
+    def _read_usage(self) -> dict | None:
+        getter = getattr(self._llm, "last_usage", None)
+        return getter() if callable(getter) else None
+
+    async def __call__(self, prompt: str, *, kind: str, **kwargs):
+        """Forward one call, then fold its diagnosis into the span window."""
+        raw = await self._llm(prompt, kind=kind, **kwargs)
+        self.llm_calls += 1
+        if _is_blank_body(raw):
+            self.empty_content_calls += 1
+        usage = self._read_usage()
+        if usage:
+            self.reasoning_tokens += _as_int(usage.get("reasoning_tokens"))
+            # Same shape as the ingest driver's usage JSON: a provider-omitted
+            # finish_reason is tallied under the key "None", so the counts sum
+            # to the number of calls that reported usage (never estimated).
+            key = str(usage.get("finish_reason"))
+            self.finish_reasons[key] = self.finish_reasons.get(key, 0) + 1
+        return raw
+
+    def snapshot(self) -> dict:
+        """Ledger payload for ``record_extract_run`` (finish_reasons may be
+        None when the callable reports no usage - keeps the JSONB column
+        honest instead of fabricating an empty-but-measured object)."""
+        return {
+            "llm_calls": self.llm_calls,
+            "empty_content_calls": self.empty_content_calls,
+            "reasoning_tokens": self.reasoning_tokens,
+            "finish_reasons": dict(self.finish_reasons) or None,
+        }
 
 
 async def _run(args: argparse.Namespace) -> int:
@@ -88,14 +179,17 @@ async def _run(args: argparse.Namespace) -> int:
         return 0
 
     snapshot = await store.load_ontology_snapshot(tenant)
-    svc = KGService(store=store,
-                    llm=None if args.tables_only else _EchoLLM(),
-                    ontology=snapshot, tenant_id=tenant)
+    # T-24: wrap the injected LLM so each span's call-level diagnostics
+    # (llm_calls / empty_content_calls / reasoning_tokens / finish_reasons)
+    # aggregate and land in kg_extract_run_t alongside the span's ledger row.
+    diag = None if args.tables_only else _SpanDiagnostics(_EchoLLM())
+    svc = KGService(store=store, llm=diag, ontology=snapshot, tenant_id=tenant)
 
     spans_total = 0
     extracted = 0
     skipped = 0
     tokens = 0
+    llm_calls_total = 0
     errors: list[str] = []
     merged = {"added": 0, "merged": 0, "superseded": 0,
               "contended": 0, "pending": 0}
@@ -128,6 +222,7 @@ async def _run(args: argparse.Namespace) -> int:
             if await store.is_extract_done(tenant, span.span_hash()):
                 skipped += 1
                 continue
+            record_diagnostics: dict = {}
             if modality == "table":
                 result = svc.extract_table(span)
                 channel = "table"
@@ -135,8 +230,11 @@ async def _run(args: argparse.Namespace) -> int:
                 skipped += 1  # LLM channel off; text spans are skipped
                 continue
             else:
+                diag.reset()
                 result = await svc.extract(span)
                 channel = "llm"
+                record_diagnostics = diag.snapshot()
+                llm_calls_total += diag.llm_calls
             report = await svc.merge_delta([result])
             extracted += 1
             tokens += int(getattr(result, "tokens_spent", 0))
@@ -145,7 +243,8 @@ async def _run(args: argparse.Namespace) -> int:
                 merged[key] += getattr(report, key, 0)
             await store.record_extract_run(
                 tenant, run_id, span.span_hash(), channel,
-                int(getattr(result, "tokens_spent", 0)))
+                int(getattr(result, "tokens_spent", 0)),
+                **record_diagnostics)
             if spans_total % args.checkpoint == 0:
                 logger.info("progress: %d spans, %d extracted, %d skipped",
                             spans_total, extracted, skipped)
@@ -164,8 +263,7 @@ async def _run(args: argparse.Namespace) -> int:
         "wall_seconds": wall_seconds,
         "cost_ledger": {
             "run_id": str(run_id), "stage": "ingest_graph",
-            "tokens": tokens, "llm_calls": len(
-                getattr(svc.llm, "calls", []) if svc.llm is not None else []),
+            "tokens": tokens, "llm_calls": llm_calls_total,
             "wall_seconds": wall_seconds,
         },
     }

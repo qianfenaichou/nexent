@@ -170,6 +170,11 @@ class LlmRouter:
         self._tenant_id = tenant_id
         self._models: dict[tuple[str, float, bool], Any] = {}
         self._lock = threading.Lock()
+        # T-24 read surface: the most recent call's usage dict, exposed via
+        # last_usage() so a span-level caller can aggregate call-level
+        # diagnostics (finish_reason / reasoning_tokens) WITHOUT changing the
+        # frozen ``__call__ -> str`` contract.
+        self._last_usage: dict[str, Any] | None = None
 
     def _resolve_model_config(self, tier: str) -> dict[str, Any]:
         """Pick the tier model id first, then fall back to the tenant LLM.
@@ -246,6 +251,22 @@ class LlmRouter:
             prompt, kind=kind, tier=tier, temperature=temperature)
         return content
 
+    def last_usage(self) -> dict[str, Any] | None:
+        """Copy of the most recent call's usage dict, or None before any call.
+
+        T-24 (pitfalls #52/#55 沉淀机制, product side): ``__call__`` keeps
+        returning ``str`` for every existing caller; this additive read
+        surface lets a span-level caller (pipeline/ingest_graph.py) aggregate
+        ``reasoning_tokens`` and ``finish_reason`` per call into the
+        kg_extract_run_t ledger without re-plumbing the injected-``llm``
+        contract. A copy is returned so callers cannot mutate router state.
+        """
+        with self._lock:
+            return (
+                dict(self._last_usage)
+                if self._last_usage is not None else None
+            )
+
     async def call_with_usage(
         self,
         prompt: str,
@@ -308,6 +329,8 @@ class LlmRouter:
             "finish_reason": finish_reason,
         }
         _record_call_outcome(kind, text, finish_reason, reasoning_tokens)
+        with self._lock:
+            self._last_usage = usage
         return text, usage
 
 

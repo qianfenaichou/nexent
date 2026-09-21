@@ -28,6 +28,7 @@ from database.knowevo_db import (
     KNOWEVO_MODELS,
     DocAsset,
     KgEntity,
+    KgExtractRun,
     KgRelation,
     KnowevoTableBase,
     SkillTemplate,
@@ -325,6 +326,15 @@ def _sample_row(model, tenant):
             tenant_id=tenant, testset_hash="abc123",
             config={"ablation_level": "full"}, metrics={"acc": 0.9},
         )
+    if model is KgExtractRun:
+        # T-24: diagnostics default to 0 / 0 / 0 (finish_reasons nullable).
+        # A literal (not dict(...)) keeps ruff C408 at the pre-change count.
+        return {
+            "tenant_id": tenant, "run_id": uuid_mod.uuid4(),
+            "span_hash": uuid_mod.uuid4().hex, "channel": "llm",
+            "status": "done", "tokens_spent": 0,
+            "llm_calls": 0, "empty_content_calls": 0, "reasoning_tokens": 0,
+        }
     raise AssertionError(f"no sample row for {model.__tablename__}")
 
 
@@ -447,3 +457,37 @@ class TestMigrationFileContract:
         assert "CREATE INDEX IF NOT EXISTS" in sql
         # Unique/dependency statements that cannot be IF NOT EXISTS guarded
         # are fine because CREATE TABLE IF NOT EXISTS short-circuits them.
+
+
+# ---------------------------------------------------------------------------
+# T-24 (kw_009): extraction diagnostics - model columns + idempotent migration
+# ---------------------------------------------------------------------------
+
+class TestExtractRunDiagnosticsColumns:
+    def test_diagnostic_columns_exist_with_frozen_types(self):
+        from sqlalchemy.dialects.postgresql import JSONB
+        cols = KgExtractRun.__table__.columns
+        for name in ("llm_calls", "empty_content_calls", "reasoning_tokens",
+                     "finish_reasons"):
+            assert name in cols, f"kg_extract_run_t missing {name}"
+        assert isinstance(cols["finish_reasons"].type, JSONB)
+        # Counters are NOT NULL with a server default, so pre-kw_009 rows and
+        # callers that omit diagnostics stay readable (backward compatible).
+        for name in ("llm_calls", "empty_content_calls", "reasoning_tokens"):
+            assert cols[name].nullable is False, name
+            assert cols[name].server_default is not None, name
+
+    def test_kw_009_migration_is_idempotent_additive_only(self):
+        migration = os.path.join(
+            os.path.dirname(__file__), "..", "..", "..",
+            "deploy", "sql", "migrations",
+            "v2.5.5_kw_009_extract_run_diagnostics.sql",
+        )
+        with open(migration, "r", encoding="utf-8") as handle:
+            sql = handle.read()
+        # Additive + idempotent: four guarded ADD COLUMN, no destructive DDL,
+        # no table recreation (kg_extract_run_t column meanings stay frozen).
+        assert sql.count("\n    ADD COLUMN IF NOT EXISTS") == 4
+        assert "finish_reasons JSONB" in sql
+        assert "DROP COLUMN" not in sql
+        assert "RENAME" not in sql

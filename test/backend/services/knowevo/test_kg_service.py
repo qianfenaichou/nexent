@@ -119,6 +119,7 @@ class FakeStore:
         self.evidence: dict = {}
         self.pending: dict[str, dict] = {}    # key: (tenant, name)
         self.extract_runs: set[tuple[str, str]] = set()
+        self.extract_run_rows: list[dict] = []  # T-24 ledger rows
         self.authority: dict = {}             # doc_id -> authority_level
         self.published: dict = {}             # doc_id -> publication time
 
@@ -330,8 +331,12 @@ class FakeStore:
         return (tenant_id, span_hash) in self.extract_runs
 
     async def record_extract_run(self, tenant_id, run_id, span_hash,
-                                 channel, tokens_spent):
+                                 channel, tokens_spent, **diagnostics):
+        # Mirrors PgStore: diagnostics are optional and additive (T-24).
         self.extract_runs.add((tenant_id, span_hash))
+        self.extract_run_rows.append({
+            "tenant_id": tenant_id, "run_id": run_id, "span_hash": span_hash,
+            "channel": channel, "tokens_spent": tokens_spent, **diagnostics})
         return True
 
 
@@ -1418,3 +1423,184 @@ class TestPgIntegration:
                     session.query(model).filter(
                         model.tenant_id == tenant).delete()
                 session.flush()
+
+
+# ---------------------------------------------------------------------------
+# T-24 (kw_009): extraction diagnostics - span aggregation + ledger write
+# (pitfalls #52/#55 沉淀机制, product side). No database, no LLM.
+# ---------------------------------------------------------------------------
+
+class _UsageScriptedLLM:
+    """Scripted callable exposing LlmRouter's additive ``last_usage()``.
+
+    ``script`` is a list of ``(raw_body, usage)`` pairs consumed one per call,
+    so a test drives the exact "N calls, M blank" shape plus the per-call
+    ``finish_reason`` / ``reasoning_tokens`` the span aggregate reads.
+    """
+
+    def __init__(self, script):
+        self._script = list(script)
+        self._usage = None
+
+    async def __call__(self, prompt, *, kind, **kwargs):
+        raw, usage = self._script.pop(0)
+        self._usage = usage
+        return raw
+
+    def last_usage(self):
+        return self._usage
+
+
+class _DictLLM:
+    """Callable without ``last_usage()``: the offline echo / driver shape."""
+
+    def __init__(self, bodies):
+        self._bodies = list(bodies)
+
+    async def __call__(self, prompt, *, kind, **kwargs):
+        return self._bodies.pop(0)
+
+
+class TestSpanDiagnosticsAggregation:
+    """pipeline/ingest_graph._SpanDiagnostics aggregation semantics (T-24)."""
+
+    @pytest.mark.asyncio
+    async def test_n_calls_with_m_blank_aggregate(self):
+        from services.knowevo.pipeline.ingest_graph import _SpanDiagnostics
+
+        inner = _UsageScriptedLLM([
+            ("", {"reasoning_tokens": 8192, "finish_reason": "length"}),
+            ('{"entities": []}',
+             {"reasoning_tokens": 0, "finish_reason": "stop"}),
+            ("   ", {"reasoning_tokens": 5, "finish_reason": None}),
+        ])
+        diag = _SpanDiagnostics(inner)
+        for _ in range(3):
+            await diag("prompt", kind="extract")
+
+        # N=3 calls, M=2 blank; reasoning summed; finish_reasons counted with
+        # the provider-omitted case keyed "None" (same shape as the paced
+        # ingest driver's usage JSON, so the counts sum to reported calls).
+        assert diag.snapshot() == {
+            "llm_calls": 3,
+            "empty_content_calls": 2,
+            "reasoning_tokens": 8197,
+            "finish_reasons": {"length": 1, "stop": 1, "None": 1},
+        }
+
+    @pytest.mark.asyncio
+    async def test_reset_opens_a_new_span_window(self):
+        from services.knowevo.pipeline.ingest_graph import _SpanDiagnostics
+
+        inner = _UsageScriptedLLM([
+            ("", {"reasoning_tokens": 10, "finish_reason": "length"}),
+            ("body", {"reasoning_tokens": 1, "finish_reason": "stop"}),
+        ])
+        diag = _SpanDiagnostics(inner)
+        await diag("p", kind="extract")
+        assert diag.llm_calls == 1 and diag.empty_content_calls == 1
+        diag.reset()
+        await diag("p", kind="extract")
+        assert diag.snapshot() == {
+            "llm_calls": 1, "empty_content_calls": 0,
+            "reasoning_tokens": 1, "finish_reasons": {"stop": 1}}
+
+    @pytest.mark.asyncio
+    async def test_empty_dict_is_blank_but_parsed_empty_is_not(self):
+        """The dict path keeps "no content" apart from "no entities" (#52)."""
+        from services.knowevo.pipeline.ingest_graph import _SpanDiagnostics
+
+        diag = _SpanDiagnostics(_DictLLM([{}, {"entities": [], "edges": []}]))
+        await diag("p", kind="extract")   # {} = driver failure -> no content
+        await diag("p", kind="extract")   # parsed but empty -> no entities
+
+        snap = diag.snapshot()
+        assert snap["llm_calls"] == 2
+        assert snap["empty_content_calls"] == 1
+        # No last_usage() surface: reasoning/finish stay unmeasured, never
+        # fabricated (finish_reasons is None, not a bogus empty object).
+        assert snap["reasoning_tokens"] == 0
+        assert snap["finish_reasons"] is None
+
+    @pytest.mark.asyncio
+    async def test_router_like_callable_feeds_the_aggregate(self):
+        """A LlmRouter-shaped callable (str body + last_usage) aggregates."""
+        from services.knowevo.pipeline.ingest_graph import _SpanDiagnostics
+
+        class _RouterLike:
+            def __init__(self):
+                self._usage = None
+
+            async def __call__(self, prompt, *, kind, **kwargs):
+                self._usage = {"reasoning_tokens": 8192,
+                               "finish_reason": "length"}
+                return ""
+
+            def last_usage(self):
+                return self._usage
+
+        diag = _SpanDiagnostics(_RouterLike())
+        await diag("p", kind="extract")
+        assert diag.snapshot() == {
+            "llm_calls": 1, "empty_content_calls": 1,
+            "reasoning_tokens": 8192, "finish_reasons": {"length": 1}}
+
+
+class TestRecordExtractRunDiagnostics:
+    """record_extract_run gains optional diagnostics; legacy calls unchanged."""
+
+    @pytest.mark.asyncio
+    async def test_legacy_call_without_diagnostics_is_backward_compatible(
+            self, monkeypatch):
+        import database.knowevo_db as kdb
+        from services.knowevo.kg_service import PgStore
+
+        captured = {}
+
+        def fake_create_row(model, **values):
+            captured.update(values)
+            return {"id": "00000000-0000-0000-0000-000000000000"}
+
+        monkeypatch.setattr(kdb, "create_row", fake_create_row)
+        ok = await PgStore().record_extract_run(
+            TENANT_A, uuid_mod.uuid4(), "hash-legacy", "llm", 7)
+
+        assert ok is True
+        assert captured["tokens_spent"] == 7
+        assert captured["status"] == "done"
+        assert captured["llm_calls"] == 0
+        assert captured["empty_content_calls"] == 0
+        assert captured["reasoning_tokens"] == 0
+        assert captured["finish_reasons"] is None
+
+    @pytest.mark.asyncio
+    async def test_diagnostics_are_written_to_the_ledger_row(self, monkeypatch):
+        import database.knowevo_db as kdb
+        from services.knowevo.kg_service import PgStore
+
+        captured = {}
+
+        def fake_create_row(model, **values):
+            captured.update(values)
+            return {"id": "00000000-0000-0000-0000-000000000000"}
+
+        monkeypatch.setattr(kdb, "create_row", fake_create_row)
+        await PgStore().record_extract_run(
+            TENANT_A, uuid_mod.uuid4(), "hash-diag", "llm", 12,
+            llm_calls=3, empty_content_calls=2, reasoning_tokens=8197,
+            finish_reasons={"length": 1, "stop": 2})
+
+        assert captured["llm_calls"] == 3
+        assert captured["empty_content_calls"] == 2
+        assert captured["reasoning_tokens"] == 8197
+        assert captured["finish_reasons"] == {"length": 1, "stop": 2}
+
+    @pytest.mark.asyncio
+    async def test_fake_store_round_trips_diagnostics(self):
+        store = FakeStore()
+        await store.record_extract_run(
+            TENANT_A, uuid_mod.uuid4(), "h", "llm", 0,
+            llm_calls=2, empty_content_calls=1, reasoning_tokens=9,
+            finish_reasons={"length": 1})
+        assert store.extract_run_rows[-1]["empty_content_calls"] == 1
+        assert store.extract_run_rows[-1]["llm_calls"] == 2
