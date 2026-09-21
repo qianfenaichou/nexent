@@ -69,7 +69,6 @@ import argparse
 import asyncio
 import json
 import logging
-import re
 import statistics
 import sys
 import time
@@ -102,7 +101,15 @@ from services.knowevo.pipeline.eval_v1 import (
     cross_table,
     wilson_interval,
 )
+from services.knowevo.seed_terms import MAX_SEED_LOOKUPS, extract_seed_terms
 from services.knowevo.version_pin import resolve_version_clock
+
+# T-26: seed extraction moved to a service module so the production
+# decision-card entry and this harness share one implementation. It is
+# re-exported here (still readable as ``ablation.extract_seed_terms`` /
+# ``ablation.MAX_SEED_LOOKUPS``) so every existing caller and the T-22
+# evaluation semantics are unchanged.
+__all__ = ["MAX_SEED_LOOKUPS", "extract_seed_terms"]
 
 logger = logging.getLogger(__name__)
 
@@ -121,7 +128,7 @@ LEVEL_ALIASES = {"A1": "A1_pure_rag", "A2": "A2_graph",
 MULTIHOP_DEPTH = 2
 MULTIHOP_BEAM = 3
 SEED_TOP_K = 3
-MAX_SEED_LOOKUPS = 12
+# MAX_SEED_LOOKUPS is imported from services.knowevo.seed_terms above.
 
 # E8 default pin cutoff. The corpus carries two guideline editions
 # (guide-2020 published_at=2021-04-01, guide-2024 published_at=2025-01-01,
@@ -163,33 +170,11 @@ E8_CAVEAT = (
 # Seed extraction + graph channel (B1/B2: wire the existing capabilities)
 # ---------------------------------------------------------------------------
 
-_ASCII_TERM = re.compile(r"[A-Za-z][A-Za-z0-9-]{1,}")
-_CJK_RUN = re.compile(r"[\u4e00-\u9fff]{2,}")
-
-
-def extract_seed_terms(question: str, max_terms: int = MAX_SEED_LOOKUPS
-                       ) -> list[str]:
-    """Deterministic seed terms for the kg entity-lookup channel.
-
-    ASCII words plus CJK runs; a CJK run longer than 6 chars also yields
-    3-char sliding windows (step 2) - the store's ILIKE lookup matches
-    names *containing* the query, so a query must be a substring of an
-    entity name for the name to be found. Order-preserving, deduped,
-    capped - the same few terms for the same question on every run, which
-    is what keeps the ablation reproducible.
-    """
-    terms: list[str] = list(_ASCII_TERM.findall(question or ""))
-    for run in _CJK_RUN.findall(question or ""):
-        terms.append(run)
-        if len(run) > 6:
-            terms.extend(run[i:i + 3] for i in range(0, len(run) - 2, 2))
-    seen: set[str] = set()
-    out: list[str] = []
-    for term in terms:
-        if term not in seen:
-            seen.add(term)
-            out.append(term)
-    return out[:max_terms]
+# ``extract_seed_terms`` / ``MAX_SEED_LOOKUPS`` are imported from
+# services.knowevo.seed_terms (single implementation shared with the
+# production decision-card entry - T-26). The function consumed below is
+# byte-for-byte the one the T-22 evaluation has always used, so the E8/A4
+# semantics are unchanged.
 
 
 async def seed_entities(question: str, tenant_id: str, store: Any

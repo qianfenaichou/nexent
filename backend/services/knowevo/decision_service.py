@@ -584,11 +584,27 @@ class DecisionService:
         if rel_types is not None or self.llm is None:
             return [base] * levels
         vocabulary = [str(r) for r in (self.ontology.get("rel_types") or [])]
+        known = set(vocabulary)
+        if not known:
+            # No relation vocabulary: every type the planner could propose
+            # is unverifiable, and an unverifiable type must never become a
+            # hard filter. The filter travels into
+            # ``store.neighbors(rel_types=[...])``, so one hallucinated name
+            # matches zero edges, the walk breaks at the first level and the
+            # card reports "no evidence" for knowledge that does exist -
+            # which is what T-26 caught the production panel doing on
+            # questions the evaluation chain could reach (the two chains
+            # differed only in this: production passes no ontology, so this
+            # guard was disabled). "Walk everything" is the documented
+            # degradation for a plan that cannot be checked, so it is the
+            # only honest plan here and the planner LLM is not called.
+            logger.info("no relation vocabulary available; hop plan degrades "
+                        "to unfiltered (question=%s)", (question or "")[:40])
+            return [base] * levels
         system, user = _render_prompt(
             "knowevo_hops", lang=self.lang, question=question,
             seeds=", ".join(seeds[:10]),
-            rel_vocabulary=json.dumps(vocabulary, ensure_ascii=False)
-            if vocabulary else "(ontology relation vocabulary unavailable)")
+            rel_vocabulary=json.dumps(vocabulary, ensure_ascii=False))
         try:
             raw = await self._call_llm(system, user, kind="hop_plan",
                                        tier=TIER_MID)
@@ -598,14 +614,13 @@ class DecisionService:
         data = _parse_json(raw)
         if not isinstance(data, dict):
             return [base] * levels
-        known = set(vocabulary)
         plans: list[HopPlan] = []
         for hop in (data.get("hops") or [])[:levels]:
             if not isinstance(hop, dict):
                 plans.append(HopPlan())
                 continue
             types = [str(t) for t in (hop.get("rel_types") or [])
-                     if not known or str(t) in known]
+                     if str(t) in known]
             plans.append(HopPlan(rel_types=types or None,
                                  reverse=bool(hop.get("reverse", False))))
         while len(plans) < levels:

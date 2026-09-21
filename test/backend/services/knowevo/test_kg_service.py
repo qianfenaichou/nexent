@@ -53,6 +53,7 @@ from services.knowevo.schemas import (
     cosine,
     normalize_name_key,
 )
+from services.knowevo.seed_terms import extract_seed_terms
 
 TENANT_A = "11111111-1111-1111-1111-111111111111"
 TENANT_B = "22222222-2222-2222-2222-222222222222"
@@ -1604,3 +1605,43 @@ class TestRecordExtractRunDiagnostics:
             finish_reasons={"length": 1})
         assert store.extract_run_rows[-1]["empty_content_calls"] == 1
         assert store.extract_run_rows[-1]["llm_calls"] == 2
+
+
+class TestSharedSeedTerms:
+    """T-26: one seed splitter for both KnowEvo chains.
+
+    The production decision-card entry and the T-22 evaluation harness must
+    seed the graph walk identically: the divergence between them (whole
+    sentence vs word-level terms) is what made the panel refuse
+    sentence-length questions the ablation could answer.
+    """
+
+    def test_ablation_reexports_the_shared_implementation(self):
+        from services.knowevo import seed_terms
+        from services.knowevo.pipeline import ablation
+
+        assert ablation.extract_seed_terms is seed_terms.extract_seed_terms
+        assert ablation.MAX_SEED_LOOKUPS == seed_terms.MAX_SEED_LOOKUPS, (
+            "the T-22 harness and the production card must share one "
+            "lookup bound, not two copies that can drift")
+
+    def test_ascii_words_and_cjk_terms_are_produced(self):
+        terms = extract_seed_terms("SGLT2抑制剂通过哪个器官排泄葡萄糖？")
+        assert "SGLT2" in terms
+        assert any("抑制剂" in t for t in terms)
+
+    def test_long_run_yields_substring_windows(self):
+        run = "糖尿病前期患者应给予什么干预"
+        terms = extract_seed_terms(run)
+        assert run in terms
+        assert "糖尿病" in terms, (
+            "the store matches names containing the query, so a window that "
+            "lands inside a short entity name is what makes seeding work")
+
+    def test_dedup_and_cap(self):
+        terms = extract_seed_terms("糖尿病前期" * 4, max_terms=3)
+        assert len(terms) == 3
+        assert len(set(terms)) == len(terms)
+
+    def test_empty_question_yields_no_terms(self):
+        assert extract_seed_terms("") == []
