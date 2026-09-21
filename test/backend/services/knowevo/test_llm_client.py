@@ -39,6 +39,10 @@ FAKE_MODELS = {
         "model_type": "chat",
         "base_url": "https://api.example.com/v1",
         "api_key": "sk-t1",
+        # R20 review P2-2: the cap must be declared, otherwise both the
+        # extract (None) and non-extract (configured) assertions below are
+        # vacuous - config.get("max_output_tokens") would be None for both.
+        "max_output_tokens": 8192,
     },
     (TENANT_B, 999): {
         "model_id": 999,
@@ -56,7 +60,7 @@ FAKE_MODELS = {
 @pytest.fixture(autouse=True)
 def _patch_sources(monkeypatch):
     """Point the wiring at in-memory model records."""
-    import services.knowevo.llm_client as llm_client
+    from services.knowevo import llm_client
 
     def fake_get_model_by_model_id(model_id, tenant_id=None):
         return FAKE_MODELS.get((tenant_id, int(model_id)))
@@ -107,7 +111,7 @@ class SimpleContent:
 
 def test_router_uses_tier_model_id_over_default(monkeypatch):
     """Small tier must resolve via KW_LLM_SMALL_MODEL_ID, not tenant default."""
-    import services.knowevo.llm_client as llm_client
+    from services.knowevo import llm_client
 
     monkeypatch.setattr(
         llm_client, "KW_LLM_SMALL_MODEL_ID", "111")
@@ -124,7 +128,7 @@ def test_router_uses_tier_model_id_over_default(monkeypatch):
 
 def test_callable_contract_returns_str(monkeypatch):
     """The injected-llm signature (prompt, kind, tier, temperature) -> str."""
-    import services.knowevo.llm_client as llm_client
+    from services.knowevo import llm_client
 
     monkeypatch.setattr(llm_client, "KW_LLM_MID_MODEL_ID", "222")
     router = llm_client.LlmRouter(tenant_id=TENANT_A)
@@ -135,7 +139,7 @@ def test_callable_contract_returns_str(monkeypatch):
 
 def test_fallback_to_tenant_llm(monkeypatch):
     """Tenant with only a default LLM still resolves (run.py fallback)."""
-    import services.knowevo.llm_client as llm_client
+    from services.knowevo import llm_client
 
     monkeypatch.setattr(llm_client, "KW_LLM_SMALL_MODEL_ID", "")
     monkeypatch.setattr(llm_client, "KW_LLM_MID_MODEL_ID", "")
@@ -147,7 +151,7 @@ def test_fallback_to_tenant_llm(monkeypatch):
 
 def test_unconfigured_raises_clear_error(monkeypatch):
     """No tier id and no tenant default -> LLMConfigurationError."""
-    import services.knowevo.llm_client as llm_client
+    from services.knowevo import llm_client
 
     monkeypatch.setattr(llm_client, "KW_LLM_SMALL_MODEL_ID", "")
     monkeypatch.setattr(llm_client, "KW_LLM_MID_MODEL_ID", "")
@@ -159,7 +163,7 @@ def test_unconfigured_raises_clear_error(monkeypatch):
 
 def test_model_cached_per_tier_temperature(monkeypatch):
     """Same (tier, temperature) reuses the OpenAIModel instance."""
-    import services.knowevo.llm_client as llm_client
+    from services.knowevo import llm_client
 
     monkeypatch.setattr(llm_client, "KW_LLM_MID_MODEL_ID", "222")
     router = llm_client.LlmRouter(tenant_id=TENANT_A)
@@ -172,17 +176,17 @@ def test_extract_kind_disables_thinking(monkeypatch):
     """r19: extraction must not spend the output cap on a reasoning chain."""
     import asyncio
 
-    import services.knowevo.llm_client as llm_client
+    from services.knowevo import llm_client
 
     monkeypatch.setattr(llm_client, "KW_LLM_MID_MODEL_ID", "222")
     router = llm_client.LlmRouter(tenant_id=TENANT_A)
     model = router._get_model(
         llm_client.TIER_MID, temperature=0.0, kind="extract")
     assert model.kwargs["extra_body"] == {"thinking": {"type": "disabled"}}
-    # No explicit cap for extraction: the tenant's 8192 cap is what let a
-    # reasoning chain crowd out the JSON, and raising it trips the gateway
-    # tpm/rpm budget (r19: HTTP 429 at 32768). With thinking off the
-    # provider default is the measured-safe choice.
+    # No client-level cap for extraction. Fixture model 222 declares 8192
+    # (r20 review P2-2), so this assertion is discriminating - and cleanup
+    # only: the generate() path never forwarded this attribute, the wire cap
+    # that truncated the JSON was the provider default (see llm_client note).
     assert model.kwargs["max_output_tokens"] is None
     # The assertion above is about the CLIENT and is not enough: smolagents'
     # generate() builds its body from `self.kwargs`, which stays empty for a
@@ -198,7 +202,7 @@ def test_other_kinds_send_no_provider_extras(monkeypatch):
     """judge/align/route/render/hop keep the provider default (no extras)."""
     import asyncio
 
-    import services.knowevo.llm_client as llm_client
+    from services.knowevo import llm_client
 
     monkeypatch.setattr(llm_client, "KW_LLM_MID_MODEL_ID", "222")
     router = llm_client.LlmRouter(tenant_id=TENANT_A)
@@ -206,7 +210,10 @@ def test_other_kinds_send_no_provider_extras(monkeypatch):
         model = router._get_model(
             llm_client.TIER_MID, temperature=0.0, kind=kind)
         assert model.kwargs["extra_body"] is None, kind
-        assert model.kwargs["max_output_tokens"] is None, kind
+        # Fixture model 222 declares 8192, so this pins the non-extract
+        # branch to the configured cap (r20 review P2-2): only the extract
+        # branch may blank it.
+        assert model.kwargs["max_output_tokens"] == 8192, kind
         FakeOpenAIModel.last_generate_kwargs = None
         asyncio.run(router.call_with_usage("prompt", kind=kind))
         assert FakeOpenAIModel.last_generate_kwargs == {}, kind
@@ -214,7 +221,7 @@ def test_other_kinds_send_no_provider_extras(monkeypatch):
 
 def test_extract_and_chat_clients_cached_separately(monkeypatch):
     """One cached client per kind class: extract is reused, chat is distinct."""
-    import services.knowevo.llm_client as llm_client
+    from services.knowevo import llm_client
 
     monkeypatch.setattr(llm_client, "KW_LLM_MID_MODEL_ID", "222")
     router = llm_client.LlmRouter(tenant_id=TENANT_A)
@@ -233,7 +240,7 @@ def test_call_with_usage_routes_extract_to_thinking_disabled_client(monkeypatch)
     """The frozen async contract must pick the client by kind."""
     import asyncio
 
-    import services.knowevo.llm_client as llm_client
+    from services.knowevo import llm_client
 
     monkeypatch.setattr(llm_client, "KW_LLM_MID_MODEL_ID", "222")
     router = llm_client.LlmRouter(tenant_id=TENANT_A)

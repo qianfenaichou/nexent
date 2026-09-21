@@ -43,14 +43,16 @@ TIER_LARGE = "large"
 # only; every other kind (judge / route / render / hop / align) keeps the
 # provider default.
 _EXTRACT_EXTRA_BODY = {"thinking": {"type": "disabled"}}
-# Extraction deliberately sends no explicit output cap. The tenant's 8192
-# cap is what turned a reasoning chain into an empty extraction in the
-# first place, and raising it to 32768 is rejected by the sensenova gateway
-# as over the tpm/rpm budget (HTTP 429 insufficient_quota, r19 streaming
-# probe). With thinking disabled the provider's own default cap carries the
-# JSON comfortably (r19 probe: 956 content chars / 333 completion tokens /
-# finish_reason=stop), so None is both the safe and the measured choice.
-# Non-extract kinds keep the bounded evaluation cap as before.
+# Extraction leaves the client-level output cap unset. Honest attribution
+# (r20 review P2-4): the causal lever is the per-call `thinking` flag above.
+# The generate() path assembles its request body from self.kwargs, so this
+# client attribute never reached the wire for any kind (r19 wire probe:
+# max_tokens_on_wire=null); the 8192 that truncated the JSON was the
+# provider's own default. Leaving it unset is kept as a deliberate cleanup:
+# with thinking disabled the provider default measured comfortable (r19
+# probe: 956 content chars / 333 completion tokens / finish_reason=stop),
+# and raising it to 32768 trips the gateway tpm/rpm budget (HTTP 429, r19
+# streaming probe). Non-extract kinds keep the previously configured value.
 
 # Read live (not frozen at import) so env overrides and tests can patch
 # the module constants after import.
@@ -74,16 +76,17 @@ class LLMConfigurationError(RuntimeError):
 class LlmRouter:
     """Resolve a model config per tier and expose the async LLM callable.
 
-    One OpenAIModel instance is cached per ``(tier, temperature)`` pair so
-    repeated extraction/adjudication calls reuse the client instead of
-    re-resolving configs. The ``__call__`` signature matches the injected
-    ``llm`` contract exactly; ``kind`` is carried for logging and the
-    cost ledger.
+    One OpenAIModel instance is cached per ``(tier, temperature,
+    disable_thinking)`` triple so repeated extraction/adjudication calls
+    reuse the client instead of re-resolving configs (r20 review P2-3: the
+    key grew a boolean when the extract path started disabling thinking).
+    The ``__call__`` signature matches the injected ``llm`` contract
+    exactly; ``kind`` is carried for logging and the cost ledger.
     """
 
     def __init__(self, tenant_id: str):
         self._tenant_id = tenant_id
-        self._models: dict[tuple[str, float], Any] = {}
+        self._models: dict[tuple[str, float, bool], Any] = {}
         self._lock = threading.Lock()
 
     def _resolve_model_config(self, tier: str) -> dict[str, Any]:
