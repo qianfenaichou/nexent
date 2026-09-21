@@ -1,11 +1,11 @@
 {
   "task": "T-22",
   "partial": true,
-  "generated_at": "2026-09-19T03:59:31.064620+00:00",
+  "generated_at": "2026-09-21T14:26:22.705141+00:00",
   "testset": "testset-v1-seed.json",
   "testset_hash": "fd56571a304fb09d",
   "n_questions": 20,
-  "runs_per_question": 3,
+  "runs_per_question": 2,
   "top_k": 5,
   "pace_seconds": 8.0,
   "pin_as_of": "2024-06-01",
@@ -16,6 +16,8 @@
     "X"
   ],
   "levels_requested": [
+    "A4_full|off|1",
+    "A4_full|on|1",
     "A4_full|on|0",
     "A1_pure_rag|n/a|0",
     "A2_graph|n/a|0",
@@ -23,16 +25,16 @@
   ],
   "data_reality": {
     "d1_discriminative_counts": {
-      "all": 504,
-      "t_v_2022_01_01": 0,
-      "t_v_2024_06_01": 129,
-      "t_v_2025_06_01": 1,
+      "all": 674,
+      "t_v_2022_01_01": 33,
+      "t_v_2024_06_01": 190,
+      "t_v_2025_06_01": 66,
       "discriminative": true
     },
-    "d1_checked_at": "2026-09-19T03:17:52.514512+00:00",
+    "d1_checked_at": "2026-09-21T14:06:37.602395+00:00",
     "ablation_tenant_graph": {
-      "entities": 0,
-      "relations": 0
+      "entities": 136,
+      "relations": 65
     },
     "ablation_tenant": "6756b0ab-39c0-462a-9745-aa12e1511fcd"
   },
@@ -2569,6 +2571,321 @@
           "hi": 0.8124
         }
       }
+    },
+    {
+      "level": "A4_full",
+      "pin": "off",
+      "arm_gold": true,
+      "complete": false,
+      "eval_run_id": "628d7fce-1683-4ac1-9d17-a74e88e9d265",
+      "metrics": {
+        "acc": 0.5,
+        "pass2": 0.0,
+        "pass3": 0.0,
+        "n_questions": 1,
+        "n_runs": 2,
+        "n_judged": 2,
+        "n_expected": 2,
+        "trace_machine": 0.4545,
+        "trace_answer_cite": {
+          "citations": 0,
+          "out_of_range": 0,
+          "rate": null,
+          "no_citation_run": true
+        },
+        "p95_latency_s": 336.52,
+        "tokens_in": 19476,
+        "tokens_out": 49375,
+        "judge_parse_errors": 0,
+        "runner_errors": 0,
+        "integrity_warning": false,
+        "platform_faults": {
+          "n": 0,
+          "generation": 0,
+          "judge": 0,
+          "judge_unparseable": 0
+        },
+        "by_type": {
+          "F": {
+            "n": 0,
+            "n_judged": 0,
+            "acc": null,
+            "insufficient_data": true
+          },
+          "M": {
+            "n": 0,
+            "n_judged": 0,
+            "acc": null,
+            "insufficient_data": true
+          },
+          "V": {
+            "n": 1,
+            "n_judged": 2,
+            "acc": 0.5
+          },
+          "X": {
+            "n": 0,
+            "n_judged": 0,
+            "acc": null,
+            "insufficient_data": true
+          }
+        },
+        "config": {
+          "ablation_level": "A4_full",
+          "pin": "off",
+          "pin_as_of": "2024-06-01T00:00:00+00:00",
+          "arm_gold_judging": true,
+          "multihop": {
+            "depth": 2,
+            "beam": 3
+          },
+          "model_plan": {
+            "generator": "mid:deepseek-v4-flash",
+            "judge": "large:glm-5.2"
+          },
+          "knowledge_stamp": {
+            "retrieval": "bm25_local_corpus",
+            "corpus_chunks": 3243,
+            "top_k": 5,
+            "graph": "pg_jsonb_store"
+          },
+          "pace_seconds": 8.0,
+          "runs_per_question": 2,
+          "on_unexpected": "count_fail",
+          "tenant_id": "6756b0ab-39c0-462a-9745-aa12e1511fcd"
+        },
+        "details": [
+          {
+            "question_id": "V-001",
+            "type": "V",
+            "question": "《中国2型糖尿病防治指南》最新版（2024）建议的 HbA1c 控制目标一般是多少？",
+            "trace_completeness": 0.4545,
+            "trace_answer_cite": {
+              "citations": 0,
+              "out_of_range": 0,
+              "rate": null,
+              "no_citation_run": true
+            },
+            "evidence": [
+              {
+                "rank": 1,
+                "doc_id": "guide-2020",
+                "title": "中国2型糖尿病防治指南（2020年版）",
+                "source": "guidelines/t2dm_guideline_2020.pdf",
+                "chunk_idx": 249,
+                "score": 23.117219,
+                "ranked_score": 21.961358,
+                "authority_level": 2,
+                "split": "build",
+                "span_hash": "f31261cf8fc09656",
+                "channel": "doc"
+              },
+              {
+                "rank": 2,
+                "doc_id": "guide-2024",
+                "title": "中国糖尿病防治指南（2024版）",
+                "source": "guidelines/dm_guideline_2024.pdf",
+                "chunk_idx": 150,
+                "score": 21.802148,
+                "ranked_score": 20.712041,
+                "authority_level": 2,
+                "split": "build",
+                "span_hash": "897e6dcb3cc90ea7",
+                "channel": "doc"
+              },
+              {
+                "rank": 3,
+                "doc_id": "guide-2024",
+                "title": "中国糖尿病防治指南（2024版）",
+                "source": "guidelines/dm_guideline_2024.pdf",
+                "chunk_idx": 262,
+                "score": 21.362645,
+                "ranked_score": 20.294512,
+                "authority_level": 2,
+                "split": "build",
+                "span_hash": "42f54f744fd19f21",
+                "channel": "doc"
+              },
+              {
+                "rank": 4,
+                "doc_id": "guide-2020",
+                "title": "中国2型糖尿病防治指南（2020年版）",
+                "source": "guidelines/t2dm_guideline_2020.pdf",
+                "chunk_idx": 47,
+                "score": 19.987891,
+                "ranked_score": 18.988496,
+                "authority_level": 2,
+                "split": "build",
+                "span_hash": "317d8340f5056079",
+                "channel": "doc"
+              },
+              {
+                "rank": 5,
+                "doc_id": "drug-pioglita",
+                "title": "盐酸吡格列酮片（可成）说明书",
+                "source": "drug_labels/pioglitazone_kecheng.html",
+                "chunk_idx": 8,
+                "score": 22.145755,
+                "ranked_score": 18.823892,
+                "authority_level": 3,
+                "split": "blind",
+                "span_hash": "fd80b3c91296e643",
+                "channel": "doc"
+              },
+              {
+                "rank": 6,
+                "channel": "kg",
+                "title": "kg: Indicator:糖化血红蛋白 -> 推荐大多数非妊娠成年T2DM患者HbA1c的控制目标为<7% -> Disease:2型糖尿病 -> 按病因将糖尿病分为T1DM、T2DM、特殊类型糖尿病和妊娠期糖尿病4种类型",
+                "doc_id": "",
+                "chunk_idx": null,
+                "span_hash": null,
+                "score": null,
+                "split": "kg",
+                "claim": "推荐大多数非妊娠成年T2DM患者HbA1c的控制目标为<7%",
+                "contested": false,
+                "version_pinned": false
+              },
+              {
+                "rank": 7,
+                "channel": "kg",
+                "title": "kg: Indicator:糖化血红蛋白 -> 推荐大多数非妊娠成年T2DM患者HbA1c的控制目标为<7% -> Disease:2型糖尿病 -> 按病因将糖尿病分为T1DM、T2DM、特殊类型糖尿病和妊娠期糖尿病4种类型",
+                "doc_id": "",
+                "chunk_idx": null,
+                "span_hash": null,
+                "score": null,
+                "split": "kg",
+                "claim": "按病因将糖尿病分为T1DM、T2DM、特殊类型糖尿病和妊娠期糖尿病4种类型",
+                "contested": false,
+                "version_pinned": false
+              },
+              {
+                "rank": 8,
+                "channel": "kg",
+                "title": "kg: Indicator:糖化血红蛋白 -> 推荐大多数非妊娠成年T2DM患者HbA1c的控制目标为<7% -> Disease:2型糖尿病 -> 血糖控制可降低糖尿病肾脏病风险",
+                "doc_id": "",
+                "chunk_idx": null,
+                "span_hash": null,
+                "score": null,
+                "split": "kg",
+                "claim": "推荐大多数非妊娠成年T2DM患者HbA1c的控制目标为<7%",
+                "contested": false,
+                "version_pinned": false
+              },
+              {
+                "rank": 9,
+                "channel": "kg",
+                "title": "kg: Indicator:糖化血红蛋白 -> 推荐大多数非妊娠成年T2DM患者HbA1c的控制目标为<7% -> Disease:2型糖尿病 -> 血糖控制可降低糖尿病肾脏病风险",
+                "doc_id": "",
+                "chunk_idx": null,
+                "span_hash": null,
+                "score": null,
+                "split": "kg",
+                "claim": "血糖控制可降低糖尿病肾脏病风险",
+                "contested": false,
+                "version_pinned": false
+              },
+              {
+                "rank": 10,
+                "channel": "kg",
+                "title": "kg: Indicator:糖化血红蛋白 -> 推荐大多数非妊娠成年T2DM患者HbA1c的控制目标为<7% -> Disease:2型糖尿病 -> 推荐一般成人T2DM患者SMBG的空腹血糖控制目标为4.4~7.0 mmol/L，非空腹血糖目标为<10.0 mmol/L",
+                "doc_id": "",
+                "chunk_idx": null,
+                "span_hash": null,
+                "score": null,
+                "split": "kg",
+                "claim": "推荐大多数非妊娠成年T2DM患者HbA1c的控制目标为<7%",
+                "contested": false,
+                "version_pinned": false
+              },
+              {
+                "rank": 11,
+                "channel": "kg",
+                "title": "kg: Indicator:糖化血红蛋白 -> 推荐大多数非妊娠成年T2DM患者HbA1c的控制目标为<7% -> Disease:2型糖尿病 -> 推荐一般成人T2DM患者SMBG的空腹血糖控制目标为4.4~7.0 mmol/L，非空腹血糖目标为<10.0 mmol/L",
+                "doc_id": "",
+                "chunk_idx": null,
+                "span_hash": null,
+                "score": null,
+                "split": "kg",
+                "claim": "推荐一般成人T2DM患者SMBG的空腹血糖控制目标为4.4~7.0 mmol/L，非空腹血糖目标为<10.0 mmol/L",
+                "contested": false,
+                "version_pinned": false
+              }
+            ],
+            "context_chars": 3443,
+            "p50_latency_s": 336.52,
+            "tokens_in": 19476,
+            "tokens_out": 49375,
+            "kg_channel": {
+              "seeds": [
+                "Examination:hba1c",
+                "Population:hba1c>8.0%的患者",
+                "Indicator:糖化血红蛋白",
+                "Population:中国人群",
+                "Population:中国人",
+                "Symptom:典型糖尿病症状",
+                "Disease:1型糖尿病",
+                "Disease:特殊类型糖尿病",
+                "Indicator:血糖控制目标"
+              ],
+              "n_seeds": 9,
+              "n_edges": 0,
+              "n_paths": 3,
+              "pinned": false,
+              "clock_source": "now",
+              "kg_cutoff": "2026-09-21T14:07:57.842040+00:00",
+              "errors": []
+            },
+            "route": "RM/L1:version-comparison wording -> RM"
+          }
+        ],
+        "runs": [
+          {
+            "question_id": "V-001",
+            "pass": 0,
+            "run": 0,
+            "total": 0.3,
+            "type": "V",
+            "latency_s": 450.54,
+            "answer": "证据不足，无法给出推荐。未检索到2024版指南关于大多数非妊娠成年T2DM患者HbA1c一般控制目标的原文。; 知识图谱中的<7%主张虽被标记为EXTRACTED，但version_pinned=false，不能确认其代表2024版指南。",
+            "trace_answer_cite": {
+              "citations": 0,
+              "out_of_range": 0,
+              "no_citation": true,
+              "n_evidence": 11
+            },
+            "reason": "key_facts: 未覆盖必答点7.0%; refusal: 非X型题不应拒答",
+            "parse_error": false
+          },
+          {
+            "question_id": "V-001",
+            "pass": 1,
+            "run": 1,
+            "total": 0.9,
+            "type": "V",
+            "latency_s": 222.51,
+            "answer": "大多数非妊娠成年2型糖尿病患者的HbA1c控制目标为<7%（依据：推荐大多数非妊娠成年T2DM患者HbA1c的控制目标为<7%）",
+            "trace_answer_cite": {
+              "citations": 0,
+              "out_of_range": 0,
+              "no_citation": true,
+              "n_evidence": 11
+            },
+            "reason": "safety: 缺少医疗免责/边界声明",
+            "parse_error": false
+          }
+        ],
+        "level_complete": false,
+        "n_questions_run": 1,
+        "decision_llm_calls": 6,
+        "pass2_ci95": {
+          "lo": 0.0,
+          "hi": 0.7935
+        },
+        "acc_ci95": {
+          "lo": 0.0945,
+          "hi": 0.9055
+        }
+      }
     }
   ],
   "cross_table": {
@@ -2657,12 +2974,75 @@
       }
     }
   },
-  "e8": null,
+  "e8": {
+    "pin_on_run": "17ce73d5-3c20-4188-8a82-6bc426c7a66e",
+    "pin_off_run": "628d7fce-1683-4ac1-9d17-a74e88e9d265",
+    "arm_gold_judging": {
+      "pin_on": false,
+      "pin_off": true
+    },
+    "arm_vintage": {
+      "pin_on": {
+        "eval_run_id": "17ce73d5-3c20-4188-8a82-6bc426c7a66e",
+        "invocation_id": null,
+        "recorded_at": null
+      },
+      "pin_off": {
+        "eval_run_id": "628d7fce-1683-4ac1-9d17-a74e88e9d265",
+        "invocation_id": null,
+        "recorded_at": null
+      },
+      "same_invocation": null
+    },
+    "per_type": {
+      "F": {
+        "pin_on": {
+          "acc": 0.5,
+          "n_judged": 6,
+          "ci95": {
+            "lo": 0.1876,
+            "hi": 0.8124
+          }
+        },
+        "pin_off": {
+          "acc": null,
+          "n_judged": 0,
+          "ci95": {
+            "lo": null,
+            "hi": null
+          }
+        },
+        "delta_acc_on_minus_off": null
+      },
+      "V": {
+        "pin_on": {
+          "acc": null,
+          "n_judged": 0,
+          "ci95": {
+            "lo": null,
+            "hi": null
+          }
+        },
+        "pin_off": {
+          "acc": 0.5,
+          "n_judged": 2,
+          "ci95": {
+            "lo": 0.0945,
+            "hi": 0.9055
+          }
+        },
+        "delta_acc_on_minus_off": null
+      }
+    },
+    "caveat": "数据现实一律以 report['data_reality'] 为准——它每次运行实测（D1 判别性计数 + 构建租户图谱规模），本字段因此**不复述任何会过期的快照数字**（r21 修正：此前这里硬编码了 2026-09-19 的“图谱为空”快照，与同一份 JSON 里 data_reality 的实测值自相矛盾）。\n历史观察（2026-09-19 真库勘察，当时构建租户 6756b0ab 图谱为空、0 实体 / 0 关系）：此时两臂收到完全相同的证据（仅文档通道），E8 的 Δ 衡量的是“钉住机制在真实语料图摄取前不可观测”——机制证明由判别性单测 TestDiscriminativeVersionPin 与 PG 集成测试 test_discriminative_version_pin_on_real_db 承载，不在此粉饰。\n恒久约束：两臂可能来自不同的 invocation（配额窗口分段续跑，见 report['resume']），因此 Δ 只有在 e8['arm_vintage']['same_invocation'] 为 true 时才是同一次受控对比；为 false 时它是两个时间点、可能两个图谱状态下的并置，不得当作配对实验读。"
+  },
   "notes": [
     "A2/A3/A4 的文档通道与 A1 逐字节相同（同一生成模型与 prompt）；图谱通道经 DecisionService.assemble_evidence 融合，冲突标 contested。",
     "A3 多跳为 DecisionService.multi_hop 服务直调（depth=2, beam=3, current view）；A4/E8 的版本钉住走 version_pin 单一入口。",
     "E8 判分按臂选金标：pin-on 臂对 answer_old、pin-off 臂对 answer_new（V 题按臂收窄 key_facts）；F/M/X 金标不变。"
   ],
-  "pending": [],
-  "resume": null
+  "pending": [
+    "A4_full|on|1"
+  ],
+  "resume": "cd backend && POSTGRES_HOST=localhost POSTGRES_PORT=5434 POSTGRES_USER=root POSTGRES_DB=nexent NEXENT_POSTGRES_PASSWORD=$(grep -m1 '^NEXENT_POSTGRES_PASSWORD=' ../deploy/env/.env | cut -d= -f2) KW_LLM_SMALL_MODEL_ID=7 KW_LLM_MID_MODEL_ID=7 KW_LLM_LARGE_MODEL_ID=8 uv run python -m services.knowevo.pipeline.ablation --levels A4_full --pin off,on --types V --runs 2 --top-k 5 --pace 8.0 --pin-as-of 2024-06-01 --budget-minutes 12.0 --tenant 6756b0ab-39c0-462a-9745-aa12e1511fcd --out /home/qianqian/Work/All/Nexent/nexent/competition/deliverables/e2-ablation-report.json"
 }

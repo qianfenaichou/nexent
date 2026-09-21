@@ -44,9 +44,13 @@ Honesty contract (iron rule 6, inherited from T-18c):
   * a question-type cell with zero judged runs is reported
     ``insufficient_data``, never dropped;
   * the graph channel records its own diagnostics (n_seeds / n_edges /
-    n_paths / errors) so an empty graph is visible, not silent - the
-    current build-tenant graph is empty (see e2-ablation.md), and that
-    data reality is part of the result, not a footnote to hide.
+    n_paths / errors) so an empty graph is visible, not silent - whatever
+    the build-tenant graph happens to contain is part of the result, not a
+    footnote to hide. That content is volatile (initial ingestion, then
+    2020/2024 guideline windows), so the report measures it every run into
+    ``data_reality`` instead of freezing a snapshot in prose; the
+    historical "graph was empty" observation now lives in ``E8_CAVEAT``
+    explicitly dated, never as an unqualified claim.
 
 CLI (from backend/):
     python -m services.knowevo.pipeline.ablation \
@@ -72,6 +76,7 @@ import time
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 from services.knowevo.decision_service import DecisionService
 from services.knowevo.e1_retrieval import (
@@ -138,16 +143,19 @@ TASK_REF = "T-22"
 QTYPES = ("F", "M", "V", "X")
 
 E8_CAVEAT = (
-    "数据现实（2026-09-19 真库勘察）：构建租户 6756b0ab 的图谱为空"
-    "（0 实体 / 0 关系）；全库 474 条 kg_relation_t 全部属于临时评测租户，"
-    "其中仅 121 条带业务时间（valid_at≤2024-06-01，PG 集成测试播种），"
-    "判别性计数 t_v=2022:0 / t_v=2025-06:1 / all:474（D1 谓词分化成立）。"
-    "因此 pin on/off 两臂当前收到完全相同的证据（仅文档通道），E8 的 Δ "
+    "数据现实一律以 report['data_reality'] 为准——它每次运行实测（D1 判别性"
+    "计数 + 构建租户图谱规模），本字段因此**不复述任何会过期的快照数字**"
+    "（r21 修正：此前这里硬编码了 2026-09-19 的\u201c图谱为空\u201d快照，"
+    "与同一份 JSON 里 data_reality 的实测值自相矛盾）。\n"
+    "历史观察（2026-09-19 真库勘察，当时构建租户 6756b0ab 图谱为空、"
+    "0 实体 / 0 关系）：此时两臂收到完全相同的证据（仅文档通道），E8 的 Δ "
     "衡量的是\u201c钉住机制在真实语料图摄取前不可观测\u201d——机制证明由"
     "判别性单测 TestDiscriminativeVersionPin 与 PG 集成测试 "
-    "test_discriminative_version_pin_on_real_db 承载，不在此粉饰。"
-    "V 题双金标现况：5 道中仅 V-004 的 answer_old≠answer_new，V 题 Δ 样本 "
-    "n=1，故 E8 的 Δ 主测 F 题（n=5）。"
+    "test_discriminative_version_pin_on_real_db 承载，不在此粉饰。\n"
+    "恒久约束：两臂可能来自不同的 invocation（配额窗口分段续跑，见 "
+    "report['resume']），因此 Δ 只有在 "
+    "e8['arm_vintage']['same_invocation'] 为 true 时才是同一次受控对比；为 "
+    "false 时它是两个时间点、可能两个图谱状态下的并置，不得当作配对实验读。"
 )
 
 
@@ -833,11 +841,38 @@ def _e8_section(results: list[dict[str, Any]]) -> dict[str, Any] | None:
     off = _arm("off")
     if on is None or off is None:
         return None
+    def _run_id(row: dict[str, Any]) -> Any:
+        # The producer writes ``eval_run_id`` (see the results.append site).
+        # The earlier ``run_id`` read therefore returned null for every real
+        # report, silently dropping which run each arm came from - the
+        # fixtures used ``run_id``, which is why the mismatch went unseen.
+        # Older reports and fixtures may still carry ``run_id``: fall back.
+        return row.get("eval_run_id") or row.get("run_id")
+
+    on_vintage = on.get("invocation_id")
+    off_vintage = off.get("invocation_id")
     out: dict[str, Any] = {
-        "pin_on_run": on.get("run_id"),
-        "pin_off_run": off.get("run_id"),
+        "pin_on_run": _run_id(on),
+        "pin_off_run": _run_id(off),
         "arm_gold_judging": {"pin_on": on.get("arm_gold"),
                              "pin_off": off.get("arm_gold")},
+        "arm_vintage": {
+            "pin_on": {"eval_run_id": _run_id(on),
+                       "invocation_id": on_vintage,
+                       "recorded_at": on.get("recorded_at")},
+            "pin_off": {"eval_run_id": _run_id(off),
+                        "invocation_id": off_vintage,
+                        "recorded_at": off.get("recorded_at")},
+            # ``results`` accumulates across invocations by design (the
+            # checkpoint/resume across quota windows), so the two arms of a
+            # reported delta may come from different days and different
+            # graph states. This flag is the reader's only way to tell a
+            # paired contrast from a juxtaposition; None when neither row
+            # carries a vintage stamp.
+            "same_invocation": (
+                None if not (on_vintage and off_vintage)
+                else on_vintage == off_vintage),
+        },
         "per_type": {},
         "caveat": E8_CAVEAT,
     }
@@ -1032,6 +1067,12 @@ def main(argv=None) -> int:
         "task": TASK_REF,
         "partial": True,
         "generated_at": datetime.now(UTC).isoformat(),
+        # Identity of THIS process run. The report accumulates results across
+        # invocations (checkpoint/resume over quota windows), so every result
+        # row records which invocation produced it; the E8 block then
+        # discloses whether a delta pairs two arms from one controlled run
+        # or from two different runs/dates.
+        "invocation_id": uuid4().hex,
         "testset": Path(args.testset).name,
         "testset_hash": testset_hash,
         "n_questions": len(questions),
@@ -1209,6 +1250,10 @@ def main(argv=None) -> int:
             "arm_gold": result_arm_gold,
             "complete": complete,
             "eval_run_id": run_id,
+            # Vintage stamp: ``results`` spans invocations, so the E8 block
+            # needs to know which run produced each arm (see _e8_section).
+            "invocation_id": report["invocation_id"],
+            "recorded_at": datetime.now(UTC).isoformat(),
             "metrics": metrics,
         })
         _finalize_report(report, out_path, args, levels, pins)
