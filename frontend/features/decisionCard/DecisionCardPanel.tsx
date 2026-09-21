@@ -83,6 +83,7 @@ export default function DecisionCardPanel() {
   const { t } = useTranslation();
   const [question, setQuestion] = useState("");
   const [version, setVersion] = useState("");
+  const [asOf, setAsOf] = useState("");
   const [mode, setMode] = useState<DecisionCardMode>("full");
   const [loading, setLoading] = useState(false);
   const [card, setCard] = useState<DecisionCardPayload | null>(null);
@@ -95,6 +96,7 @@ export default function DecisionCardPanel() {
       const result = await decisionCardService.renderCard({
         question: q,
         ontologyVersion: version.trim() || undefined,
+        asOf: asOf.trim() || undefined,
         mode,
       });
       setCard(result);
@@ -108,7 +110,8 @@ export default function DecisionCardPanel() {
   };
 
   const insufficient =
-    card && (card.decision === "INSUFFICIENT_EVIDENCE" || !card.candidates?.length);
+    card &&
+    (card.decision === "INSUFFICIENT_EVIDENCE" || !card.candidates?.length);
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 px-4 py-6">
@@ -145,6 +148,22 @@ export default function DecisionCardPanel() {
               className="w-56"
               allowClear
             />
+            {/* Business time (as_of): pins the fact clock, never the version. */}
+            <Input
+              type="datetime-local"
+              value={asOf}
+              onChange={(e) => setAsOf(e.target.value)}
+              placeholder={t("decisionCard.asOfPlaceholder", {
+                defaultValue: "业务时间（可选）",
+              })}
+              className="w-56"
+              allowClear
+            />
+            {asOf ? (
+              <Button size="small" onClick={() => setAsOf("")}>
+                {t("decisionCard.asOfClear", { defaultValue: "清除" })}
+              </Button>
+            ) : null}
             <Button
               type={mode === "full" ? "primary" : "default"}
               size="small"
@@ -168,6 +187,12 @@ export default function DecisionCardPanel() {
               {t("decisionCard.render", { defaultValue: "生成决策卡" })}
             </Button>
           </div>
+          <Text className="text-xs text-neutral-500">
+            {t("decisionCard.asOfHint", {
+              defaultValue:
+                "钉住事实时钟（as_of）：仅移动事实自身的时间轴；未填知识版本时不产生版本约束",
+            })}
+          </Text>
         </Space>
       </Card>
 
@@ -210,16 +235,28 @@ export default function DecisionCardPanel() {
                 {card.knowledge_stamp.kg_cutoff}
               </Tag>
             ) : null}
+            {card.knowledge_stamp?.clock_source ? (
+              <Tag>
+                {t("decisionCard.stamp.clock", { defaultValue: "时钟" })}{" "}
+                {card.knowledge_stamp.clock_source}
+              </Tag>
+            ) : null}
             {card.knowledge_version_pinned ? (
               <Tag color="geekblue">
-                {t("decisionCard.stamp.pinned", { defaultValue: "version_pinned" })}
+                {t("decisionCard.stamp.pinned", {
+                  defaultValue: "version_pinned",
+                })}
               </Tag>
             ) : null}
             <Tag>
               {t("decisionCard.stamp.calibration", { defaultValue: "校准" })}{" "}
               {card.calibration_applied
-                ? t("decisionCard.stamp.calibrationApplied", { defaultValue: "已应用" })
-                : t("decisionCard.stamp.calibrationNone", { defaultValue: "未应用" })}
+                ? t("decisionCard.stamp.calibrationApplied", {
+                    defaultValue: "已应用",
+                  })
+                : t("decisionCard.stamp.calibrationNone", {
+                    defaultValue: "未应用",
+                  })}
             </Tag>
           </div>
           <Text className="text-sm">{card.question}</Text>
@@ -245,7 +282,9 @@ export default function DecisionCardPanel() {
           {card.conflict_adjudications?.length ? (
             <div className="mt-4">
               <Text strong className="text-sm">
-                {t("decisionCard.conflicts.title", { defaultValue: "冲突裁决" })}
+                {t("decisionCard.conflicts.title", {
+                  defaultValue: "冲突裁决",
+                })}
               </Text>
               <ul className="mt-1 flex list-disc flex-col gap-1 pl-5">
                 {card.conflict_adjudications.map((adj, idx) => (
@@ -263,7 +302,9 @@ export default function DecisionCardPanel() {
               className="mt-4"
               type="warning"
               showIcon
-              message={t("decisionCard.uncertainty", { defaultValue: "不确定性说明" })}
+              message={t("decisionCard.uncertainty", {
+                defaultValue: "不确定性说明",
+              })}
               description={
                 <ul className="m-0 list-disc pl-4">
                   {card.uncertainty_notes.map((note, idx) => (
