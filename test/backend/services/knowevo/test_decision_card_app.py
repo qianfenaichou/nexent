@@ -432,6 +432,80 @@ class TestDecisionCardHTTPRoute:
         assert resp["knowledge_stamp"]["ontology_version"] == "v1.0.0"
         assert resp["persisted"] is True
 
+    def test_as_of_reaches_the_version_clock(self, monkeypatch):
+        """An explicit ``as_of`` must land on the walk, not just the body.
+
+        ``ontology_version`` pins a committed ontology version; ``as_of``
+        pins the facts' own business time (the T-18b entry), which is what a
+        2020-era vs 2024-era comparison needs. The failure this guards
+        against is the quiet one: a request field that is accepted but never
+        forwarded would still render a card - just an unpinned one claiming
+        a stamp - so the spy asserts the value crossed the service seam and
+        the stamp proves the clock resolved as ``explicit`` rather than
+        falling back to ``now``.
+        """
+        _auth_as(monkeypatch)
+        llm = ScriptedCardLLM()
+        svc = DecisionService(store=FakeStore(), tenant_id=TENANT_A, llm=llm,
+                              version_rows=VERSION_ROWS)
+        _recording_persist(svc)
+        seen: list[dict] = []
+        original = svc.multi_hop
+
+        async def _spy(question, **kwargs):
+            seen.append(kwargs)
+            return await original(question, **kwargs)
+
+        monkeypatch.setattr(svc, "multi_hop", _spy)
+        monkeypatch.setattr(knowledge_graph_app, "_decision_service",
+                            lambda tenant_id: svc)
+        req = knowledge_graph_app.DecisionCardRequest(
+            question="SGLT2抑制剂", as_of=T_V)
+        resp = _run(knowledge_graph_app.render_decision_card(
+            req, authorization="Bearer t"))
+        assert len(seen) == 1
+        assert seen[0]["as_of"] == T_V
+        assert seen[0]["version"] is None
+        assert resp["knowledge_stamp"]["clock_source"] == "explicit"
+        assert str(resp["knowledge_stamp"]["kg_cutoff"]).startswith("2025-01-01")
+        assert resp["decision"] == DECISION_RECOMMEND
+        # The walk itself is genuinely pinned: the chain-level flag reads
+        # the PathSet, which resolved an explicit cutoff.
+        assert resp["knowledge_version_pinned"] is True
+        # ...but the claim-level flag is deliberately NOT upgraded, because
+        # there is no ontology_version to name. ``_build_candidates`` drops
+        # an LLM-echoed true here ("a claim cannot be pinned more tightly
+        # than the run's own clock"); asserting it keeps the card from
+        # claiming per-claim provenance a version-less run never had.
+        assert resp["candidates"][0]["evidence_chain"][0]["provenance"][
+            "version_pinned"] is False
+
+    def test_as_of_with_ontology_version_pins_both_axes(self, monkeypatch):
+        """The version-compare recipe: a named version plus a fact instant.
+
+        ``ontology_version`` supplies the label the claim-level pin needs
+        and ``as_of`` overrides the cutoff (``resolve_version_clock`` gives
+        an explicit ``as_of`` outright priority), so the stamp carries both
+        a version and an explicit cutoff while claims stay pinned. This is
+        the combination the 2020-era vs 2024-era comparison uses.
+        """
+        _auth_as(monkeypatch)
+        svc = DecisionService(store=FakeStore(), tenant_id=TENANT_A,
+                              llm=ScriptedCardLLM(),
+                              version_rows=VERSION_ROWS)
+        _recording_persist(svc)
+        monkeypatch.setattr(knowledge_graph_app, "_decision_service",
+                            lambda tenant_id: svc)
+        req = knowledge_graph_app.DecisionCardRequest(
+            question="SGLT2抑制剂", ontology_version="v1.0.0", as_of=T_V)
+        resp = _run(knowledge_graph_app.render_decision_card(
+            req, authorization="Bearer t"))
+        assert resp["knowledge_stamp"]["ontology_version"] == "v1.0.0"
+        assert resp["knowledge_stamp"]["clock_source"] == "explicit"
+        assert resp["knowledge_version_pinned"] is True
+        assert resp["candidates"][0]["evidence_chain"][0]["provenance"][
+            "version_pinned"] is True
+
     def test_store_failure_maps_to_502_not_a_refusal(self, monkeypatch):
         _auth_as(monkeypatch)
         svc = DecisionService(store=BoomStore(), tenant_id=TENANT_A,
