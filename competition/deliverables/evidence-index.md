@@ -19,7 +19,7 @@
 | **本体工作台截图（本体树 + 导航）** | 维度2 | ★★★ | `deliverables/t23-shot-ontology-workbench.png`（2026-09-21 04:03；**真实页面**：宿主机 next dev :3000 + uvicorn :5010，本体树视图） | ✅ 已有 |
 | 本体工作台-待审队列截图 | 维度2 | ★★☆ | `deliverables/t23-shot-ontology-queue.png`（2026-09-21 04:03；**真实页面**：待审队列视图） | ✅ 已有 |
 | **决策卡截图（证据链展开 + 版本戳 + 免责声明）** | 维度2 | ★★★ | `deliverables/T-23-decision-card.png`（2026-09-21 16:09 UTC；**真实页面** `/zh/decisionCard` + 真库行 `decision_card_t.id=284ff0c1-a3bb-450c-8069-e1bb60512d4b`；问题「糖尿病前期」/本体 v1.1.0；含导航+永久免责声明+`建议`/`知识版本:v1.1.0`/`截止 2025-01-01T00:00:00+00:00`/`时钟 fact_cutoff`/`version_pinned` 戳 + Top-1 候选(置信度0.80) + 展开证据链(EXTRACTED/版本钉住/kg_path)） | ✅ 已有 |
-| **新旧指南版本对比（同题两版答案不同）** | 维度2/3 | ★★★ | `deliverables/T-23-version-compare-2024.png` / `T-23-version-compare-2026.png`（2026-09-21 16:14 UTC；**真实页面**，同题「糖尿病前期」+同本体 v1.1.0，仅 `as_of` 不同：`as_of=2024-01-01`→`证据不足`(0候选, card `3fd88441-70be-4163-8db9-fcbc423fcd88`) vs `as_of=2026-01-01`→`建议`(1候选+证据链, card `9189abf8-4e36-4f2d-b922-27a7956de396`)；两版 `knowledge_stamp.clock_source=explicit`、`kg_cutoff` 分别为 2024-01-01/2026-01-01 且不同 → 判别门通过）= 真实双时态版本分化 | ✅ 已有 |
+| **新旧指南版本对比（同题两版答案不同）** | 维度2/3 | ★★★ | `deliverables/T-23-version-compare-2024clock-refusal.png` / `T-23-version-compare-2026.png`（2026-09-21 16:14 UTC；**真实页面**，同题「糖尿病前期」+同本体 v1.1.0，仅 `as_of` 不同：`as_of=2024-01-01`→`证据不足`（**版本钉住的诚实拒绝**：旧时钟下图谱仅有分类定义、无文档命中段，0候选, card `3fd88441-70be-4163-8db9-fcbc423fcd88`）vs `as_of=2026-01-01`→`建议`(1候选+证据链, card `9189abf8-4e36-4f2d-b922-27a7956de396`)；两版 `knowledge_stamp.clock_source=explicit`、`kg_cutoff` 分别为 2024-01-01/2026-01-01 且不同 → 判别门通过；**对比成立依据=一拒绝一建议，非两个拒绝**）= 真实双时态版本分化 | ✅ 已有 |
 | **Skill 模板库页面截图** | 维度4 | ★★☆ | `deliverables/t23-shot-skill-template.png`（2026-09-21 04:03；**真实页面**：skill_template_t 落库模板） | ✅ 已有 |
 | **评测报告图（消融柱状图/曲线）** | 维度3 | ★★★ | `deliverables/t23-eval-report.png`（2026-09-21 11:54；由 `e2-ablation-report.json` 真实数字绘制，matplotlib；insufficient_data 格明确标注；E2 续跑后需重绘） | ✅ 已有 |
 | E1 纯 RAG 基线（acc=0.6667 / pass2=0.65 / n_judged=60/60） | 维度3（对照） | ★★★ | `deliverables/e1-baseline-report.json`；权威口径 = `docs/cost-ledger.md` 行 `e1-b64faa90-64ac-44bc-95e9-564ad4b99006` | ✅ 已有 |
@@ -52,7 +52,7 @@
 
 | 缺口 | 阻塞源 | 解锁动作 | 状态 |
 |---|---|---|---|
-| 六类官方截图（本体工作台/决策卡/示例问答≥3/版本对比/Skill 库/评测图） | 前端栈（宿主机 next dev 3000 + uvicorn 5010；r17 实证 stock 镜像无 knowevo 路由） | **已拍 7 张**：`t23-shot-ontology-workbench.png` / `t23-shot-ontology-queue.png` / `t23-shot-skill-template.png`（r17，2026-09-21 04:03）、`t23-eval-report.png`（2026-09-21 11:54）、`T23-home-loggedin.png`（2026-09-20）、`T-23-decision-card.png` / `T-23-version-compare-{2024,2026}.png`（r22 `t23-capture2`，2026-09-21 16:09/16:14 UTC）；**待补 1 类**：示例问答≥3（阻塞：唯一智能体 `knowevo_assistant` 0 工具绑定 + 未配置向量模型） | 🟡 进行中 |
+| 六类官方截图（本体工作台/决策卡/示例问答≥3/版本对比/Skill 库/评测图） | 前端栈（宿主机 next dev 3000 + uvicorn 5010；r17 实证 stock 镜像无 knowevo 路由） | **已拍 7 张**：`t23-shot-ontology-workbench.png` / `t23-shot-ontology-queue.png` / `t23-shot-skill-template.png`（r17，2026-09-21 04:03）、`t23-eval-report.png`（2026-09-21 11:54）、`T23-home-loggedin.png`（2026-09-20）、`T-23-decision-card.png` / `T-23-version-compare-{2024clock-refusal,2026}.png`（r22 `t23-capture2`，2026-09-21 16:09/16:14 UTC）；**待补 1 类**：示例问答≥3（阻塞：唯一智能体 `knowevo_assistant` 0 工具绑定 + 未配置向量模型） | 🟡 进行中 |
 | **待补截图：示例问答≥3** | 智能体未绑定任何工具（`ag_tool_instance_t` agent_id=1 无行）+ 未配置向量模型 | 决策卡面板 / 版本对比 2 张已由 `t23-capture2` 于 2026-09-21 16:09/16:14 UTC 采得（真库行 `284ff0c1`/`3fd88441`/`9189abf8`）；示例问答须先给智能体绑定 KG/决策卡工具后再采集，每个答案须可回溯 `decision_card_t`/`eval_run_t` 行 | 🟡 待补 |
 | 评测报告图 | E2 partial；`e8.arm_vintage.same_invocation=null`（E8 Δ 不可测） | 摄取 120/120 → `t22-resume.status.json` resume 四段命令 → 回填完整矩阵；已按现有真实数字出图（`t23-eval-report.png`），缺口格标注 insufficient_data；续跑后需重绘 | 🟡 |
 | 示例问答可回溯性核验 | 截图拍摄 | psql 查 `decision_card_t`/`eval_run_t` 行对应 | 🟡 |
@@ -65,6 +65,6 @@
 
 - 首版创建：2026-09-20（T-23 无阻塞装配轮，loop-r11）
 - r22 数字回填（t23-docs）：E1/E2/图谱快照对齐 `cost-ledger` 与 `e2-ablation-report.json` 真实来源；登记 5 张已有截图；待补截图标注采集中（t23-capture2）；未完成项一律 `待跑`/`insufficient_data`，不以 0 或占位冒充。
-- 2026-09-21 16:09/16:14 UTC（t23-capture2，配额空档）：新增 3 张真实截图——决策卡面板 `T-23-decision-card.png`（真库 `decision_card_t.id=284ff0c1`）与版本对比 `T-23-version-compare-{2024,2026}.png`（同题「糖尿病前期」+同本体 v1.1.0，仅 `as_of` 不同：2024→证据不足 / 2026→建议+证据链；真库 `3fd88441` / `9189abf8`）。示例问答≥3 经实测阻塞（智能体 0 工具绑定 + 无向量模型），如实标注，未伪造。
+- 2026-09-21 16:09/16:14 UTC（t23-capture2，配额空档）：新增 3 张真实截图——决策卡面板 `T-23-decision-card.png`（真库 `decision_card_t.id=284ff0c1`）与版本对比 `T-23-version-compare-{2024clock-refusal,2026}.png`（同题「糖尿病前期」+同本体 v1.1.0，仅 `as_of` 不同：2024→证据不足（版本钉住的诚实拒绝） / 2026→建议+证据链；真库 `3fd88441` / `9189abf8`）。示例问答≥3 经实测阻塞（智能体 0 工具绑定 + 无向量模型），如实标注，未伪造。
 - 素材核验方式：文件存在性 + DB 真实查询（`ag_tenant_agent_t` / `model_record_t` / `ag_skill_info_t` / `ag_tool_info_t`）
 - 更新纪律：每新增/重拍一张截图、每落定一个评测数字，同步更新本表状态列。
