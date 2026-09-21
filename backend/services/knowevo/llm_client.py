@@ -35,6 +35,23 @@ TIER_SMALL = "small"
 TIER_MID = "mid"
 TIER_LARGE = "large"
 
+# Extraction asks for one JSON object; a hidden reasoning chain buys nothing
+# and on reasoning-heavy providers it consumes the whole output cap, so the
+# JSON never appears (r19 evidence: finish_reason=length with
+# reasoning_tokens == completion_tokens == max_output_tokens and
+# content_len == 0 - see pitfalls #52). Disable thinking for kind='extract'
+# only; every other kind (judge / route / render / hop / align) keeps the
+# provider default.
+_EXTRACT_EXTRA_BODY = {"thinking": {"type": "disabled"}}
+# Extraction deliberately sends no explicit output cap. The tenant's 8192
+# cap is what turned a reasoning chain into an empty extraction in the
+# first place, and raising it to 32768 is rejected by the sensenova gateway
+# as over the tpm/rpm budget (HTTP 429 insufficient_quota, r19 streaming
+# probe). With thinking disabled the provider's own default cap carries the
+# JSON comfortably (r19 probe: 956 content chars / 333 completion tokens /
+# finish_reason=stop), so None is both the safe and the measured choice.
+# Non-extract kinds keep the bounded evaluation cap as before.
+
 # Read live (not frozen at import) so env overrides and tests can patch
 # the module constants after import.
 _TIER_TO_MODEL_ID_ATTR = {
@@ -95,8 +112,10 @@ class LlmRouter:
                 "set KW_LLM_SMALL/MID/LARGE_MODEL_ID or tenant LLM_ID")
         return config
 
-    def _get_model(self, tier: str, temperature: float) -> OpenAIModel:
-        key = (tier, temperature)
+    def _get_model(self, tier: str, temperature: float,
+                   kind: str | None = None) -> OpenAIModel:
+        disable_thinking = kind == "extract"
+        key = (tier, temperature, disable_thinking)
         with self._lock:
             model = self._models.get(key)
             if model is not None:
@@ -112,11 +131,19 @@ class LlmRouter:
                 ssl_verify=config.get("ssl_verify", True),
                 display_name=config.get("display_name") or None,
                 timeout_seconds=config.get("timeout_seconds"),
-                # Bounded output for offline evaluation: without an explicit
-                # cap the provider default left reasoning-heavy judges
-                # truncated mid-JSON (observed as unparseable judge output).
-                # None keeps the provider default for other callers.
-                max_output_tokens=config.get("max_output_tokens"),
+                # Declared on the client for the `model(...)` path (nexent's
+                # OpenAIModel.__call__ merges self.extra_body); the generate()
+                # path used below needs the per-call kwarg instead, see
+                # call_with_usage.
+                extra_body=_EXTRACT_EXTRA_BODY if disable_thinking else None,
+                # Output budget: extraction leaves the cap to the provider
+                # (see the note above _EXTRACT_EXTRA_BODY); other callers
+                # keep the bounded evaluation cap that prevents
+                # reasoning-heavy judges from producing truncated mid-JSON,
+                # and None keeps the provider default.
+                max_output_tokens=(
+                    None if disable_thinking
+                    else config.get("max_output_tokens")),
             )
             self._models[key] = model
             return model
@@ -152,9 +179,22 @@ class LlmRouter:
         which the SDK fills from the provider response (0 when the provider
         omitted usage - reported as measured, never estimated).
         """
-        model = self._get_model(tier, temperature)
+        model = self._get_model(tier, temperature, kind=kind)
         messages = [{"role": "user", "content": prompt}]
-        result = await asyncio.to_thread(model.generate, messages)
+        # The extract extras must ride on the call, not on the client.
+        # `generate()` (smolagents' OpenAIModel) assembles its request body
+        # from `self.kwargs`, and a named constructor argument never lands
+        # there, so an instance-level extra_body is silently dropped: the
+        # r19 wire probe showed completion_kwargs == ['messages', 'model']
+        # and no `thinking` key in the outgoing body, which is why the
+        # empty-content burn survived the client-level "fix". Passing it to
+        # `generate(**kwargs)` reaches `_prepare_completion_kwargs`'s
+        # `completion_kwargs.update(kwargs)` and from there the SDK's
+        # `extra_body` merge.
+        call_kwargs = (
+            {"extra_body": _EXTRACT_EXTRA_BODY} if kind == "extract" else {})
+        result = await asyncio.to_thread(
+            model.generate, messages, **call_kwargs)
         content = getattr(result, "content", result)
         if isinstance(content, list):
             content = "".join(
