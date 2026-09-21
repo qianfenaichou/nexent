@@ -58,12 +58,12 @@
 
 ### 3.2 抽取与实体对齐（两个正确性设计）
 
-- 本体锚定抽取：子图检索注入 fewshot，约束实体类别（A：构建租户摄取 10/120 段、40 实体，类别分布 Disease×15 / Population×7 / Symptom×6 / Examination×6 / Indicator×4 / Drug×1 / Treatment×1，2026-09-21 快照；0 缺 doc_id / 0 缺 valid_at，质量门禁全绿）。
+- 本体锚定抽取：子图检索注入 fewshot，约束实体类别（A：构建租户摄取 **15/120 段、136 实体 / 65 关系**，2026-09-21 r20 收盘快照——来源 `cost-ledger` 行 `r20-burst-c`（runs 13→15 / 实体 113→136 / 关系 46→65 / 2024 关系 13→32 / 证据 35→38）+ 报告 `data_reality` 实测 entities=136 / relations=65；其中实体类别分布 Disease×15 / Population×7 / Symptom×6 / Examination×6 / Indicator×4 / Drug×1 / Treatment×1 为 **40 实体期快照**（2026-09-21 早，未随新增段重算）；0 缺 doc_id / 0 缺 valid_at，质量门禁全绿）。
 - 三级实体对齐：外部主键 blocking（药品 ID/ATC 码等）+ 别名合并（重抽 merge 去重）。
 
 ### 3.3 bi-temporal 增量更新与冲突消解
 
-- 事实双时间轴（valid_at / published_at），supersede 不打删（A：批量 supersede p95=22.7ms @2万实体，PoC）。
+- 事实双时间轴（valid_at / published_at），supersede 不打删（A：批量 supersede p95=22.7ms @2万实体，PoC；来源 `cost-ledger` 行 `poc-20260917-graphstore`）。
 - 判定用 Code 判定按版本选金标（版本敏感题双金标设计；E：120 题测试集含 V 题 20 双金标属规划，当前实态为 20 题 seed 落库，见 §5.5）。
 
 ### 3.4 版本化
@@ -83,7 +83,7 @@
 ### 4.2 受影响面分析（传播算法）
 
 - 溯源二部图反向可达（倒排索引物化，两次索引查询）。
-- A：影响传播 0.02ms @合成 80 文档/2000 实体/3000 决策卡（probe_p3_impact_prop.json）。
+- A：影响传播 0.02ms @合成 80 文档/2000 实体/3000 决策卡（`probe_p3_impact_prop.json`；`cost-ledger` 行 `algo-probe-20260919` 记 P3 0.02ms / 164 实体 / 750 卡）。
 
 ### 4.3 最小充分更新集（Minimal Sufficient Update Set，创新内核）
 
@@ -104,7 +104,7 @@
 
 - 路由（规则 + few-shot）→ 检索路（kb_search + kg_search）→ 推理路（kg_multi_hop 束搜索·版本钉住★）→ 证据链融合 → 决策卡。
 - 创新贡献② = **版本钉住的多跳推理语义层**：束搜索逐跳强制版本谓词、有效子图 G_v 上求解、被裁剪事实显式上报（路径有效性定义 + 构造性 soundness；A：V 题机制预验证 100% vs 20.6%/25.0%，F 题三臂 100% 无回归）。
-- 运行表现（A）：多跳 p95=12.5ms @2万实体/3万边 depth≤3 beam=3；depth=2 精度饱和（30 题链式夹具）。
+- 运行表现（A）：多跳 p95=12.5ms @2万实体/3万边 depth≤3 beam=3（`cost-ledger` 行 `poc-20260917-graphstore`）；depth=2 精度饱和（30 题链式夹具，`cost-ledger` 行 `t09-20260917-curve`）。
 
 ### 5.2 自研 MCP 工具族（双注册）
 
@@ -142,9 +142,9 @@ A：置信度校准 ECE 目标 ≤0.10（无校准表诚实标 `calibration_appl
 
 | 实验 | 状态 | 数字 |
 |---|---|---|
-| E1 纯 RAG 基线 | ✅（诚实口径重跑） | acc=0.6667 / pass2=0.65 / n_judged=60/60（旧口径污染已修复：未答计错） |
+| E1 纯 RAG 基线 | ✅（诚实口径重跑） | acc=0.6667 / pass2=0.65 / n_judged=60/60 / trace=1.0（20 题×3 runs；旧口径污染已修复：未答计错）。权威口径 = `cost-ledger` 行 `e1-b64faa90-64ac-44bc-95e9-564ad4b99006`，逐题报告 `deliverables/e1-baseline-report.json` |
 | 机制预验证四探针 | ✅（seed 固定可复跑） | P1 V 题 100% vs 20.6%/25.0%；P2 VOI 净差 +1~+6；P3 0.02ms；P4 98.8% |
-| E2 四级消融 | 🟡 partial（4/16 格有数） | A1 F .7857(14) / M .6667(15)；A2 F .75(12)；A4 F .5(6)；A3 全 insufficient_data；其余 M/V/X 格 insufficient_data；e8=null；报告 partial:true（阻塞=构建租户图谱摄取 10/120，b_2024plus=0 使 E8 版本分化不可观测） |
+| E2 四级消融 | 🟡 partial（报告 `partial:true`；已跑 A1 10 题 / A2 4 题 / A4 两臂分片，A3 待跑） | **A1_pure_rag** n_q=10，acc=0.7241 / pass2=0.70 / n_judged=**29/30**（F .7857(14) / M .6667(15) / V·X insufficient_data）；**A2_graph** n_q=4，acc=0.75 / n_judged=12/12（仅 F）；**A4_full pin=on** n_q=2，acc=0.5 / n_judged=6/6（旧行，2026-09-19）；**A4_full pin=off** n_q=1，acc=0.5 / pass2=0.0 / n_judged=2/2（新行，2026-09-21 r21，V-001×2 runs）；**A3_multihop 待跑**（0 题，`insufficient_data`——零判定不等于 0 分）；报告 `e8=null`、`e8.arm_vintage.same_invocation=null` → **E8 版本钉住 Δ 尚不可测**（两臂来自不同 invocation，非同一次配对实验，见 pitfalls #56）。阻塞已解：构建租户图谱摄取 15/120、2024 权威关系 32 条（gate 解锁），续跑命令见报告 `resume` |
 | PG 集成全量 | ✅ | 688 passed 零回归（2026-09-21 r16 全量实测；r18 缺陷修复分支仅跑定向 21 单测 + 24 PG 集成，未再全量复跑） |
 
 ---
