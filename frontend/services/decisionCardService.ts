@@ -4,9 +4,10 @@
 // Agent and the evaluation harness see the same card.
 import { ApiError } from "./api";
 import { fetchWithAuth } from "@/lib/auth";
-import type {
-  DecisionCardMode,
-  DecisionCardPayload,
+import {
+  buildDecisionCardRequest,
+  type DecisionCardMode,
+  type DecisionCardPayload,
 } from "@/types/decisionCard";
 
 const fetch = fetchWithAuth;
@@ -29,15 +30,10 @@ export const decisionCardService = {
   async renderCard(payload: {
     question: string;
     ontologyVersion?: string;
+    asOf?: string;
     mode?: DecisionCardMode;
   }): Promise<DecisionCardPayload> {
-    const body: Record<string, unknown> = {
-      question: payload.question,
-      mode: payload.mode ?? "full",
-    };
-    if (payload.ontologyVersion) {
-      body.ontology_version = payload.ontologyVersion;
-    }
+    const body = buildDecisionCardRequest(payload);
     const res = await fetch(`${BASE}/card`, {
       method: "POST",
       body: JSON.stringify(body),
