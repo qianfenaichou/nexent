@@ -28,8 +28,10 @@ router = APIRouter(prefix="/knowevo", tags=["knowevo"])
 
 REVIEW_ACTIONS = {"confirm", "reject", "reparent"}
 
-# Decision-card seed lookup width (T-19): the same bound the MCP tool
-# uses - entity_lookup over the question text, then the pinned walk.
+# Decision-card seed lookup width (T-19): the total number of seed entities
+# one card may walk from - the same cap the MCP tool applies. T-26: the
+# seeds are now collected word by word (whole-question match first, see
+# _decision_seed_ids), and this cap keeps the walk's fan-out unchanged.
 DECISION_SEED_TOP_K = 5
 
 
@@ -257,6 +259,51 @@ class DecisionCardRequest(BaseModel):
     )
 
 
+async def _decision_seed_ids(store, tenant_id: str, question: str) -> list[str]:
+    """Word-level seeds for the card walk; the whole-question match first.
+
+    T-26 (pitfall #60): this route used to hand the WHOLE question to
+    ``entity_lookup``, which is ``KgEntity.name ILIKE '%<query>%'``. A
+    sentence is never a substring of an entity name, so every
+    sentence-length question produced 0 seeds and the deterministic
+    "no evidence" refusal - while the identical question reached the graph
+    through the evaluation chain, which seeds word by word. Both chains now
+    share one splitter (``services.knowevo.seed_terms``).
+
+    Order matters: the direct whole-question lookup runs first so a short
+    entity-style question (``糖尿病前期``) keeps its exact seed, then each
+    extracted term adds whatever entity names contain it. The union is
+    deduplicated and capped at ``DECISION_SEED_TOP_K`` so the walk's
+    fan-out bound is unchanged.
+
+    The splitter is deliberately crude (it emits CJK fragments such as
+    ``双胍是``), so seed *relevance* is not assumed: every term still has to
+    pass the store's own lexical lookup, and a term that matches nothing
+    contributes nothing.
+    """
+    from services.knowevo.seed_terms import extract_seed_terms
+
+    ordered: list[str] = []
+    seen: set[str] = set()
+
+    def _absorb(cards) -> None:
+        for card in cards:
+            if card.stable_id not in seen:
+                seen.add(card.stable_id)
+                ordered.append(card.stable_id)
+
+    _absorb(await store.entity_lookup(tenant_id, question,
+                                      DECISION_SEED_TOP_K))
+    for term in extract_seed_terms(question):
+        if len(ordered) >= DECISION_SEED_TOP_K:
+            break
+        if term == question:
+            continue
+        _absorb(await store.entity_lookup(tenant_id, term,
+                                          DECISION_SEED_TOP_K))
+    return ordered[:DECISION_SEED_TOP_K]
+
+
 @router.post("/decision/card")
 async def render_decision_card(
     request: DecisionCardRequest,
@@ -283,10 +330,10 @@ async def render_decision_card(
     # knowledge exists" - that distinction is the whole point of the
     # refusal discipline, so a broken store answers 502 instead of a card.
     try:
-        lookup = svc.store.entity_lookup
-        hits = await lookup(tenant_id, request.question, DECISION_SEED_TOP_K)
+        seeds = await _decision_seed_ids(svc.store, tenant_id,
+                                         request.question)
         result = await svc.multi_hop(
-            request.question, seeds=[h.stable_id for h in hits],
+            request.question, seeds=seeds,
             version=request.ontology_version, as_of=request.as_of)
         chain = await svc.assemble_evidence(result)
     except Exception as exc:

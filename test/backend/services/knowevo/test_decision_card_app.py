@@ -539,6 +539,197 @@ class TestDecisionCardHTTPRoute:
 
 
 # ---------------------------------------------------------------------------
+# T-26: seed collection (whole sentence must still seed the graph)
+# ---------------------------------------------------------------------------
+
+
+class SentenceStore:
+    """Fake store mirroring PgJsonbGraphStore's lexical seeding behaviour.
+
+    ``entity_lookup`` matches only when the query is a substring of an
+    entity name - exactly what ``KgEntity.name ILIKE '%<query>%'`` does - so
+    a whole sentence finds nothing while a word-level term finds the entity.
+    Two edges with different business-time windows additionally let the
+    clock tests assert that the pinned evidence set really moves with
+    ``as_of``.
+    """
+
+    NAME = "糖尿病前期"
+    STABLE_ID = "Disease:prediabetes"
+
+    def __init__(self):
+        self.lookup_queries: list[str] = []
+        self.edges = [
+            EdgeCard(id="e-2020", src=self.STABLE_ID,
+                     dst="Lifestyle:intervention", rel_type="treated_with",
+                     claim="糖尿病前期患者应给予生活方式干预",
+                     props={"evidence_id": "ev-2020"},
+                     valid_at=datetime(2021, 4, 1, tzinfo=UTC),
+                     invalid_at=None),
+            EdgeCard(id="e-2024", src=self.STABLE_ID, dst="Disease:diabetes",
+                     rel_type="risk_factor_for", claim="糖尿病前期进展为糖尿病",
+                     props={"evidence_id": "ev-2024"},
+                     valid_at=datetime(2025, 1, 1, tzinfo=UTC),
+                     invalid_at=None),
+        ]
+
+    async def entity_lookup(self, tenant_id, query, top_k=5):
+        self.lookup_queries.append(query)
+        q = (query or "").strip()
+        if q and q in self.NAME:
+            return [EntityCard(stable_id=self.STABLE_ID, name=self.NAME,
+                               class_ref="Disease")]
+        return []
+
+    async def neighbors(self, tenant_id, entity_ids, rel_types=None,
+                        hop=1, valid_view=True, as_of=None):
+        frontier = set(entity_ids)
+        out = []
+        for edge in self.edges:
+            if edge.src not in frontier and edge.dst not in frontier:
+                continue
+            if rel_types and edge.rel_type not in rel_types:
+                continue
+            if valid_view and as_of is not None:
+                if edge.valid_at and edge.valid_at > as_of:
+                    continue
+                if edge.invalid_at and edge.invalid_at <= as_of:
+                    continue
+            out.append(edge)
+        return Subgraph(entities=[], edges=out)
+
+
+class TestDecisionSeedCollection:
+    """T-26 phenomenon 1: a sentence question must still seed the graph.
+
+    The bug: the route handed the WHOLE question to ``entity_lookup``
+    (``name ILIKE '%<sentence>%'``), so sentence-length questions produced
+    0 seeds and the panel refused deterministically, while the evaluation
+    chain (word-level seeding) reached the same knowledge.
+    """
+
+    def _route_with_spy(self, monkeypatch, store, question, as_of=None):
+        captured: list[dict] = []
+        svc = DecisionService(store=store, tenant_id=TENANT_A,
+                              llm=ScriptedCardLLM())
+        _recording_persist(svc)
+        original = svc.multi_hop
+
+        async def _spy(q, **kwargs):
+            captured.append(kwargs)
+            return await original(q, **kwargs)
+
+        monkeypatch.setattr(svc, "multi_hop", _spy)
+        monkeypatch.setattr(knowledge_graph_app, "_decision_service",
+                            lambda tenant_id: svc)
+        req = knowledge_graph_app.DecisionCardRequest(question=question,
+                                                      as_of=as_of)
+        resp = _run(knowledge_graph_app.render_decision_card(
+            req, authorization="Bearer t"))
+        return resp, captured
+
+    def test_sentence_question_yields_at_least_one_seed(self, monkeypatch):
+        _auth_as(monkeypatch)
+        store = SentenceStore()
+        resp, captured = self._route_with_spy(
+            monkeypatch, store, "糖尿病前期患者应给予什么干预？")
+
+        assert captured and captured[0]["seeds"] == [SentenceStore.STABLE_ID], (
+            "a sentence-length question must still reach the graph")
+        assert resp["decision"] == DECISION_RECOMMEND
+        # The direct whole-question match is still tried first (kept as the
+        # fallback), and a word-level term is what actually found the entity.
+        assert store.lookup_queries[0] == "糖尿病前期患者应给予什么干预？"
+        assert "糖尿病" in store.lookup_queries
+
+    def test_short_question_keeps_its_direct_match(self, monkeypatch):
+        _auth_as(monkeypatch)
+        store = SentenceStore()
+        resp, captured = self._route_with_spy(
+            monkeypatch, store, SentenceStore.NAME)
+
+        assert store.lookup_queries[0] == SentenceStore.NAME
+        assert captured and captured[0]["seeds"] == [SentenceStore.STABLE_ID]
+        assert resp["decision"] == DECISION_RECOMMEND
+
+
+# ---------------------------------------------------------------------------
+# T-26: explicit as_of evidence (the clock itself must be monotone)
+# ---------------------------------------------------------------------------
+
+
+class TestExplicitClockEvidence:
+    """T-26 phenomenon 2: the explicit clock must not lose evidence.
+
+    The bug was not the clock - the cutoff resolves and reaches the store -
+    but the hop-plan filter, which could silently empty the walk for the
+    production route (no ontology -> unvalidated relation types -> one
+    hallucinated name matched no edge -> "no evidence" for knowledge that
+    exists). These tests pin the clock behaviour the fix must preserve.
+    """
+
+    @staticmethod
+    async def _claims(store, as_of):
+        svc = DecisionService(store=store, llm=None, tenant_id=TENANT_A)
+        seeds = [c.stable_id for c in await store.entity_lookup(
+            TENANT_A, SentenceStore.NAME, 5)]
+        paths = await svc.multi_hop(SentenceStore.NAME, seeds=seeds,
+                                    version="v1.0.0", as_of=as_of)
+        chain = await svc.assemble_evidence(paths)
+        return {item.claim for item in chain.items}
+
+    def test_later_clock_is_not_emptier_than_now(self):
+        store = SentenceStore()
+        at_cutoff = _run(self._claims(
+            store, datetime(2026, 9, 21, tzinfo=UTC)))
+        now = _run(self._claims(store, None))
+
+        assert at_cutoff, "this fixture has evidence at that clock"
+        assert at_cutoff == now, (
+            "a later explicit clock cannot lose evidence the current view "
+            "still has (the T-26 monotonicity violation)")
+
+    def test_old_clock_differs_from_new_clock(self):
+        store = SentenceStore()
+        old = _run(self._claims(store, datetime(2021, 6, 1, tzinfo=UTC)))
+        new = _run(self._claims(
+            store, datetime(2026, 9, 21, tzinfo=UTC)))
+
+        assert old and new
+        assert old != new, (
+            "the version comparison in the deliverable needs the two clocks "
+            "to select different facts")
+
+    def test_unvalidatable_hop_plan_cannot_empty_the_card(self, monkeypatch):
+        """A hop plan that cannot be checked must not become a filter.
+
+        The production route supplies no relation vocabulary, so every type
+        the planner proposes is unverifiable; trusting one turned "the plan
+        guessed wrong" into "the knowledge does not exist" (T-26).
+        ``ScriptedCardLLM`` answers ``hop_plan`` with ``["treats"]``, which
+        matches neither fixture edge - if it were applied as a filter the
+        walk would be empty.
+        """
+        _auth_as(monkeypatch)
+        store = SentenceStore()
+        llm = ScriptedCardLLM()
+        svc = DecisionService(store=store, llm=llm, tenant_id=TENANT_A)
+        _recording_persist(svc)
+        monkeypatch.setattr(knowledge_graph_app, "_decision_service",
+                            lambda tenant_id: svc)
+        req = knowledge_graph_app.DecisionCardRequest(
+            question=SentenceStore.NAME,
+            as_of=datetime(2026, 9, 21, tzinfo=UTC))
+        resp = _run(knowledge_graph_app.render_decision_card(
+            req, authorization="Bearer t"))
+
+        assert resp["decision"] == DECISION_RECOMMEND
+        assert llm.calls == ["decision_card"], (
+            "an unverifiable hop plan is not consulted at all; trusting it "
+            "is what produced T-26's empty evidence")
+
+
+# ---------------------------------------------------------------------------
 # Layer 2: the route persists to the real decision_card_t
 # ---------------------------------------------------------------------------
 
