@@ -286,7 +286,9 @@ export function SideNavigation({ collapsed }: SideNavigationProps) {
     }
 
     const filtered = ROUTE_CONFIG.filter((route) => {
-      return accessibleRoutes.includes(route.path);
+      // accessibleRoutes are lowercased by authService (/knowledgeGraph ->
+      // /knowledgegraph), so normalize the route path before comparing.
+      return accessibleRoutes.includes(route.path.toLowerCase());
     });
 
     // Separate root items and children
