@@ -1,0 +1,75 @@
+{
+  "$schema_comment": "Nexent-KnowEvo agent configuration, exported from live instance 2026-09-20 (ag_tenant_agent_t / model_record_t / ag_tool_info_t / ag_skill_info_t). API keys removed - see agent-config.md §安全说明.",
+  "agent": {
+    "agent_id": 1,
+    "name": "knowevo_assistant",
+    "display_name": "Knowevo 助手",
+    "tenant_id": "6756b0ab-39c0-462a-9745-aa12e1511fcd",
+    "version_no": 1,
+    "duty_prompt": "你是一个简洁友好的中文助手。你的职责是准确、清晰地回答用户的问题，不编造事实。",
+    "model_routing": "KW_LLM_SMALL_MODEL_ID / KW_LLM_MID_MODEL_ID / KW_LLM_LARGE_MODEL_ID env-injected, see models.tiers"
+  },
+  "models": {
+    "exported_at": "2026-09-20",
+    "tiers": {
+      "small": { "env": "KW_LLM_SMALL_MODEL_ID", "model_id": 7, "model": "deepseek-v4-flash@sn", "role": "生成·中档（sensenova 网关）" },
+      "mid": { "env": "KW_LLM_MID_MODEL_ID", "model_id": 7, "model": "deepseek-v4-flash@sn", "role": "生成·中档（sensenova 网关）" },
+      "large": { "env": "KW_LLM_LARGE_MODEL_ID", "model_id": 8, "model": "glm-5.2@sn", "role": "judge·异家族（sensenova 网关）" }
+    },
+    "all_available": [
+      { "model_id": 1, "model": "glm-5.3-free", "factory": "OpenAI-API-Compatible", "type": "llm", "display_name": "glm-5.3-free (主档)", "context_window_tokens": 32768 },
+      { "model_id": 2, "model": "glm-5.3-free", "factory": "OpenAI-API-Compatible", "type": "llm", "display_name": "glm-5.3-free (小档)", "context_window_tokens": 32768 },
+      { "model_id": 3, "model": "bge-m3", "factory": "silicon", "type": "embedding", "display_name": "bge-m3-embedding" },
+      { "model_id": 4, "model": "deepseek-v4-flash", "factory": "OpenAI-API-Compatible", "type": "llm", "display_name": "deepseek-v4-flash (生成/小中档)", "context_window_tokens": 65536 },
+      { "model_id": 5, "model": "deepseek-v4.1-flash", "factory": "OpenAI-API-Compatible", "type": "llm", "display_name": "deepseek-v4.1-flash (大档)", "context_window_tokens": 65536 },
+      { "model_id": 6, "model": "glm-5.3-flash", "factory": "OpenAI-API-Compatible", "type": "llm", "display_name": "glm-5.3-flash (judge·异家族)", "context_window_tokens": 65536 },
+      { "model_id": 7, "model": "deepseek-v4-flash@sn", "factory": "OpenAI-API-Compatible", "type": "llm", "display_name": "deepseek-v4-flash@sn (生成·中档)", "context_window_tokens": 65536 },
+      { "model_id": 8, "model": "glm-5.2@sn", "factory": "OpenAI-API-Compatible", "type": "llm", "display_name": "glm-5.2@sn (judge·异家族)", "context_window_tokens": 65536 },
+      { "model_id": 9, "model": "deepseek-v4-pro@sn", "factory": "OpenAI-API-Compatible", "type": "llm", "display_name": "deepseek-v4-pro@sn (大档·预留)", "context_window_tokens": 65536 }
+    ]
+  },
+  "tools": {
+    "self_built_mcp": {
+      "service_name": "knowevo",
+      "registration": "dual (Local MCP inner + FastMCP SSE), single schema via tool_schemas()/handlers()",
+      "source": "backend/tool_collection/mcp/kg_tools.py",
+      "tools": [
+        { "name": "kg_search", "description": "图谱实体/邻域检索（1 跳）", "task": "T-07b" },
+        { "name": "kg_stats", "description": "图谱统计", "task": "T-07b" },
+        { "name": "kg_multi_hop", "description": "版本钉住多跳 + 证据链", "task": "T-09" },
+        { "name": "decision_card_render", "description": "决策卡结构化输出", "task": "T-19" },
+        { "name": "skill_template_apply", "description": "模板实例化（四变量 {domain}/{task_type}/{关系模板}/{行业规则}）", "task": "T-20" }
+      ]
+    },
+    "platform": {
+      "total_available": 34,
+      "selected_for_scenario": [
+        "knowledge_base_search", "aidp_search", "search_memory", "store_memory",
+        "postgres_database", "read_file", "exa_search", "parallel_executor"
+      ]
+    }
+  },
+  "knowledge_base": {
+    "corpus_count": 58,
+    "corpus_registry": "corpus/registry.csv",
+    "composition": {
+      "药品说明书": 28, "临床指南": 11, "诊疗路径": 9, "检验": 2, "科普": 8
+    },
+    "graph": {
+      "ontology_version": "v1.1.0",
+      "classes": 10, "relation_types": 10, "fact_cutoff": "2025-01-01",
+      "evidence_chain": "kg_evidence_t doc_id provenance",
+      "ingest": "构建租户图谱摄取（120 段语料分块，sensenova 网关突发协议）"
+    }
+  },
+  "skills": {
+    "count": 4,
+    "source": "ag_skill_info_t",
+    "layers": [
+      { "skill_id": 1, "name": "domain-asset-cognition", "role": "入口·路由层" },
+      { "skill_id": 2, "name": "evidence-assembly", "role": "证据组装技能（决策卡 + 免责声明）" },
+      { "skill_id": 3, "name": "reasoning-path", "role": "推理路子技能（版本对比/多跳）" },
+      { "skill_id": 4, "name": "retrieval-path", "role": "检索路子技能" }
+    ]
+  }
+}
