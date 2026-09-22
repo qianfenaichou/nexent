@@ -25,13 +25,14 @@
 | E1 纯 RAG 基线（acc=0.6667 / pass2=0.65 / n_judged=60/60） | 维度3（对照） | ★★★ | `deliverables/e1-baseline-report.json`；权威口径 = `docs/cost-ledger.md` 行 `e1-b64faa90-64ac-44bc-95e9-564ad4b99006` | ✅ 已有 |
 | E2 消融报告（A1/A2/A3/A4 × E8） | 维度3 | ★★★ | `deliverables/e2-ablation-report.json`（**partial:true**）：**A1_pure_rag** n_q=10 acc=0.7241 / pass2=0.70 / n_judged=29/30；**A2_graph** n_q=4 acc=0.75 / n_judged=12/12；**A3_multihop 待跑**（insufficient_data）；**E8 配对终版**（`e2-ablation-paired2.json`，`same_invocation=true`、零空正文污染）：V 题 3 题×2runs 两臂各 acc=1.0 n=6/6 → **Δ=0.0**（取代 r22 并置 +0.3334，pitfalls #62；诚实限制：n=6 小样本+两臂满分，Δ=0 不反推机制无效） | 🟡 待续跑 |
 | 机制预验证四探针（P1 100% vs 20.6% / P2 VOI / P3 0.02ms / P4 98.8%） | 维度3 | ★★★ | `deliverables/algorithm-probes/probe_p{1..4}_*.json` | ✅ 已有 |
+| **T-21 对齐口径决定书 + 第 5 探针（P5 双口径重算）** | 维度3 | ★★★ | `competition/experiments/probe_p5_alignment_caliber.py`（零 LLM/零 DB/零网络，2026-09-23 实跑）+ `docs/verification-reports/t21-alignment-caliber.md`。**话题级（选定口径）**：recall `9/9`、precision **下界** `64/517≈0.124`（下界非 precision）、负向对照 14 个无关话题命中 **0**（特异性证据）；**item 级（基线并置）**：`1/691≈0.0014`，并标注**结构性天花板 `9/691≈1.3%`**——算术证明该低分是**单位错配**（691 段落项 vs 9 话题金标）而非质量差。两条限制如实披露：n=9 不得反推 precision 高；阈值敏感（min_shared 2→3 时 recall 9/9→3/9）。已落地 `05:155`/`00:42`/`03:193` | ✅ 已有 |
 | 版本钉住机制测试（TestVersionPinnedWalk） | 维度3 | ★★★ | `test/backend/services/knowevo/test_decision_service.py` | ✅ 已有 |
 | 消融单测 + PG 集成（knowevo 层 **718 passed / 30 skipped**，2026-09-23 T-27 收口轮实测） | 维度3 | ★★★ | `pytest ../test/backend/services/knowevo/ -q` 运行记录 | ✅ 已有 |
 | 性能 PoC（多跳 p95=12.5ms / supersede p95=22.7ms） | 维度2/3 | ★★★ | `docs/poc-graphstore.md` | ✅ 已有 |
 | 跳数标定（depth=2 饱和） | 维度3 | ★★☆ | `cost-ledger` t09-curve 行 | ✅ 已有 |
 | 语料台账（58 份 + 批次核查） | 维度2 | ★★☆ | `corpus/registry.csv` + `docs/verification-reports/batch{1,2,3}-*.md` | ✅ 已有 |
 | 构建租户图谱（实体/关系/证据链） | 维度2/3 | ★★★ | `kg_graph` + `kg_evidence_t`（doc_id 链）；2026-09-21 r20 收盘快照：15/120 段、**136 实体 / 65 关系**（含 2024 权威关系 32 条、b_2024plus=13）、38 证据行（来源 `cost-ledger` 行 `r20-burst-c` + 报告 `data_reality` entities=136/relations=65）；D1 判别性计数 all=674 / t_v=2022-01-01=33 / t_v=2024-06-01=190 / t_v=2025-06-01=66，`discriminative:true`（E8 判别门已解锁） | 🟡 摄取中（120 段） |
-| 踩坑台账 64 条（调试迭代经验素材，2026-09-23 实数） | 维度4 | ★★★ | `docs/pitfalls.md` | ✅ 已有 |
+| 踩坑台账 66 条（调试迭代经验素材，2026-09-23 实数） | 维度4 | ★★★ | `docs/pitfalls.md` | ✅ 已有 |
 | 演进台账（evolution-log） | 维度4 | ★★☆ | `docs/evolution-log.md` | ✅ 已有 |
 | 模板复用统计 R/S/D（skill_template_t） | 维度4 | ★★☆ | `skill_template_t`（T-20 起真实落库） | ✅ 已有 |
 
