@@ -1,0 +1,425 @@
+{
+  "$schema": "../knowevo/eval/testset-template.json",
+  "title": "KnowEvo 判别题集 v1（T-28，E8 版本钉住判别性验证前置，零 LLM）",
+  "note": "判别题形态 = 同一问题双金标：as_of=t_old(2021-06-01) 期望诚实拒绝（旧时钟 0 有效证据边），as_of=t_new(2025-06-01) 期望证据支撑答案（新时钟 >=1 有效证据边）。这是 V 题 K4 双金标协议的延伸（pitfalls #62：e8-paired2 两臂满分 Δ=0.0 是『测试集无判别题』所致）。每题 probe_evidence 记录零 LLM store walk 探针（.task_b_status/t28-discrim/probe_dual_clock.py，2026-09-22 真跑，构建租户 6756b0ab）的两时钟有效证据边数；全部新时钟事实 valid_at=2025-01-01（guide-2024 批次）。schema 与 testset-v1-seed.json 完全一致；discriminating/probe_evidence 为新增可选字段，校验器宽容（additive）。",
+  "testset_hash": "d59034f245061ffc",
+  "questions": [
+    {
+      "id": "V-D001",
+      "type": "V",
+      "question": "2024版《中国糖尿病防治指南》建议大多数非妊娠成年2型糖尿病患者的 HbA1c 控制目标是多少？",
+      "answer": {
+        "answer_old": "证据不足，无法给出推荐：as_of=2021-06-01 时知识库内无该时点后的事实（该条指南事实 valid_at=2025-01），应诚实拒绝。",
+        "answer_new": "<7%"
+      },
+      "rubric": {
+        "key_facts": [
+          "<7%",
+          "证据不足时诚实拒绝"
+        ],
+        "refusal_expected": false,
+        "evidence_required": true,
+        "reasoning_steps": [
+          "识别题目指定知识时点（2024 版指南）",
+          "版本钉住裁决：旧时钟下该事实尚不存在"
+        ],
+        "safety_boundary": "",
+        "weights": {
+          "key_facts": 0.6,
+          "refusal": 0.1,
+          "evidence": 0.1,
+          "reasoning": 0.1,
+          "safety": 0.1
+        }
+      },
+      "evidence_origin": {
+        "doc_ids": [
+          "guide-2024"
+        ],
+        "blind_set_ratio": 0.0
+      },
+      "discriminating": true,
+      "probe_evidence": {
+        "entity": "糖化血红蛋白",
+        "entity_stable_id": "Indicator:糖化血红蛋白",
+        "as_of_old": "2021-06-01",
+        "valid_evidence_edges_old": 0,
+        "as_of_new": "2025-06-01",
+        "valid_evidence_edges_new": 3,
+        "new_clock_claim": "推荐大多数非妊娠成年T2DM患者HbA1c的控制目标为<7%",
+        "fact_valid_at": "2025-01-01"
+      },
+      "annotators": [
+        "t28-probe",
+        "t28-discrim"
+      ],
+      "frozen_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "id": "V-D002",
+      "type": "V",
+      "question": "2024版指南中，HbA1c 联合持续葡萄糖监测（CGM）能否优化血糖管理？",
+      "answer": {
+        "answer_old": "证据不足，无法给出推荐：as_of=2021-06-01 时知识库内无该时点后的事实（该条指南事实 valid_at=2025-01），应诚实拒绝。",
+        "answer_new": "可以，HbA1c 联合 CGM 可以优化血糖管理"
+      },
+      "rubric": {
+        "key_facts": [
+          "联合CGM",
+          "优化血糖管理",
+          "证据不足时诚实拒绝"
+        ],
+        "refusal_expected": false,
+        "evidence_required": true,
+        "reasoning_steps": [
+          "识别题目指定知识时点（2024 版指南）",
+          "版本钉住裁决：旧时钟下该事实尚不存在"
+        ],
+        "safety_boundary": "",
+        "weights": {
+          "key_facts": 0.6,
+          "refusal": 0.1,
+          "evidence": 0.1,
+          "reasoning": 0.1,
+          "safety": 0.1
+        }
+      },
+      "evidence_origin": {
+        "doc_ids": [
+          "guide-2024"
+        ],
+        "blind_set_ratio": 0.0
+      },
+      "discriminating": true,
+      "probe_evidence": {
+        "entity": "糖化血红蛋白",
+        "entity_stable_id": "Indicator:糖化血红蛋白",
+        "as_of_old": "2021-06-01",
+        "valid_evidence_edges_old": 0,
+        "as_of_new": "2025-06-01",
+        "valid_evidence_edges_new": 3,
+        "new_clock_claim": "HbA1c联合CGM可以优化血糖管理",
+        "fact_valid_at": "2025-01-01"
+      },
+      "annotators": [
+        "t28-probe",
+        "t28-discrim"
+      ],
+      "frozen_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "id": "V-D003",
+      "type": "V",
+      "question": "依柯胰岛素属于哪一类胰岛素制剂，其降低 HbA1c 的效果与日制剂相比如何？",
+      "answer": {
+        "answer_old": "证据不足，无法给出推荐：as_of=2021-06-01 时知识库内无该时点后的事实（该条指南事实 valid_at=2025-01），应诚实拒绝。",
+        "answer_new": "依柯胰岛素属于长效胰岛素类似物（周制剂）；与甘精胰岛素U100/U300、德谷胰岛素等日制剂相比，降低 HbA1c 效果相当"
+      },
+      "rubric": {
+        "key_facts": [
+          "长效胰岛素类似物",
+          "周制剂",
+          "效果相当",
+          "证据不足时诚实拒绝"
+        ],
+        "refusal_expected": false,
+        "evidence_required": true,
+        "reasoning_steps": [
+          "识别题目指定知识时点（2024 版指南）",
+          "版本钉住裁决：旧时钟下该事实尚不存在"
+        ],
+        "safety_boundary": "",
+        "weights": {
+          "key_facts": 0.6,
+          "refusal": 0.1,
+          "evidence": 0.1,
+          "reasoning": 0.1,
+          "safety": 0.1
+        }
+      },
+      "evidence_origin": {
+        "doc_ids": [
+          "guide-2024"
+        ],
+        "blind_set_ratio": 0.0
+      },
+      "discriminating": true,
+      "probe_evidence": {
+        "entity": "依柯胰岛素",
+        "entity_stable_id": "Drug:依柯胰岛素",
+        "as_of_old": "2021-06-01",
+        "valid_evidence_edges_old": 0,
+        "as_of_new": "2025-06-01",
+        "valid_evidence_edges_new": 4,
+        "new_clock_claim": "依柯胰岛素属于长效胰岛素类似物（周制剂）；与长效胰岛素类似物日制剂相比，降低HbA1c效果相当",
+        "fact_valid_at": "2025-01-01"
+      },
+      "annotators": [
+        "t28-probe",
+        "t28-discrim"
+      ],
+      "frozen_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "id": "V-D004",
+      "type": "V",
+      "question": "HbA1c>8.0% 的患者使用德谷门冬双胰岛素时，起始剂量应如何选择？",
+      "answer": {
+        "answer_old": "证据不足，无法给出推荐：as_of=2021-06-01 时知识库内无该时点后的事实（该条指南事实 valid_at=2025-01），应诚实拒绝。",
+        "answer_new": "可选择更高剂量起始（随后根据空腹血糖水平调整剂量直至达标）"
+      },
+      "rubric": {
+        "key_facts": [
+          "更高剂量起始",
+          "证据不足时诚实拒绝"
+        ],
+        "refusal_expected": false,
+        "evidence_required": true,
+        "reasoning_steps": [
+          "识别题目指定知识时点（2024 版指南）",
+          "版本钉住裁决：旧时钟下该事实尚不存在"
+        ],
+        "safety_boundary": "剂量调整需遵医嘱",
+        "weights": {
+          "key_facts": 0.6,
+          "refusal": 0.1,
+          "evidence": 0.1,
+          "reasoning": 0.1,
+          "safety": 0.1
+        }
+      },
+      "evidence_origin": {
+        "doc_ids": [
+          "guide-2024"
+        ],
+        "blind_set_ratio": 0.0
+      },
+      "discriminating": true,
+      "probe_evidence": {
+        "entity": "HbA1c>8.0%的患者",
+        "entity_stable_id": "Population:hba1c>8.0%的患者",
+        "as_of_old": "2021-06-01",
+        "valid_evidence_edges_old": 0,
+        "as_of_new": "2025-06-01",
+        "valid_evidence_edges_new": 1,
+        "new_clock_claim": "HbA1c>8.0%的患者可选择更高剂量起始（德谷门冬双胰岛素）",
+        "fact_valid_at": "2025-01-01"
+      },
+      "annotators": [
+        "t28-probe",
+        "t28-discrim"
+      ],
+      "frozen_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "id": "V-D005",
+      "type": "V",
+      "question": "新诊断2型糖尿病患者接受短期胰岛素强化治疗，可能获得什么获益，需关注什么风险？",
+      "answer": {
+        "answer_old": "证据不足，无法给出推荐：as_of=2021-06-01 时知识库内无该时点后的事实（该条指南事实 valid_at=2025-01），应诚实拒绝。",
+        "answer_new": "强化治疗通过清除高糖毒性可改善胰岛β细胞功能，部分患者可获得糖尿病缓解；血糖接近正常化的更严格目标可能与更高缓解率有关，但需关注低血糖风险"
+      },
+      "rubric": {
+        "key_facts": [
+          "清除高糖毒性",
+          "改善胰岛β细胞功能",
+          "糖尿病缓解",
+          "低血糖风险",
+          "证据不足时诚实拒绝"
+        ],
+        "refusal_expected": false,
+        "evidence_required": true,
+        "reasoning_steps": [
+          "识别题目指定知识时点（2024 版指南）",
+          "版本钉住裁决：旧时钟下该事实尚不存在"
+        ],
+        "safety_boundary": "低血糖风险需监测",
+        "weights": {
+          "key_facts": 0.6,
+          "refusal": 0.1,
+          "evidence": 0.1,
+          "reasoning": 0.1,
+          "safety": 0.1
+        }
+      },
+      "evidence_origin": {
+        "doc_ids": [
+          "guide-2024"
+        ],
+        "blind_set_ratio": 0.0
+      },
+      "discriminating": true,
+      "probe_evidence": {
+        "entity": "短期胰岛素强化治疗",
+        "entity_stable_id": "Treatment:短期胰岛素强化治疗",
+        "as_of_old": "2021-06-01",
+        "valid_evidence_edges_old": 0,
+        "as_of_new": "2025-06-01",
+        "valid_evidence_edges_new": 3,
+        "new_clock_claim": "强化治疗通过清除高糖毒性可改善胰岛β细胞功能，部分患者可获得糖尿病缓解；更严格目标可能与更高缓解率有关，但需关注低血糖风险",
+        "fact_valid_at": "2025-01-01"
+      },
+      "annotators": [
+        "t28-probe",
+        "t28-discrim"
+      ],
+      "frozen_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "id": "V-D006",
+      "type": "V",
+      "question": "2024版指南中，2型糖尿病患者的低密度脂蛋白胆固醇（LDL-C）控制目标是多少？",
+      "answer": {
+        "answer_old": "证据不足，无法给出推荐：as_of=2021-06-01 时知识库内无该时点后的事实（该条指南事实 valid_at=2025-01），应诚实拒绝。",
+        "answer_new": "未合并动脉粥样硬化性心血管疾病目标为<2.6 mmol/L；合并动脉粥样硬化性心血管疾病目标为<1.8 mmol/L"
+      },
+      "rubric": {
+        "key_facts": [
+          "2.6",
+          "1.8",
+          "证据不足时诚实拒绝"
+        ],
+        "refusal_expected": false,
+        "evidence_required": true,
+        "reasoning_steps": [
+          "识别题目指定知识时点（2024 版指南）",
+          "版本钉住裁决：旧时钟下该事实尚不存在"
+        ],
+        "safety_boundary": "",
+        "weights": {
+          "key_facts": 0.6,
+          "refusal": 0.1,
+          "evidence": 0.1,
+          "reasoning": 0.1,
+          "safety": 0.1
+        }
+      },
+      "evidence_origin": {
+        "doc_ids": [
+          "guide-2024"
+        ],
+        "blind_set_ratio": 0.0
+      },
+      "discriminating": true,
+      "probe_evidence": {
+        "entity": "低密度脂蛋白胆固醇",
+        "entity_stable_id": "Indicator:低密度脂蛋白胆固醇",
+        "as_of_old": "2021-06-01",
+        "valid_evidence_edges_old": 0,
+        "as_of_new": "2025-06-01",
+        "valid_evidence_edges_new": 1,
+        "new_clock_claim": "未合并动脉粥样硬化性心血管疾病目标为<2.6 mmol/L，合并动脉粥样硬化性心血管疾病目标为<1.8 mmol/L",
+        "fact_valid_at": "2025-01-01"
+      },
+      "annotators": [
+        "t28-probe",
+        "t28-discrim"
+      ],
+      "frozen_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "id": "V-D007",
+      "type": "V",
+      "question": "2024版指南中，持续葡萄糖监测（CGM）应与哪个指标联合使用以优化血糖管理？",
+      "answer": {
+        "answer_old": "证据不足，无法给出推荐：as_of=2021-06-01 时知识库内无该时点后的事实（该条指南事实 valid_at=2025-01），应诚实拒绝。",
+        "answer_new": "HbA1c（糖化血红蛋白）——HbA1c 联合 CGM 可以优化血糖管理"
+      },
+      "rubric": {
+        "key_facts": [
+          "HbA1c",
+          "糖化血红蛋白",
+          "证据不足时诚实拒绝"
+        ],
+        "refusal_expected": false,
+        "evidence_required": true,
+        "reasoning_steps": [
+          "识别题目指定知识时点（2024 版指南）",
+          "版本钉住裁决：旧时钟下该事实尚不存在"
+        ],
+        "safety_boundary": "",
+        "weights": {
+          "key_facts": 0.6,
+          "refusal": 0.1,
+          "evidence": 0.1,
+          "reasoning": 0.1,
+          "safety": 0.1
+        }
+      },
+      "evidence_origin": {
+        "doc_ids": [
+          "guide-2024"
+        ],
+        "blind_set_ratio": 0.0
+      },
+      "discriminating": true,
+      "probe_evidence": {
+        "entity": "持续葡萄糖监测",
+        "entity_stable_id": "Examination:持续葡萄糖监测",
+        "as_of_old": "2021-06-01",
+        "valid_evidence_edges_old": 0,
+        "as_of_new": "2025-06-01",
+        "valid_evidence_edges_new": 1,
+        "new_clock_claim": "HbA1c联合CGM可以优化血糖管理",
+        "fact_valid_at": "2025-01-01"
+      },
+      "annotators": [
+        "t28-probe",
+        "t28-discrim"
+      ],
+      "frozen_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "id": "V-D008",
+      "type": "V",
+      "question": "2024版指南中，德谷胰岛素利拉鲁肽注射液应如何调整剂量以优化血糖控制？",
+      "answer": {
+        "answer_old": "证据不足，无法给出推荐：as_of=2021-06-01 时知识库内无该时点后的事实（该条指南事实 valid_at=2025-01），应诚实拒绝。",
+        "answer_new": "根据空腹血糖调整剂量，优化血糖控制"
+      },
+      "rubric": {
+        "key_facts": [
+          "空腹血糖",
+          "调整剂量",
+          "证据不足时诚实拒绝"
+        ],
+        "refusal_expected": false,
+        "evidence_required": true,
+        "reasoning_steps": [
+          "识别题目指定知识时点（2024 版指南）",
+          "版本钉住裁决：旧时钟下该事实尚不存在"
+        ],
+        "safety_boundary": "剂量调整需遵医嘱",
+        "weights": {
+          "key_facts": 0.6,
+          "refusal": 0.1,
+          "evidence": 0.1,
+          "reasoning": 0.1,
+          "safety": 0.1
+        }
+      },
+      "evidence_origin": {
+        "doc_ids": [
+          "guide-2024"
+        ],
+        "blind_set_ratio": 0.0
+      },
+      "discriminating": true,
+      "probe_evidence": {
+        "entity": "血糖达标",
+        "entity_stable_id": "Indicator:血糖达标",
+        "as_of_old": "2021-06-01",
+        "valid_evidence_edges_old": 0,
+        "as_of_new": "2025-06-01",
+        "valid_evidence_edges_new": 3,
+        "new_clock_claim": "德谷胰岛素利拉鲁肽注射液根据空腹血糖调整剂量优化血糖控制",
+        "fact_valid_at": "2025-01-01"
+      },
+      "annotators": [
+        "t28-probe",
+        "t28-discrim"
+      ],
+      "frozen_at": "2026-09-22T00:00:00Z"
+    }
+  ]
+}
