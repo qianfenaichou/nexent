@@ -102,3 +102,7 @@ agent_repository_frontend
 .agents/
 # T-21 pdftotext cache (regenerated on demand, never committed)
 competition/.alignment-cache/
+
+# KnowEvo docx build scratch — 提交件 .docx 由 content.py + generate.js 复现，依赖不入库
+competition/deliverables/build-docx/node_modules/
+competition/deliverables/build-docx/package-lock.json
