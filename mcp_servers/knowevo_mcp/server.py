@@ -20,14 +20,16 @@ functions and Pydantic schemas - single schema source, dual registration,
 no drift (SPEC discipline 1).
 
 Errors are structured {error_code, hint} (SPEC discipline 4) so the skill
-layer can choose downgrade over blind retry. ``tenant_id`` is a server-level
-setting in v0; request-scoped tenant comes with the T-08 wiring.
+layer can choose downgrade over blind retry. ``tenant_id`` resolves per
+call: explicit argument > the caller's Authorization header (request-scoped
+tenant of the shared MCP service) > server-level setting.
 """
 import logging
 import time
 from datetime import UTC, datetime
 
 from fastmcp import FastMCP
+
 from mcp_servers.knowevo_mcp.schemas import (
     DecisionCardInput,
     KGMultiHopInput,
@@ -56,9 +58,12 @@ logger = logging.getLogger(__name__)
 
 mcp = FastMCP(SERVICE_NAME)
 
-# v0: single-tenant server setting; request-scoped tenant comes with the
-# T-08 wiring (upstream auth header -> tenant). Tests inject a fake store
-# through the module-level hook below.
+# Tenant resolution is request-scoped first: the platform mounts this app
+# once inside the shared MCP service, so the caller's Authorization header is
+# the only per-call tenant source (same pattern as
+# tool_collection/mcp/nl2agent_mcp_tools.py). The server-level setting stays
+# the fallback for stdio / tests / single-tenant use, and tests inject a fake
+# store through the module-level hook below.
 _graph_store = None
 _default_tenant = ""
 # T-09: the decision service is what owns the pinned beam walk, so the
@@ -89,6 +94,51 @@ def _store():
     return PgJsonbGraphStore()
 
 
+def _request_tenant() -> str:
+    """Tenant of the current MCP HTTP request, '' when unavailable.
+
+    The shared MCP service serves every tenant from one process, so the
+    caller's JWT is the only per-call tenant source. Failures degrade to ''
+    (callers then keep the server-level setting) instead of failing the
+    tool: a stdio call or an unauthenticated request must stay usable.
+    Resolution failures are logged - header *names* only, never token
+    values - because a silent '' turns every graph query tenant-less.
+    """
+    try:
+        from fastmcp.server.dependencies import get_http_request
+
+        request = get_http_request()
+    except Exception as exc:  # noqa: BLE001 - no HTTP context (stdio / direct call)
+        logger.info("request-scoped tenant unavailable (no HTTP context): %s: %s",
+                    type(exc).__name__, exc)
+        return ""
+    if request is None:
+        logger.warning("request-scoped tenant unavailable (no HTTP request)")
+        return ""
+    authorization = request.headers.get("Authorization")
+    if not authorization:
+        logger.warning(
+            "request-scoped tenant unavailable: no Authorization header "
+            "(headers present: %s)", sorted(request.headers.keys()))
+        return ""
+    try:
+        from utils.auth_utils import get_current_user_id
+
+        _user_id, tenant_id = get_current_user_id(authorization)
+    except Exception as exc:  # noqa: BLE001 - degrade to server-level default
+        logger.warning("request-scoped tenant lookup failed: %s: %s",
+                       type(exc).__name__, exc)
+        return ""
+    if not tenant_id:
+        logger.warning("request-scoped tenant lookup returned an empty tenant")
+    return tenant_id or ""
+
+
+def _tenant(explicit: str = "") -> str:
+    """Per-call tenant: explicit arg > request-scoped auth > server default."""
+    return explicit or _request_tenant() or _default_tenant
+
+
 def _service(store=None, tenant_id: str = ""):
     """The decision service for this request scope.
 
@@ -99,13 +149,12 @@ def _service(store=None, tenant_id: str = ""):
     if _decision_service is not None:
         return _decision_service
     from services.knowevo.decision_service import DecisionService
-    return DecisionService(store=store or _store(),
-                           tenant_id=tenant_id or _default_tenant)
+    return DecisionService(store=store or _store(), tenant_id=_tenant(tenant_id))
 
 
 def _resolve(store=None, tenant_id: str = ""):
-    """(store, tenant) from explicit args or server-level settings."""
-    return store or _store(), tenant_id or _default_tenant
+    """(store, tenant) from explicit args or request/server settings."""
+    return store or _store(), _tenant(tenant_id)
 
 
 def _card_service(store=None, tenant_id: str = ""):
@@ -122,15 +171,15 @@ def _card_service(store=None, tenant_id: str = ""):
     """
     from services.knowevo.decision_service import DecisionService
 
+    tenant = _tenant(tenant_id)
     llm = None
     try:
         from services.knowevo.llm_client import build_llm_callable
 
-        llm = build_llm_callable(tenant_id or _default_tenant)
+        llm = build_llm_callable(tenant)
     except Exception as exc:  # noqa: BLE001 - degrade, handler reports it
         logger.warning("decision-card llm wiring unavailable: %s", exc)
-    return DecisionService(store=store or _store(),
-                           tenant_id=tenant_id or _default_tenant, llm=llm)
+    return DecisionService(store=store or _store(), tenant_id=tenant, llm=llm)
 
 
 def _template_service(tenant_id: str = ""):
@@ -143,7 +192,7 @@ def _template_service(tenant_id: str = ""):
     if _skill_template_service is not None:
         return _skill_template_service
     from services.knowevo.skill_template_service import SkillTemplateService
-    return SkillTemplateService(tenant_id=tenant_id or _default_tenant)
+    return SkillTemplateService(tenant_id=_tenant(tenant_id))
 
 
 def _err(code: str, hint: str) -> dict:
