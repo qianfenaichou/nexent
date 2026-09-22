@@ -1,6 +1,6 @@
 # T-28：判别题集 v1（E8 版本钉住判别性验证前置，零 LLM）
 
-**状态**: ★ 待开发（2026-09-22 r26 轮；来源 = pitfalls #62 沉淀机制④：e8-paired2 两臂满分 Δ=0.0 是「测试集无判别题」所致——要暴露版本钉住差异，必须有「旧时钟 0 证据 vs 新时钟 N 证据」的判别题）
+**状态**: ✅ 已完成（2026-09-22 r26，kw-dev 成员 t28-discrim，本地提交 10cecd27b；主会话核验：提交仅 4 个文件（2 独占代码 + 独占测试 11 个 + 本简报 Evidence 回填），711 = 700(T-29 后) + 11 口径对账一致，pitfalls #63 + cost-ledger `t28-discrim-probe` 行已登记）
 **Blocked by**: 无
 **独占文件**（本任务创建/修改）:
 - `competition/corpus/testset-discriminating-v1.json`（新建：判别题集）

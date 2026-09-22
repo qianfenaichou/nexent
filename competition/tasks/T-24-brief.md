@@ -1,6 +1,6 @@
 # T-24：抽取运行诊断落库（P1-4 产品侧，r22 轮）
 
-**状态**: ★ 待开发（2026-09-21 r22 轮，来源 = r20 评审 P1-4 剩余项 + pitfalls #52/#55 沉淀机制）
+**状态**: ✅ 已完成（r22 实现 + 提交 ac233818e「T-24 product-side extract diagnostics in kg_extract_run_t (kw_009, pitfalls #52/#55)」；2026-09-22 r26 主会话核验简报 Evidence 在案后翻转）
 **Blocked by**: 无（r21 已在调用层落地 `call_with_usage` 的 reasoning_tokens/finish_reason）
 **独占文件**（本任务创建/修改）:
 - `deploy/sql/migrations/v2.5.5_kw_009_extract_run_diagnostics.sql`（**新建**：幂等只加列）

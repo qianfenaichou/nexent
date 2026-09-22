@@ -1,6 +1,6 @@
 # T-26：决策卡生产入口取证修复（整句 seed 命中 0 + 显式 as_of 证据缺失）
 
-**状态**: ★ 待开发（2026-09-21/22 r22 尾段实测发现；来源 = cron-supervisor F1 + 主会话 00:10-00:25 真实 UI/DB 复现）
+**状态**: ✅ 已完成（r24 修复 f0175fc5a + 复验/裁决在案；2026-09-22 r26 主会话核验：pitfalls #61/#62、cost-ledger r24-t26-verify / r24-t26-cards 两行已登记，遗留 used_tokens 缺口另立 T-29）
 **Blocked by**: 无（可独立修；不需要 LLM 配额也能诊断，修复后复验需 ≤4 次 LLM）
 **独占文件**:
 - `backend/services/knowevo/graph_store.py`（`entity_lookup` / `neighbors` 的 seed 或时钟过滤，视诊断结论）
@@ -49,7 +49,7 @@
 - [x] 现象 3 保持可用（旧时钟版本拒绝语义不回归）
 - [x] 单测 + PG 集成零回归（跑 `test_decision_card_app.py` + `knowevo/` 全量，贴数字）
 - [x] ruff 零新增；注释英文；零新依赖；未改 ablation 语义
-- [ ] pitfalls/cost-ledger 各一行（token 如实：LLM=0 或实测值）——归主会话登记（本轮未动 ledgers）
+- [x] pitfalls/cost-ledger 各一行（token 如实：LLM=0 或实测值）——已登记：pitfalls #61/#62 + cost-ledger `r24-t26-verify` / `r24-t26-cards` 行（r25/r26 主会话核验）
 - [x] 不伪造：修不动就把根因与建议如实写进 status，评估交回主会话 —— **已触发并裁决**：T-23 `2026-01-01→RECOMMEND` 工作点翻转为 INSUFFICIENT，STOP 上报后主会话裁定为**纠正而非回归**（见下方"★回归发现与裁决"）；新基线 = 定义性证据下诚实拒绝
 
 **Evidence**（r24，kw-cardfix，全部为真实命令输出；诚实预算：本轮窗口共 8 次 LLM 调用 = 2 探针 + 1 网关缺陷定位（该次定位产出主会话的 #59/#60 thinking 修复）+ 5 张复验卡 —— 5/5 复验卡即诚实复验计数，超额部分如实披露而非隐藏）：

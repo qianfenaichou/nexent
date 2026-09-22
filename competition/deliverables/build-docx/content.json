@@ -1,0 +1,869 @@
+{
+ "cover": {
+  "englishLabel": "HUAWEI ICT COMPETITION 2026 · TRACK 3",
+  "title": "Nexent-KnowEvo：可进化决策智能体",
+  "subtitle": "基于华为 ModelEngine Nexent v2.6.0 的领域知识资产认知与可溯源决策方案",
+  "metaLines": [
+   "赛题：赛题3 — 基于华为 ModelEngine Nexent 打造可进化决策智能体",
+   "作品名称：Nexent-KnowEvo",
+   "参赛学校：【学校名称】",
+   "队伍名称：【队伍名称】",
+   "队长姓名：【队长姓名】",
+   "手机号：【手机号】",
+   "文档版本：v1.0（2026-09-22）"
+  ],
+  "footerLeft": "Nexent-KnowEvo · 初赛开发设计文档",
+  "footerRight": "2026-09"
+ },
+ "blocks": [
+  {
+   "type": "h1",
+   "text": "1. 项目概述"
+  },
+  {
+   "type": "h2",
+   "text": "1.1 一句话定位"
+  },
+  {
+   "type": "p",
+   "text": "以 2 型糖尿病用药决策为主场景，把沉睡的行业文档（临床指南、药品说明书、临床路径、检验标准）激活为版本化的知识图谱资产，通过「检索-推理」双驱动执行流产出每一步可溯源的用药决策卡，并让知识体系随行业标准演进而增量进化。项目已在 Nexent 平台上真实部署跑通（2026-09 起）。"
+  },
+  {
+   "type": "h2",
+   "text": "1.2 痛点与价值主张"
+  },
+  {
+   "type": "table",
+   "headers": [
+    "痛点",
+    "现状",
+    "本项目回答"
+   ],
+   "rows": [
+    [
+     "知识版本混乱",
+     "新版指南发布后旧版仍在基层使用，检索系统无法区分新旧事实",
+     "版本钉住的推理语义层：多跳遍历强制版本谓词，过期事实显式上报"
+    ],
+    [
+     "知识资产沉睡",
+     "行业文档散落在语料库，未成结构化认知资产",
+     "L1 资产登记 + L2 图谱化 + L3 决策执行 + L4 进化闭环"
+    ],
+    [
+     "决策不可溯源",
+     "大模型回答无证据链、无版本戳、无免责声明",
+     "决策卡：证据链展开 + 知识版本戳 + 认知辅助免责声明"
+    ],
+    [
+     "标准演进成本高",
+     "指南更新后知识体系需手动梳理，人力成本高",
+     "渐变编排层：变更检测→受影响面→最小充分更新集→人审预算择优（算法来自文献，机制已预验证）"
+    ]
+   ],
+   "widths": [
+    16,
+    38,
+    46
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "1.3 与赛题五条任务的对齐"
+  },
+  {
+   "type": "table",
+   "headers": [
+    "#",
+    "官方任务（摘录）",
+    "本项目落点",
+    "承载模块"
+   ],
+   "rows": [
+    [
+     "1",
+     "多模态异构数据资产认知：统一识别、理解、资产标识",
+     "L1 摄取管道 + registry 资产登记（编号／模态／权威等级／版本血缘／业务出版日）",
+     "§6 §7"
+    ],
+    [
+     "2",
+     "低资源场景本体半自动化构建、持续动态更新、与行业规范对齐",
+     "L2 种子引导流水线 + L4 标准对齐器（创新主轴）",
+     "§3 §4"
+    ],
+    [
+     "3",
+     "深度集成 MCP 协议与 Skills 编排，「检索-推理」双驱动",
+     "L3 双驱动执行流 + 自研 MCP 工具族 + Skill 分层",
+     "§5"
+    ],
+    [
+     "4",
+     "跨文档多跳推理、决策链路可溯源；沉淀可复用 Skill 模板",
+     "版本钉住多跳 + 决策卡 + 模板库",
+     "§4.3 §5.2 §5.4"
+    ],
+    [
+     "5",
+     "智能体基于 Nexent 平台可运行",
+     "fork 上真实部署、HTTP + MCP 双入口、评测走平台「智能体评估」",
+     "§2.3 §5.5"
+    ]
+   ],
+   "widths": [
+    6,
+    34,
+    45,
+    15
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "1.4 开发模式声明"
+  },
+  {
+   "type": "p",
+   "text": "本项目采用人机协作分层开发：人类队员负责赛题对齐、算法设计决策、数据与评估金标、最终评审；AI 编码智能体在接口契约与验收命令约束下实现模块，管理方式为「任务包—验收—证据」三件套。全部代码可开源复现，开发过程留有完整台账：踩坑台账 63 条、token 成本台账、知识版本演进记录。这本身即是官方要求项「调试迭代经验」的实据。"
+  },
+  {
+   "type": "h1",
+   "text": "2. 整体方案设计"
+  },
+  {
+   "type": "h2",
+   "text": "2.1 三条设计铁律"
+  },
+  {
+   "type": "numbered",
+   "items": [
+    "最小侵入上游：全部业务代码在自包含目录（backend/services/knowevo/、mcp_servers/knowevo_mcp/、frontend/features/*、competition/），上游 Nexent 代码零修改（除不超过 30 行的纯新增渲染分支），保证跟随上游月度发版——v2.5.0 到 v2.6.0 实测零冲突合并（实测）。",
+    "弃用优先于删除：知识资产只打时间戳不作物理删除，保证决策卡的历史可回溯，即溯源链完整性。",
+    "零侵入评测：自定义指标全部写成 Nexent 原生 Code 判定，签名逐字为 evaluate(query, expected, actual, runtime_events)（官方文档核验），上游评估服务一个字符不改。"
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "2.2 六层架构"
+  },
+  {
+   "type": "code",
+   "text": "L5 交互层   本体工作台(树/diff/版本) · 决策卡面板(证据链展开) · 模板库页 · 评测报告\n            （实现于 frontend/features/{knowledgeGraph,decisionCard,skillTemplate}）\nL4 知识进化层 ★创新主轴\n            标准对齐器：变更检测 → 受影响面 → 最小充分更新集（§4）\n            冲突消解：检测→分类→裁决记录 · Skill 模板库（轨迹→模式→SKILL.md）\nL3 决策执行层\n            检索-推理双驱动（§5）：路由(规则+few-shot)\n              检索路(knowledge_base_search + kg_search)\n              推理路(kg_multi_hop 束搜索·版本钉住) → 证据链融合 → 决策卡\nL2 知识引擎层（§3）\n            本体半自动构建(种子引导 + 两级提案 + 人审预算)\n            本体锚定抽取(子图检索注入) · 三级实体对齐(外部主键 blocking)\n            bi-temporal · PG JSONB + 递归 CTE 图存储（同库同事务，溯源 JOIN 一致性）\nL1 数据资产层\n            Nexent 摄取管线(Unstructured) + 专项解析兜底\n            registry 资产登记：编号 / 模态 / authority_level / published_at / 血缘\nL0 Nexent 底座 v2.6.0（fork · 零修改）\n            FastAPI 多服务 + Next.js 15 + PG/ES/Redis/MinIO + smolagents 内核\n            + MCP 生态 + SKILL.md 渐进披露 + 三层记忆 & Dreaming\n            + 智能体评估 + RBAC\n\n进化闭环：标准更新 → L1 摄取 → L4 变更检测→受影响面→更新提案→人审确认\n        → L2 版本化增量演进 → L3 决策卡带知识版本戳 → 智能体评估验证 Δ质量"
+  },
+  {
+   "type": "note",
+   "text": "诚实口径：L5 设计与实际实现存在差异——本体工作台、决策卡面板、模板库页已实现；资产看板与进化看板动画未实现（资产看板经裁决放弃，理由见项目决策总纲的「明确不做的事」）。"
+  },
+  {
+   "type": "h2",
+   "text": "2.3 平台集成事实清单（核验版）"
+  },
+  {
+   "type": "table",
+   "headers": [
+    "能力",
+    "核验结论（2026-09-18，官方文档 + 源码）"
+   ],
+   "rows": [
+    [
+     "Agent 内核",
+     "smolagents CoreAgent(CodeAgent)（代码层确认：sdk/nexent/core/agents/core_agent.py:494）"
+    ],
+    [
+     "MCP",
+     "自定义工具 = FastMCP @mcp.tool() + 界面注册 URL；本项目双注册（Local MCP + 独立 FastMCP 服务），单一 schema 源"
+    ],
+    [
+     "Skill",
+     "SKILL.md + YAML frontmatter + reference 渐进披露 + 沙箱执行 + ZIP 上传 + NL2Skill（nl2skill_agent.py）"
+    ],
+    [
+     "记忆",
+     "Tenant / User / Agent 三层 + Dreaming（短期到长期记忆整理）"
+    ],
+    [
+     "检索",
+     "ES dense_vector + kNN + BM25 混合（基于 Elasticsearch）。平台检索未见独立向量数据库组件，本项目向量走服务层 cosine，与平台一致"
+    ],
+    [
+     "评估",
+     "「智能体评估」模块：LLM 判定 + Code 判定（签名逐字 evaluate(query, expected, actual, runtime_events)，AST 安全扫描 + 白名单沙箱）"
+    ],
+    [
+     "版本",
+     "v2.6.0（2026-09-16 发布），月度发版；本项目迁移文件名前缀 v2.5.5 为 fork 时点的历史事实，兼容 v2.6"
+    ]
+   ],
+   "widths": [
+    14,
+    86
+   ]
+  },
+  {
+   "type": "note",
+   "text": "平台事实红线（写任何对外材料前必须遵守）：平台版本必须写 v2.6.0，不是 v2.5.x；不得声称平台有 pgvector，平台走 ES 混合检索；评估模块官方名为「智能体评估」；代码评测器签名逐字如上。「可进化」是本项目 L4 的实现，不是平台自带能力——平台侧可引实据仅三件：Dreaming 记忆整理、Agent 版本管理回滚、智能体评估反馈闭环。"
+  },
+  {
+   "type": "h1",
+   "text": "3. 知识图谱构建方案"
+  },
+  {
+   "type": "h2",
+   "text": "3.1 本体半自动构建流水线（创新贡献之三：低资源构建层）"
+  },
+  {
+   "type": "bullets",
+   "items": [
+    "种子引导 + 两级提案 + 人审预算显式目标：最大化 Σq(sᵢ) 且满足 Σminutes(sᵢ) ≤ B。其中信息价值定义来自 VoI 文献，预算—质量曲线为本项目实验协议。",
+    "VOI 贪心接入 (1−1/e) 子模近似框架，并附诚实适用声明：该保证仅对覆盖型 impact 成立。已用合成实例实证 400/400 满足 ≥ 1−1/e，贪心与最优比均值 98.8%。",
+    "真实落库：构建租户本体 v1.1.0，含 10 类 / 10 关系，fact_cutoff = 2025-01-01。"
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "3.2 抽取与实体对齐（两个正确性设计）"
+  },
+  {
+   "type": "bullets",
+   "items": [
+    "本体锚定抽取：以子图检索结果注入 few-shot，约束实体类别。构建租户已摄取 15/120 段，落库 136 实体 / 65 关系 / 38 证据行（2026-09-21 收盘快照）。质量门禁全绿：0 缺失 doc_id、0 缺失 valid_at。",
+    "三级实体对齐：外部主键 blocking（药品 ID、ATC 码等）+ 别名合并（重抽时 merge 去重）。"
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "3.3 bi-temporal 增量更新与冲突消解"
+  },
+  {
+   "type": "bullets",
+   "items": [
+    "事实双时间轴：valid_at（事实在现实中何时为真）与 published_at（文档发布日）分离；supersede 只打失效戳不删数据。批量 supersede 实测 p95 = 22.7 ms（2 万实体规模 PoC）。",
+    "评测金标按版本选择：版本敏感题采用双金标设计（answer_old / answer_new）。当前实态为 20 题种子集落库，120 题全量集属规划，见 §5.5。"
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "3.4 版本化"
+  },
+  {
+   "type": "bullets",
+   "items": [
+    "OntologyService.commit_version 发布本体版本；版本钉住多跳在有效子图 G_v 上求解。",
+    "形式化定义配构造性 soundness，由五条具名性质测试锁定。",
+    "机制预验证结果：版本敏感题准确率 100%（钉住）对比 20.6%（随机检索）与 25.0%（取最新），同时稳定题三臂均为 100%，无回归。"
+   ]
+  },
+  {
+   "type": "h1",
+   "text": "4. 标准演进对齐器（创新主轴）"
+  },
+  {
+   "type": "p",
+   "text": "三段式流水线：变更检测 → 受影响面分析 → 最小充分更新集。本节对应创新贡献之一。"
+  },
+  {
+   "type": "h2",
+   "text": "4.1 三段式变更检测"
+  },
+  {
+   "type": "p",
+   "text": "文档级 diff → 条款级 diff → 语义级变更分类（新增／修订／废弃／冲突），产出结构化变更报告，每条变更带章节锚点与原文 span，供人工核验。"
+  },
+  {
+   "type": "h2",
+   "text": "4.2 受影响面分析（传播算法）"
+  },
+  {
+   "type": "bullets",
+   "items": [
+    "算法：溯源二部图反向可达，倒排索引物化，全流程仅两次索引查询，不做图遍历。",
+    "实测：合成 80 文档 / 2000 实体 / 3000 决策卡规模下，8 份变更文档的影响传播耗时均值 0.021 ms，命中 164 个受影响实体与 750 张受影响决策卡。"
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "4.3 最小充分更新集（创新内核）"
+  },
+  {
+   "type": "bullets",
+   "items": [
+    "在专家确认预算约束下做价值最大化：VOI 贪心 (1−1/e) 近似，与低资源构建层共用同一框架，并附同样的诚实适用声明。",
+    "人审确认后进入版本化增量演进。更新集大小与质量损失的关系曲线属规划中的实验。"
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "4.4 压轴演示数据"
+  },
+  {
+   "type": "p",
+   "text": "《中国 2 型糖尿病防治指南》2020 版与 2024 版对比，语料已入 registry 并通过核查（11 份指南类全部核查通过）。该数据构成「同一问题、两版答案不同」的版本对比演示数据源。"
+  },
+  {
+   "type": "h1",
+   "text": "5. 智能体构建方案"
+  },
+  {
+   "type": "p",
+   "text": "本节覆盖评分维度的编排与 MCP/Skill 集成、以及资产激活的业务价值验证。结构为：双驱动执行流（含创新贡献之二）→ MCP 工具族 → Skill 分层 → 决策卡 → 评测结果 → Agent 配置细节 → 附件说明。"
+  },
+  {
+   "type": "h2",
+   "text": "5.1 检索-推理双驱动执行流（创新贡献之二）"
+  },
+  {
+   "type": "bullets",
+   "items": [
+    "执行链：路由（规则 + few-shot）→ 检索路（knowledge_base_search + kg_search）→ 推理路（kg_multi_hop 束搜索，版本钉住）→ 证据链融合 → 决策卡。",
+    "创新贡献之二 = 版本钉住的多跳推理语义层：束搜索逐跳强制版本谓词，在有效子图 G_v 上求解，被裁剪的事实显式上报。配路径有效性定义与构造性 soundness。",
+    "机制预验证：版本敏感题 100% 对比 20.6% / 25.0%，稳定题三臂均 100% 无回归。",
+    "运行表现：多跳 p95 = 12.5 ms（2 万实体 / 3 万边，depth ≤ 3，beam = 3）；跳数标定显示 depth = 2 时精度饱和（30 题链式夹具标定）。"
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "5.2 自研 MCP 工具族（双注册）"
+  },
+  {
+   "type": "p",
+   "text": "已注册 5 个。唯一口径为 backend/tool_collection/mcp/kg_tools.py 的 KG_MCP_TOOL_NAMES。"
+  },
+  {
+   "type": "table",
+   "headers": [
+    "工具",
+    "功能",
+    "状态"
+   ],
+   "rows": [
+    [
+     "kg_search",
+     "图谱实体／邻域检索（1 跳）",
+     "已双注册"
+    ],
+    [
+     "kg_stats",
+     "图谱统计",
+     "已双注册"
+    ],
+    [
+     "kg_multi_hop",
+     "版本钉住多跳 + 证据链",
+     "已双注册"
+    ],
+    [
+     "decision_card_render",
+     "决策卡生成（结构化输出）",
+     "已双注册"
+    ],
+    [
+     "skill_template_apply",
+     "模板实例化",
+     "已双注册"
+    ]
+   ],
+   "widths": [
+    28,
+    44,
+    28
+   ]
+  },
+  {
+   "type": "note",
+   "text": "规划中但尚未实现的工具：kg_evolution_trace、ontology_diff、asset_search、evidence_verify。注册机制：同一 FastMCP 应用实例被挂载进 Local MCP，两处注册共用 mcp_servers/knowevo_mcp/schemas.py 这一份 schema，无漂移。"
+  },
+  {
+   "type": "h2",
+   "text": "5.3 Skill 分层编排"
+  },
+  {
+   "type": "code",
+   "text": "Agent（duty prompt 只写职责与约束）\n └─ Skill: domain-asset-cognition（入口·路由：锚定→路由→加载子技能→总装→出口）\n     ├─ Skill: retrieval-path  → kg_search / knowledge_base_search\n     ├─ Skill: reasoning-path  → kg_multi_hop（版本对比 task=version_compare）\n     └─ Skill: evidence-assembly → decision_card_render"
+  },
+  {
+   "type": "p",
+   "text": "4 个 Skill 已真实落库（ag_skill_info_t，2026-09-20 导出）。模板库从真实决策轨迹归纳参数化母版，四变量为 领域／任务类型／关系模板／行业规则，支撑跨行业迁移；复用统计 R/S/D 落 skill_template_t。"
+  },
+  {
+   "type": "h2",
+   "text": "5.4 决策卡（可溯源的直接载体）"
+  },
+  {
+   "type": "p",
+   "text": "决策卡 JSON 字段：knowledge_stamp（ontology_version + kg_cutoff）、candidates（score + confidence_calibrated + evidence_chain，其中 evidence_chain 含 claim／provenance／version_pinned／tag）、risks、counterfactual、conflict_adjudications、uncertainty_notes、disclaimer（「本系统提供认知辅助，不构成处方建议」）。"
+  },
+  {
+   "type": "bullets",
+   "items": [
+    "置信度校准目标 ECE ≤ 0.10；无校准表时诚实标注 calibration_applied = false。",
+    "反事实仅对 top-1 候选生成，为成本控制考量。"
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "5.5 评测体系与当前结果（诚实口径）"
+  },
+  {
+   "type": "bullets",
+   "items": [
+    "测试集：规划为 120 题四题型（事实 F 35 / 多跳 M 45 / 版本敏感 V 20 双金标 / 拒绝 X 20），配三名队员交叉标注（Krippendorff α ≥ 0.7）与 80/20 构建盲区隔离。当前实态为 20 题种子集落库，120 题全量集尚未完成——引用时按此如实口径。",
+    "指标：pass^2（每题 3 次运行至少 2 次判对，τ-bench 口径）+ 准确率（同报判定题数）+ 溯源完整度双口径 + p95 延迟与 token。",
+    "judge 偏差控制：judge 与生成模型异家族、五元组 rubric、20% 翻转测试、10% 人工抽检。"
+   ]
+  },
+  {
+   "type": "table",
+   "headers": [
+    "实验",
+    "状态",
+    "数字"
+   ],
+   "rows": [
+    [
+     "E1 纯 RAG 基线",
+     "已完成（诚实口径重跑）",
+     "acc = 0.6667 / pass2 = 0.65 / 判定题数 60 与 60 全部判定 / 溯源完整度 1.0（20 题 × 3 次运行）。旧口径因分母污染作废（未答计错已修复）"
+    ],
+    [
+     "机制预验证四探针",
+     "已完成（seed 固定可复跑）",
+     "P1 版本敏感题 100% 对比 20.6% / 25.0%；P2 VOI 净差 +1 至 +6；P3 传播 0.021 ms；P4 贪心与最优比 98.8%"
+    ],
+    [
+     "E2 四级消融",
+     "部分完成（报告 partial = true）",
+     "A1 纯 RAG：10 题 acc = 0.7241 / pass2 = 0.70 / 判定 29 与 30；A2 图检索：4 题 acc = 0.75 / 判定 12 与 12；A4 完整版两臂配对：版本敏感题 3 题 × 2 次运行，两臂 acc 均为 1.0（6 与 6）→ Δ = 0.0；A3 多跳尚未运行（零判定不等于 0 分）"
+    ],
+    [
+     "E8 版本钉住开关对比",
+     "已完成，结论为零差异",
+     "Δ = 0.0（同一 invocation 配对复跑，零空正文污染）。诚实限制：样本量 6、两臂均满分，Δ = 0 不得反推「版本钉住无效」。机制证据改用判别题双时钟对：糖化血红蛋白问题在 as_of = 2021-06-01 时输出证据不足（诚实拒绝，0 证据），在 as_of = 2025-06-01 时输出建议（1 候选 + 3 证据）"
+    ],
+    [
+     "PG 集成与 knowevo 全量单测",
+     "已完成",
+     "711 passed / 30 skipped / 0 failed（2026-09-22 本次提交实测）"
+    ]
+   ],
+   "widths": [
+    18,
+    20,
+    62
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "5.6 Agent 主配置（真实落库值）"
+  },
+  {
+   "type": "p",
+   "text": "来源：nexent 库 ag_tenant_agent_t（2026-09-20 导出，非手写）。密钥类字段一律不进交付物。"
+  },
+  {
+   "type": "table",
+   "headers": [
+    "字段",
+    "值"
+   ],
+   "rows": [
+    [
+     "agent_id / name",
+     "1 / knowevo_assistant（display_name：Knowevo 助手）"
+    ],
+    [
+     "tenant_id",
+     "6756b0ab-39c0-462a-9745-aa12e1511fcd（构建租户）"
+    ],
+    [
+     "version_no",
+     "1（当前版本）"
+    ],
+    [
+     "model_name",
+     "空——走 KW_LLM_SMALL／MID／LARGE_MODEL_ID 三档路由（见 §5.7）"
+    ],
+    [
+     "duty_prompt",
+     "「你是一个简洁友好的中文助手。你的职责是准确、清晰地回答用户的问题，不编造事实。」"
+    ]
+   ],
+   "widths": [
+    24,
+    76
+   ]
+  },
+  {
+   "type": "note",
+   "text": "设计要点：Agent 的 prompt 只写职责与约束，不写领域执行细节——领域逻辑全部下沉到 Skill 分层（§5.3）与 MCP 工具（§5.2），保证 Agent 本体可随平台升级零改动。"
+  },
+  {
+   "type": "h2",
+   "text": "5.7 模型信息（真实落库 9 档，密钥已脱敏）"
+  },
+  {
+   "type": "p",
+   "text": "来源：model_record_t，connect_status = available。"
+  },
+  {
+   "type": "table",
+   "headers": [
+    "序号",
+    "模型",
+    "类型",
+    "用途",
+    "上下文窗口"
+   ],
+   "rows": [
+    [
+     "1",
+     "glm-5.3-free",
+     "llm",
+     "主档",
+     "32768"
+    ],
+    [
+     "2",
+     "glm-5.3-free",
+     "llm",
+     "小档",
+     "32768"
+    ],
+    [
+     "3",
+     "bge-m3",
+     "embedding",
+     "向量化（dim = 1024）",
+     "—"
+    ],
+    [
+     "4",
+     "deepseek-v4-flash",
+     "llm",
+     "生成／小中档",
+     "65536"
+    ],
+    [
+     "5",
+     "deepseek-v4.1-flash",
+     "llm",
+     "大档",
+     "65536"
+    ],
+    [
+     "6",
+     "glm-5.3-flash",
+     "llm",
+     "judge，异家族",
+     "65536"
+    ],
+    [
+     "7",
+     "deepseek-v4-flash@sn",
+     "llm",
+     "生成·中档（sensenova 网关）",
+     "65536"
+    ],
+    [
+     "8",
+     "glm-5.2@sn",
+     "llm",
+     "judge·异家族／降级重试",
+     "65536"
+    ],
+    [
+     "9",
+     "deepseek-v4-pro@sn",
+     "llm",
+     "大档·预留",
+     "65536"
+    ]
+   ],
+   "widths": [
+    8,
+    26,
+    14,
+    36,
+    16
+   ]
+  },
+  {
+   "type": "p",
+   "text": "三档路由实现于 backend/services/knowevo/llm_client.py：小档与中档使用 deepseek-v4-flash@sn（快且成本低，承担日常抽取与检索）；大档使用 glm-5.2@sn（异家族，用于降级重试与判别）；judge 档使用 glm-5.3-flash，与生成模型异家族，用于解耦自评偏差——这是评测方法论的要求。"
+  },
+  {
+   "type": "h2",
+   "text": "5.8 工具信息与知识库信息"
+  },
+  {
+   "type": "p",
+   "text": "自研 MCP 工具见 §5.2（5 个已注册并双注册）。平台侧工具真实落库 34 个（ag_tool_info_t，is_available = 真），与本场景直接相关的有 knowledge_base_search（平台 ES 混合检索）、aidp_search、search_memory 与 store_memory、postgres_database、exa_search 与 tavily_search、parallel_executor 等。"
+  },
+  {
+   "type": "p",
+   "text": "知识库信息："
+  },
+  {
+   "type": "table",
+   "headers": [
+    "项",
+    "值",
+    "来源"
+   ],
+   "rows": [
+    [
+     "语料登记",
+     "58 份",
+     "corpus/registry.csv"
+    ],
+    [
+     "语料构成",
+     "药品说明书 28 / 临床指南 11 / 诊疗路径 9 / 检验 2 / 科普 8",
+     "三批核查报告"
+    ],
+    [
+     "图谱资产",
+     "摄取 15/120 段；136 实体 / 65 关系 / 38 证据行（2026-09-21 收盘）",
+     "成本台账 r20-burst-c 行与消融报告实测值"
+    ],
+    [
+     "本体",
+     "10 类 / 10 关系，fact_cutoff = 2025-01-01（v1.1.0）",
+     "OntologyService.commit_version"
+    ],
+    [
+     "平台记忆",
+     "memory_records_t（Dreaming 整理）",
+     "平台「可进化」实据之一"
+    ]
+   ],
+   "widths": [
+    16,
+    52,
+    32
+   ]
+  },
+  {
+   "type": "p",
+   "text": "Skill 分层（真实落库 4 个，ag_skill_info_t）："
+  },
+  {
+   "type": "table",
+   "headers": [
+    "序号",
+    "Skill 名称",
+    "定位"
+   ],
+   "rows": [
+    [
+     "1",
+     "domain-asset-cognition",
+     "入口·路由层：锚定实体 → 判断问题类型 → 加载子技能 → 交证据组装；禁止绕过子技能直调 kg_multi_hop"
+    ],
+    [
+     "2",
+     "evidence-assembly",
+     "证据组装：生成可溯源决策卡，带认知辅助免责声明"
+    ],
+    [
+     "3",
+     "reasoning-path",
+     "推理路：跨文档决策考量、版本对比（kg_multi_hop）"
+    ],
+    [
+     "4",
+     "retrieval-path",
+     "检索路：单点事实查询（kg_search ／ knowledge_base_search）"
+    ]
+   ],
+   "widths": [
+    8,
+    30,
+    62
+   ]
+  },
+  {
+   "type": "note",
+   "text": "编排契约（取自入口 Skill 原文）：判断不确定时双路并发；同类单路失败 2 次后升级为双路；无证据时必须输出「现有知识库无依据」，不得编造。"
+  },
+  {
+   "type": "h2",
+   "text": "5.9 调用关系图（Agent → Skill → MCP → 服务 → 存储）"
+  },
+  {
+   "type": "code",
+   "text": "用户提问\n  → Agent 主进程（duty prompt 只写职责与约束）\n  → 入口 Skill: domain-asset-cognition（路由）\n       ├─ 单点事实类（检索路）→ Skill retrieval-path\n       │      → MCP kg_search ／ 平台 knowledge_base_search（ES 混合检索）\n       └─ 多跳与演进类（推理路）→ Skill reasoning-path\n              → MCP kg_multi_hop（束搜索 · 版本钉住）\n  → Skill evidence-assembly → MCP decision_card_render\n  → 决策卡落库 decision_card_t 并展示\n     （含知识版本戳 + 证据链 + 认知辅助免责声明）\n\n旁路：本体与版本管理 → ontology_service.commit_version → ontology_version_t\n存储：PostgreSQL JSONB（kg_graph / kg_evidence_t / decision_card_t /\n      skill_template_t / eval_run_t）；Elasticsearch（知识库文档索引）\n评测：平台「智能体评估」Code 判定\n      evaluate(query, expected, actual, runtime_events) → eval_run_t → 消融报告"
+  },
+  {
+   "type": "h2",
+   "text": "5.10 需同步提交的文件说明"
+  },
+  {
+   "type": "table",
+   "headers": [
+    "文件",
+    "说明"
+   ],
+   "rows": [
+    [
+     "deliverables/agent-config.json",
+     "§5.6 至 §5.8 的机器可读版（真实导出，密钥已脱敏）"
+    ],
+    [
+     "docs/call-graph.md",
+     "调用关系图（Mermaid 渲染版）+ 三条关键链路逐条拆解 + 注册机制依据"
+    ],
+    [
+     "docs/dev-design-doc.md",
+     "本文件的 Markdown 母本"
+    ],
+    [
+     "docs/agent-config.md",
+     "Agent 配置说明，含平台 34 个工具清单与 Skill 原文要点"
+    ],
+    [
+     "docs/reproduce-README.md",
+     "复现步骤，含部署方式"
+    ],
+    [
+     "corpus/registry.csv",
+     "知识库清单：58 份语料登记（编号／模态／权威等级／来源 URL／license 说明）"
+    ],
+    [
+     "backend/tool_collection/mcp/kg_tools.py",
+     "MCP 说明依据：自研工具双注册代码，KG_MCP_TOOL_NAMES 为唯一口径"
+    ],
+    [
+     "mcp_servers/knowevo_mcp/server.py 与 schemas.py",
+     "独立 FastMCP 服务与单一 schema 源"
+    ],
+    [
+     "backend/services/knowevo/*.py",
+     "服务层实现：kg_service / decision_service / version_pin / ontology_service / skill_template_service / llm_client"
+    ],
+    [
+     "docs/pitfalls.md",
+     "调试迭代经验台账，共 63 条"
+    ],
+    [
+     "deliverables/*.png",
+     "示例问答与界面截图。其中「示例问答不少于 3 张」尚待补齐，见 §6.3"
+    ]
+   ],
+   "widths": [
+    34,
+    66
+   ]
+  },
+  {
+   "type": "h1",
+   "text": "6. 原始数据说明与数据处理说明"
+  },
+  {
+   "type": "h2",
+   "text": "6.1 原始数据说明"
+  },
+  {
+   "type": "table",
+   "headers": [
+    "项",
+    "内容"
+   ],
+   "rows": [
+    [
+     "规模",
+     "58 份真实公开语料，registry.csv 全量登记（2026-09-21 逐行实测）"
+    ],
+    [
+     "构成",
+     "药品说明书 28 份 / 临床指南 11 份 / 诊疗路径 9 份 / 科普图文 8 份 / 检验标准 2 份"
+    ],
+    [
+     "来源与合规",
+     "全部为公开渠道（官方指南 PDF、NMPA 公开说明书、公开临床路径）；原始 PDF 不对外再分发，交付物只含解析文本与元数据"
+    ],
+    [
+     "权威度分级",
+     "authority_level 1 至 4（国家标准为 1，科普为 4），参与检索排序，已实测生效"
+    ]
+   ],
+   "widths": [
+    16,
+    84
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "6.2 数据处理说明"
+  },
+  {
+   "type": "code",
+   "text": "原始 PDF / 图文\n  → Nexent 摄取管线(Unstructured) + 表格专项解析 / OCR 兜底\n  → 解析体检（抽样评分，不合格重解析）\n  → registry 登记（编号 / 模态 / 权威度 / 出版日 / 血缘）\n  → 80/20 盲区切分（构建与评测隔离）\n  → chunk（600 字，保留定位符）→ ES 索引 + L2 图谱抽取\n  → 本体锚定抽取（子图检索注入）→ 三级对齐\n  → bi-temporal 入图 → 版本化"
+  },
+  {
+   "type": "p",
+   "text": "质量控制点：解析体检报告；抽取结果打 EXTRACTED／INFERRED 双标签并设待审池；对齐阈值经标定；入图前做一致性校验；成本台账逐轮登记。"
+  },
+  {
+   "type": "h2",
+   "text": "6.3 评测与结果"
+  },
+  {
+   "type": "p",
+   "text": "评测结果见 §5.5 表格。提交定稿前待补：构建租户图谱摄取补齐至 120 段，随后续跑消融四段（E8 开关两臂、A3 多跳、交叉表），回填 E2 全量矩阵并重绘评测报告图。缺失数字一律如实标注为待续跑，不作估计——这是本项目最高优先级的诚实性条款。"
+  },
+  {
+   "type": "p",
+   "text": "当前已知缺口（如实声明，不掩盖）："
+  },
+  {
+   "type": "numbered",
+   "items": [
+    "「示例问答不少于 3 张」尚未取得。平台内完整问答链路当前被部署环境缺陷阻塞：沙箱默认级别为 docker，导致宿主机解析不了容器 DNS 名 nexent-minio:9000，抛出 EndpointConnectionError，进而触发 MemoryPreparationException。已实测 3 轮均失败，未以低质截图充数。解锁方案与截图采集脚本已就绪（覆盖沙箱级别为 local，或将 MinIO 端点改指向宿主机映射端口）。",
+    "E2 四级消融的 A3（多跳）尚未运行；E8 配对终版为 Δ = 0.0 的零差异结论，样本量仅 6，不可反推机制无效。",
+    "120 题全量测试集未建成，当前为 20 题种子集加 8 题判别集。"
+   ]
+  },
+  {
+   "type": "p",
+   "text": "以上三项均为已知且已登记的缺口，交付时以实际完成状态如实呈现。"
+  },
+  {
+   "type": "h1",
+   "text": "7. 创新点声明（分层对标）"
+  },
+  {
+   "type": "p",
+   "text": "完整分层对标表见项目计划书第 8 节，采用四段式：(a) 最接近的已有工作 → (b) 它们解决了什么 → (c) 我们的差异 → (d) 证据锚点。答辩一句话概括：我们没有重新发明图数据库和 RAG；我们把「知识版本」做成了推理约束，把「标准变更」做成了带预算控制的增量演进算法，并为每个设计给出了机制预验证与消融证据。"
+  },
+  {
+   "type": "table",
+   "headers": [
+    "层",
+    "落点",
+    "最硬证据"
+   ],
+   "rows": [
+    [
+     "推理语义层（贡献二）",
+     "版本钉住多跳：束搜索强制版本谓词",
+     "版本敏感题 100% 对比 20.6% / 25.0% + 构造性 soundness 五条性质测试"
+    ],
+    [
+     "演进编排层（贡献一）",
+     "变更 → 影响 → 最小更新全链条编排",
+     "影响传播 0.021 ms 机制预验证 + 更新集与预算曲线"
+    ],
+    [
+     "低资源构建层（贡献三）",
+     "人审预算显式优化目标 + 预算—质量曲线",
+     "VOI 净差 +1 至 +6 + 子图性检查贪心与最优比 98.8%"
+    ]
+   ],
+   "widths": [
+    22,
+    33,
+    45
+   ]
+  }
+ ]
+}

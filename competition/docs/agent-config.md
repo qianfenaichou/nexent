@@ -82,7 +82,7 @@
 |---|---|---|
 | 语料登记 | 58 份（`corpus/registry.csv`） | T-02 溯源核查通过 |
 | 语料构成 | 药品说明书 28 + 临床指南 11 + 诊疗路径 9 + 检验 2 + 科普 8（batch1-3 核查报告） | `docs/verification-reports/batch{1,2,3}-*.md` |
-| 图谱资产 | `kg_graph`（实体/关系 + `kg_evidence_t` doc_id 证据链），构建租户持续摄取（120 段语料分块）；2026-09-21 快照：10/120 段、40 实体（Disease 15/Population 7/Symptom 6/Examination 6/Indicator 4/Drug 1/Treatment 1）、27 关系、19 证据行 | 构建租户图谱摄取管线 |
+| 图谱资产 | `kg_graph`（实体/关系 + `kg_evidence_t` doc_id 证据链），构建租户持续摄取（120 段语料分块）。**当前快照（2026-09-21 r20 收盘，权威口径）**：摄取 **15/120 段**、**136 实体 / 65 关系（含 2024 权威关系 32 条）、38 证据行**——来源 `cost-ledger` 行 `r20-burst-c` + `deliverables/e2-ablation-report.json` 的 `data_reality.ablation_tenant_graph`（entities=136 / relations=65）。实体类别分布（Disease 15 / Population 7 / Symptom 6 / Examination 6 / Indicator 4 / Drug 1 / Treatment 1）为**更早的 40 实体期快照**，未随新增段重算，引用时须注明 | 构建租户图谱摄取管线 |
 | 本体 | 10 类 / 10 关系 / `fact_cutoff=2025-01-01`（ontology v1.1.0） | OntologyService.commit_version |
 | 平台记忆 | `memory_records_t`（Dreaming 整理） | 平台「可进化」实据之一 |
 
@@ -113,10 +113,12 @@
 
 ---
 
-## 7. 调试迭代经验（摘要，完整版引 pitfalls 台账 54 条，2026-09-21 实数）
+## 7. 调试迭代经验（摘要，完整版见 `pitfalls.md` 台账 **63 条**，2026-09-22 实数）
 
-- **诚实性血泪**：E1 基线曾因 eval 判定「忽略未答」导致分母污染——改为「未答计错」并全量重跑（pitfalls 台账首条级别）。
+- **诚实性血泪**：E1 基线曾因 eval 判定「忽略未答」导致分母污染——改为「未答计错」并全量重跑（诚实口径 acc=0.6667 / n_judged=60/60，旧口径 0.7692 作废）。
+- **诚实性血泪（二）**：E8 版本钉住消融曾出现跨 invocation 的伪 Δ=+0.3334，后经同一次 invocation 配对复跑纠正为 **Δ=0.0（honest null）**——详见 `pitfalls.md` #62，教训是「不同批次的两臂不能当配对实验」。
 - **LLM 契约坑**：平台 llm 契约要求返回解析后的 dict；`str` 返回会在 `_parse_extraction` 被拆字符炸掉——摄取驱动补了 str→JSON 适配层（仓库代码零改动）。
-- **429 风暴**：sensenova 网关 tpm 小配额，连续打 1-2 span 即撞 429；驱动内置风暴熔断 + 断点续跑（span_hash 幂等），空段绝不写死。
+- **网关契约坑**：sensenova 网关要求 `reasoning_effort:none` 必须与 `thinking:disabled` 成对下发，否则 400（`pitfalls.md` #60，含字段级探针证据）。
+- **429 风暴**：网关 tpm 小配额，连续打 1-2 span 即撞 429；驱动内置风暴熔断 + 断点续跑（span_hash 幂等），空段绝不写死。
 - **双注册一致性**：Local MCP 与 FastMCP 共享单 schema（`tool_schemas()`/`handlers()`），保证工具名全平台唯一。
-- 全部 54 条踩坑记录见 `competition/docs/pitfalls.md`（「调试迭代经验」章节素材）。
+- 全部 63 条踩坑记录见 `competition/docs/pitfalls.md`（「调试迭代经验」章节素材）。

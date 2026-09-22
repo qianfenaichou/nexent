@@ -87,7 +87,7 @@ cd backend && POSTGRES_HOST=localhost POSTGRES_PORT=5434 POSTGRES_USER=root POST
 - [ ] 零新依赖；零新增 env；未改上游 skill 服务
 - [ ] `pitfalls.md` 补记 skill 机制摸索坑；`evolution-log.md` 记录模板沉淀（能力沉淀台账）
 
-**Evidence**（2026-09-19 两轮闭环实测，细节见 `.task_b_status/t20-domain.status.json` / `t20-integration.status.json`）:
+**Evidence**（2026-09-19 两轮闭环实测，细节见 `../../../archive/ai-loop-scratch-2026-09/task_b_status-mission-r1-r26/t20-domain.status.json` / `t20-integration.status.json`，2026-09-22 随 `.task_b_status/` 整体归档）:
 
 ```text
 [spike] competition/docs/skill-mechanism.md：与简报背景核验一致（±1 行号）；要点=frontmatter

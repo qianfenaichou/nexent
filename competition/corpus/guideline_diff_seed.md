@@ -5,7 +5,7 @@
 > **逐条原文复核状态（2026-09-20 第 14 轮，主线程 pdftotext+grep 核验，零 LLM）**：
 > `章节锚点` 列 = 两版文本中定位到的章节标题；`核验结论` 列 = `verified`（两版原文定位到支撑证据，声明与原文相符）/
 > `unverified`（未通过核验或仅部分相符——含两条"新增"声明被原文证伪：#3 体重管理 2020 已有独立章节、#14 心理小节 2020 已有同名节）。
-> 详细逐条证据（行号级引文）见 `.task_b_status/t21-gold-findings.md`（不在仓库内）。
+> 详细逐条证据（行号级引文）见 `../../../archive/ai-loop-scratch-2026-09/task_b_status-mission-r1-r26/t21-gold-findings.md`（**2026-09-22 已归档**；原 `.task_b_status/` 已移入工作区根 `archive/ai-loop-scratch-2026-09/`，故不再位于仓库内）。
 > **P/R 规则**：只有 `verified` 行计入分子分母（`calibrate_loose` 排除 unverified，诚实条款）。
 > 本表落库字段：doc_version_diff_t.changes（old_doc/new_doc 指向两个 guide asset）。
 
@@ -29,7 +29,7 @@
 | 16 | 注射装置 | ADD | 基本注射技术 | 新增胰岛素泵/智能笔等新技术表述 | 治疗章节 | 糖尿病相关技术 | verified |
 
 ## 逐条原文复核状态（2026-09-20 执行，主线程 pdftotext+grep）
-- [x] 逐条对两版 PDF 原文核对（pdftotext -layout 缓存文本，行号级证据见 .task_b_status/t21-gold-findings.md）
+- [x] 逐条对两版 PDF 原文核对（pdftotext -layout 缓存文本，行号级证据见 ../../../archive/ai-loop-scratch-2026-09/task_b_status-mission-r1-r26/t21-gold-findings.md，2026-09-22 归档）
 - [x] 补充每条所在的章节锚点（上表"章节锚点"列；证据 span 指向）
 - [x] 核验结论：9 verified（计入 P/R）/ 7 unverified（不计入，含 2 条核心声明被原文证伪的 partial 行）
 - [x] 确认 ADD/UPD/DEL 分类与 K5.1 三段式对齐（#3/#14 的"新增"分类经核验不成立，保持 unverified 不入分母）

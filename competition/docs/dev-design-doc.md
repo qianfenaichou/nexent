@@ -1,9 +1,10 @@
 # 开发设计文档（初赛提交版）
 
 > **Nexent-KnowEvo**：基于华为 ModelEngine 生态开源平台 Nexent（v2.6.0）构建的**领域知识资产认知与决策智能体**
-> 赛题：基于 ModelEngine Nexent 打造可进化决策智能体（赛题3）
-> 本文档按官方模板1 六节结构组织，正文内容以 `05-计划书-初赛提交版.md` 为母本注入；**每个数字标 A=实测 / E=估算 / L=文献**，平台表述过《平台事实红线检查报告》（v2.2）。初赛提交物为文档，不交代码。
-> 母本 → Word 转换由装配流程执行（本文件为 Markdown 母本；截图与最终评测数字按 evidence-index 缺口跟踪补齐后定稿）。
+> 赛题：基于 ModelEngine Nexent 打造可进化决策智能体（赛题3）· 参赛材料：初赛开发设计文档（官方模板1）
+> **文档状态（2026-09-22 整理定稿）**：官方模板1 要求的六节 + 智能体设计说明（Agent 配置 / 模型 / 工具 / 知识库 / Skill / 调用关系图 / 调试经验 / 附件说明）**已全部成文，无占位符**。每个数字标注来源等级：**A=实测**（有产物可回溯）/ **E=估算** / **L=文献** / **P=计划**。
+> 平台相关表述已通过《平台事实红线检查报告》（v2.2）校准；待补项集中于 §6.3「当前已知缺口」，全部如实声明。
+> 配套文件清单见 §5.10；对外表述以 `05-计划书-初赛提交版.md` 为准，引用以 `06-论文与开源武器库-v2.md` 为准。
 
 ---
 
@@ -24,7 +25,17 @@
 
 ### 1.3 与赛题五条任务的对齐
 
-（按 05 §1.3；赛题要求 × 本项目落点：可进化决策智能体= L4 标准演进对齐器 + L3 双驱动决策 + L2 版本化图谱 + L1 资产化 + L5 交互工作台）
+| # | 官方任务（原文摘录） | 本项目落点 | 承载模块 |
+|---|---|---|---|
+| 1 | 多模态异构数据资产认知：统一识别、理解、**资产标识** | L1 摄取管道 + registry 资产登记（编号 / 模态 / 权威等级 / 版本血缘 / 业务出版日） | §6 §7 |
+| 2 | 低资源场景本体**半自动化**构建、**持续动态更新**、与行业规范对齐 | L2 种子引导流水线 + L4 标准对齐器（★创新主轴） | §3 §4 |
+| 3 | 深度集成 MCP 协议与 Skills 编排，"检索-推理"**双驱动** | L3 双驱动执行流 + 自研 MCP 工具族 + Skill 分层 | §5 |
+| 4 | 跨文档多跳推理、**决策链路可溯源**；沉淀可复用 Skill 模板 | 版本钉住多跳（★）+ 决策卡 + 模板库 | §4.3 §5.2 §5.4 |
+| 5 | 智能体基于 Nexent 平台可运行 | fork 上真实部署、HTTP + MCP 双入口、评测走平台"智能体评估" | §2.3 §5.5 |
+
+### 1.4 开发模式声明（诚实且加分）
+
+本项目采用**人机协作分层开发**：人类队员负责赛题对齐、算法设计决策、数据与评估金标、最终评审；AI 编码智能体在**接口契约与验收命令约束下**实现模块（任务包-验收-证据三件套管理，规范见 `07-AI代码编写规范与并行开发手册.md`）。全部代码可开源复现，开发过程留有完整台账（**踩坑台账 63 条**、token 成本台账、知识版本演进记录）——这本身即是官方要求项「调试迭代经验」的实据。
 
 ---
 
@@ -38,11 +49,48 @@
 
 ### 2.2 六层架构
 
-（同 05 §2.2：L0 Nexent 底座 v2.6.0 → L1 数据资产层 → L2 知识引擎层 → L3 决策执行层 → L4 知识进化层（★创新主轴）→ L5 交互层；进化闭环：标准更新→摄取→变更检测→受影响面→更新提案→人审确认→版本化增量演进→决策卡带版本戳→评估验证 Δ质量。完整架构图从 05 §2.2 注入，渲染时转图。）
+```
+L5 交互层   本体工作台(树/diff/版本) · 决策卡面板(证据链展开) · 模板库页 · 评测报告
+            （实现于 frontend/features/{knowledgeGraph,decisionCard,skillTemplate}）
+L4 知识进化层 ★创新主轴
+            标准对齐器：变更检测 → 受影响面 → 最小充分更新集（§4）
+            冲突消解：检测→分类→裁决记录 · Skill 模板库（轨迹→模式→SKILL.md）
+L3 决策执行层
+            检索-推理双驱动（§5）：路由(规则+few-shot)
+              检索路(knowledge_base_search + kg_search) ／
+              推理路(kg_multi_hop 束搜索·版本钉住★) → 证据链融合 → 决策卡
+L2 知识引擎层（§3）
+            本体半自动构建(种子引导 + 两级提案 + 人审预算★) · 本体锚定抽取(子图检索注入)
+            · 三级实体对齐(外部主键 blocking) · bi-temporal
+            · PG JSONB + 递归 CTE 图存储（同库同事务，溯源 JOIN 一致性）
+L1 数据资产层
+            Nexent 摄取管线(Unstructured) + 专项解析兜底
+            registry 资产登记：编号 / 模态 / authority_level / published_at / 血缘
+L0 Nexent 底座 v2.6.0（fork · 零修改）
+            FastAPI 多服务 + Next.js 15 + PG/ES/Redis/MinIO + smolagents 内核
+            + MCP 生态 + SKILL.md 渐进披露 + 三层记忆 & Dreaming
+            + 智能体评估 + RBAC
+
+进化闭环：标准更新 → L1 摄取 → L4 变更检测→受影响面→更新提案→人审确认
+        → L2 版本化增量演进 → L3 决策卡带知识版本戳 → 智能体评估验证 Δ质量
+```
+
+> 说明（诚实口径）：L5 设计与实际实现的差异——本体工作台、决策卡面板、模板库页已实现；**资产看板与进化看板动画未实现**（资产看板经裁决放弃，见 `00-总纲与决策依据.md` §九）。
 
 ### 2.3 平台集成事实清单（核验版）
 
-（同 05 §2.3：Agent 内核= smolagents CoreAgent(CodeAgent)；MCP= FastMCP `@mcp.tool()` + 界面注册 URL，本项目双注册；Skill= SKILL.md + frontmatter + `<reference>` 渐进披露 + NL2Skill；记忆= Tenant/User/Agent 三层 + Dreaming；检索= ES dense_vector + kNN + BM25 混合；评估= LLM 判定 + Code 判定；版本= v2.6.0，2026-09-16 发布，月度发版。）
+| 能力 | 核验结论（2026-09-18，官方文档 + 源码） |
+|---|---|
+| Agent 内核 | smolagents `CoreAgent(CodeAgent)`（代码层确认：`sdk/nexent/core/agents/core_agent.py:494`） |
+| MCP | 自定义工具 = FastMCP `@mcp.tool()` + 界面注册 URL；本项目**双注册**（Local MCP + 独立 FastMCP 服务），单一 schema 源 |
+| Skill | SKILL.md + YAML frontmatter + `<reference>` 渐进披露 + 沙箱执行 + ZIP 上传 + **NL2Skill**（`nl2skill_agent.py`） |
+| 记忆 | Tenant / User / Agent 三层 + Dreaming（短期→长期记忆整理） |
+| 检索 | ES `dense_vector` + kNN + BM25 混合（基于 Elasticsearch；**平台检索未见独立向量数据库组件**，本项目向量走服务层 cosine，与平台一致） |
+| 评估 | 「智能体评估」模块：LLM 判定 + Code 判定（签名逐字 `evaluate(query, expected, actual, runtime_events)`，AST 安全扫描 + 白名单沙箱） |
+| 版本 | **v2.6.0**（2026-09-16 发布），月度发版；本项目迁移文件名前缀 v2.5.5 为 fork 时点的历史事实，兼容 v2.6 |
+
+> ⚠️ **平台事实红线**（写任何对外材料前必须遵守，完整清单见 `verification-reports/platform-facts-redline.md`）：平台版本必须写 **v2.6.0**（不是 v2.5.x）；**不得**声称平台有 pgvector（走 ES 混合检索）；评估模块官方名为**「智能体评估」**；代码评测器签名逐字如上；
+> **「可进化」是本项目 L4 的实现，不是平台自带能力**——平台侧可引实据仅三件：Dreaming 记忆整理、Agent 版本管理回滚、智能体评估反馈闭环。
 
 ---
 
@@ -108,14 +156,19 @@
 
 ### 5.2 自研 MCP 工具族（双注册）
 
+**已注册 5 个**（唯一口径 = `backend/tool_collection/mcp/kg_tools.py` 的 `KG_MCP_TOOL_NAMES`）：
+
 | 工具 | 功能 | 状态 |
 |---|---|---|
-| `kg_search` | 图谱实体/邻域检索（1 跳） | A：双注册 |
-| `kg_stats` | 图谱统计 | A：双注册 |
-| `kg_multi_hop` | 版本钉住多跳 + 证据链 | A：双注册（T-09） |
-| `decision_card_render` | 决策卡生成（结构化输出） | A：双注册（T-19） |
-| `ontology_diff` / `alignment_*` | 本体 diff / 变更检测 / 受影响面 | P：T-11 计划 |
-| `skill_template_apply` | 模板实例化 | A：双注册（T-20） |
+| `kg_search` | 图谱实体 / 邻域检索（1 跳） | ✅ 双注册 |
+| `kg_stats` | 图谱统计 | ✅ 双注册 |
+| `kg_multi_hop` | 版本钉住多跳 + 证据链 | ✅ 双注册（T-09） |
+| `decision_card_render` | 决策卡生成（结构化输出） | ✅ 双注册（T-19） |
+| `skill_template_apply` | 模板实例化 | ✅ 双注册（T-20） |
+
+规划中但**尚未实现**（不得写进对外材料）：`kg_evolution_trace`、`ontology_diff`、`asset_search`、`evidence_verify`。
+
+注册机制：同一 FastMCP 应用实例被挂载进 Local MCP，两处注册共用 `mcp_servers/knowevo_mcp/schemas.py` 这一份 schema，**无漂移**。
 
 ### 5.3 Skill 分层编排
 
@@ -144,8 +197,105 @@ A：置信度校准 ECE 目标 ≤0.10（无校准表诚实标 `calibration_appl
 |---|---|---|
 | E1 纯 RAG 基线 | ✅（诚实口径重跑） | acc=0.6667 / pass2=0.65 / n_judged=60/60 / trace=1.0（20 题×3 runs；旧口径污染已修复：未答计错）。权威口径 = `cost-ledger` 行 `e1-b64faa90-64ac-44bc-95e9-564ad4b99006`，逐题报告 `deliverables/e1-baseline-report.json` |
 | 机制预验证四探针 | ✅（seed 固定可复跑） | P1 V 题 100% vs 20.6%/25.0%；P2 VOI 净差 +1~+6；P3 0.02ms；P4 98.8% |
-| E2 四级消融 | 🟡 partial（报告 `partial:true`；已跑 A1 10 题 / A2 4 题 / A4 两臂分片，A3 待跑） | **A1_pure_rag** n_q=10，acc=0.7241 / pass2=0.70 / n_judged=**29/30**（F .7857(14) / M .6667(15) / V·X insufficient_data）；**A2_graph** n_q=4，acc=0.75 / n_judged=12/12（仅 F）；**A4_full pin=on** n_q=2，acc=0.5 / n_judged=6/6（旧行，2026-09-19）；**A4_full pin=off** n_q=1，acc=0.5 / pass2=0.0 / n_judged=2/2（新行，2026-09-21 r21，V-001×2 runs）；**A3_multihop 待跑**（0 题，`insufficient_data`——零判定不等于 0 分）；报告 `e8=null`、`e8.arm_vintage.same_invocation=null` → **E8 版本钉住 Δ 尚不可测**（两臂来自不同 invocation，非同一次配对实验，见 pitfalls #56）。阻塞已解：构建租户图谱摄取 15/120、2024 权威关系 32 条（gate 解锁），续跑命令见报告 `resume` |
-| PG 集成全量 | ✅ | 688 passed 零回归（2026-09-21 r16 全量实测；r18 缺陷修复分支仅跑定向 21 单测 + 24 PG 集成，未再全量复跑） |
+| E2 四级消融 | 🟡 partial（报告 `partial:true`；已跑 A1 10 题 / A2 4 题 / A4 两臂配对，A3 待跑） | **A1_pure_rag** n_q=10，acc=0.7241 / pass2=0.70 / n_judged=**29/30**（F .7857(14) / M .6667(15) / V·X insufficient_data）；**A2_graph** n_q=4，acc=0.75 / n_judged=12/12（仅 F）；**A4_full 配对终版**（`e2-ablation-paired2.json`，`same_invocation=true`、零空正文污染）：V 题 3 题×2 runs **两臂各 acc=1.0（n=6/6）→ Δ=0.0**；**A3_multihop 待跑**（0 题，`insufficient_data`——零判定不等于 0 分） |
+| E8 版本钉住 on/off | ✅（honest null） | **Δ=0.0**（配对终版，取代早期跨 invocation 的 +0.3334 伪方向，见 `pitfalls.md` #62）。**诚实限制：n=6 小样本 + 两臂均满分，Δ=0 不得反推「版本钉住无效」**；机制证据改用判别题双时钟对（糖化血红蛋白：`as_of=2021-06-01` → `INSUFFICIENT_EVIDENCE` 旧时钟 0 证据诚实拒绝 vs `as_of=2025-06-01` → `RECOMMEND` + 3 证据） |
+| PG 集成 + knowevo 全量单测 | ✅ | **711 passed / 30 skipped / 0 failed**（2026-09-22 本次提交实测，`pytest ../test/backend/services/knowevo/ -q`） |
+
+### 5.6 Agent 主配置（真实落库值）
+
+来源：`nexent` 库 `ag_tenant_agent_t`（2026-09-20 导出，**非手写**）。密钥类字段（`api_key`/`access_token`）一律不进交付物。
+
+| 字段 | 值 |
+|---|---|
+| agent_id / name | `1` / `knowevo_assistant`（display_name：Knowevo 助手） |
+| tenant_id | `6756b0ab-39c0-462a-9745-aa12e1511fcd`（构建租户） |
+| version_no | 1（当前版本） |
+| model_name | 空——走 `KW_LLM_SMALL/MID/LARGE_MODEL_ID` 三档路由（见 §5.7） |
+| duty_prompt | 「你是一个简洁友好的中文助手。你的职责是准确、清晰地回答用户的问题，不编造事实。」 |
+
+> 设计要点：Agent 的 prompt 只写**职责与约束**，不写领域执行细节——领域逻辑全部下沉到 Skill 分层（§5.3）与 MCP 工具（§5.2），保证 Agent 本体可随平台升级零改动。
+
+### 5.7 模型信息（真实落库 9 档，API key 脱敏）
+
+来源：`model_record_t`（`connect_status=available`）。
+
+| model_id | 模型 | 类型 | 用途 | context_window |
+|---|---|---|---|---|
+| 1 | glm-5.3-free | llm | 主档 | 32768 |
+| 2 | glm-5.3-free | llm | 小档 | 32768 |
+| 3 | bge-m3 | embedding | 向量化（dim=1024） | — |
+| 4 | deepseek-v4-flash | llm | 生成 / 小中档 | 65536 |
+| 5 | deepseek-v4.1-flash | llm | 大档 | 65536 |
+| 6 | glm-5.3-flash | llm | judge·**异家族** | 65536 |
+| 7 | deepseek-v4-flash@sn | llm | 生成·中档（sensenova 网关） | 65536 |
+| 8 | glm-5.2@sn | llm | judge·异家族 / 降级重试 | 65536 |
+| 9 | deepseek-v4-pro@sn | llm | 大档·预留 | 65536 |
+
+**三档路由**（`backend/services/knowevo/llm_client.py`）：small/mid = `deepseek-v4-flash@sn`（快、便宜：日常抽取与检索）；large = `glm-5.2@sn`（异家族，用于降级重试与判别）；judge = `glm-5.3-flash`（**与生成模型异家族**，解耦自评偏差——评测方法论要求）。
+
+### 5.8 工具信息与知识库信息
+
+**自研 MCP 工具**：见 §5.2（5 个已注册，双注册）。
+**平台侧工具**：真实落库 **34 个**（`ag_tool_info_t`，`is_available=t`），本场景直接相关的有 `knowledge_base_search`（平台 ES 混合检索）、`aidp_search`、`search_memory` / `store_memory`、`postgres_database`、`exa_search` / `tavily_search`、`parallel_executor` 等。
+
+**知识库**：
+
+| 项 | 值 | 来源 |
+|---|---|---|
+| 语料登记 | 58 份 | `corpus/registry.csv` |
+| 语料构成 | 药品说明书 28 / 临床指南 11 / 诊疗路径 9 / 检验 2 / 科普 8 | `verification-reports/batch{1,2,3}-*.md` |
+| 图谱资产 | 摄取 15/120 段；**136 实体 / 65 关系 / 38 证据行**（2026-09-21 r20 收盘） | `cost-ledger` 行 `r20-burst-c`；`e2-ablation-report.json` 的 `data_reality` |
+| 本体 | 10 类 / 10 关系，`fact_cutoff=2025-01-01`（v1.1.0） | `OntologyService.commit_version` |
+| 平台记忆 | `memory_records_t`（Dreaming 整理） | 平台「可进化」实据之一 |
+
+**Skill 分层（真实落库 4 个，`ag_skill_info_t`）**：
+
+| skill_id | skill_name | 定位 |
+|---|---|---|
+| 1 | `domain-asset-cognition` | 入口·路由层：锚定实体 → 判断问题类型 → 加载子技能 → 交证据组装；**禁止**绕过子技能直调 `kg_multi_hop` |
+| 2 | `evidence-assembly` | 证据组装：生成可溯源决策卡，带认知辅助免责声明 |
+| 3 | `reasoning-path` | 推理路：跨文档考量、版本对比（`kg_multi_hop`） |
+| 4 | `retrieval-path` | 检索路：单点事实查询（`kg_search` / `knowledge_base_search`） |
+
+编排契约（入口 Skill 原文）：判断不确定 → 双路并发；同类单路失败 2 次 → 升级双路；**无证据时必须输出「现有知识库无依据」，不得编造**。
+
+### 5.9 调用关系图（Agent → Skill → MCP → 服务 → 存储）
+
+```
+用户提问
+  → Agent 主进程（duty prompt 只写职责与约束）
+  → 入口 Skill: domain-asset-cognition（路由）
+       ├─ 单点事实类（检索路）→ Skill retrieval-path
+       │      → MCP kg_search ／ 平台 knowledge_base_search（ES 混合检索）
+       └─ 多跳/演进类（推理路）→ Skill reasoning-path
+              → MCP kg_multi_hop（束搜索 · 版本钉住★）
+  → Skill evidence-assembly → MCP decision_card_render
+  → 决策卡落库 decision_card_t 并展示（含知识版本戳 + 证据链 + 免责声明）
+
+旁路：本体/版本管理 → ontology_service.commit_version → ontology_version_t
+存储：PostgreSQL JSONB（kg_graph / kg_evidence_t / decision_card_t /
+      skill_template_t / eval_run_t）；Elasticsearch（知识库文档索引）
+评测：平台「智能体评估」Code 判定 evaluate(query, expected, actual, runtime_events)
+      → eval_run_t → 消融报告
+```
+
+> 完整版（含 Mermaid 渲染图、三条关键链路逐条拆解、注册机制事实依据）见随交付物提交的 `call-graph.md`。
+
+### 5.10 需同步提交的文件说明（官方要求项）
+
+| 文件 | 说明 |
+|---|---|
+| `deliverables/agent-config.json` | 本文件 §5.6-§5.8 的机器可读版（真实导出，密钥脱敏） |
+| `docs/call-graph.md` | 调用关系图（Mermaid）+ 三条关键链路拆解 |
+| `docs/dev-design-doc.md` | 本文件（开发设计文档母本） |
+| `docs/agent-config.md` | Agent 配置说明（含平台 34 工具清单与 Skill 原文要点） |
+| `docs/reproduce-README.md` | 复现步骤（含部署方式） |
+| `corpus/registry.csv` | **知识库清单**：58 份语料登记（编号 / 模态 / 权威等级 / 来源 URL / license 说明） |
+| `backend/tool_collection/mcp/kg_tools.py` | **MCP 说明依据**：自研工具双注册代码（`KG_MCP_TOOL_NAMES` 唯一口径） |
+| `mcp_servers/knowevo_mcp/{server.py,schemas.py}` | 独立 FastMCP 服务与单一 schema 源 |
+| `backend/services/knowevo/*.py` | 服务层实现（kg_service / decision_service / version_pin / ontology_service / skill_template_service / llm_client） |
+| `docs/pitfalls.md` | 调试迭代经验台账（**63 条**） |
+| `deliverables/*.png` | 示例问答与界面截图（**「示例问答 ≥3」尚待补齐**，见 §6.3 诚实说明） |
 
 ---
 
@@ -172,7 +322,14 @@ A：置信度校准 ECE 目标 ≤0.10（无校准表诚实标 `calibration_appl
 
 ### 6.3 评测与结果
 
-见 §5.5 表格。**提交定稿时**：构建租户图谱摄取完成（120/120）→ T-22 四段续跑（E8 off/on 臂 → A3 → 交叉表）→ 回填 E2 全量矩阵 → 生成评测报告图（消融柱状图/曲线）。缺失数字如实标注「待续跑」，不做估计（07 手册 P0 诚实性条款）。
+见 §5.5 表格。**提交定稿前待补**：构建租户图谱摄取补齐至 120/120 → T-22 四段续跑（E8 off/on 臂 → A3 → 交叉表）→ 回填 E2 全量矩阵 → 重绘评测报告图（消融柱状图/曲线）。缺失数字一律如实标注「待续跑」，**不做估计**（诚实性条款，见 `07-AI代码编写规范` §4.3）。
+
+**当前已知缺口（如实声明，不掩盖）**：
+1. 「示例问答截图 ≥3」**尚未取得**——平台内完整问答链路 `/api/agent/run` 当前被部署环境缺陷阻塞（`NEXENT_SANDBOX_DEFAULT_LEVEL=docker` 导致宿主机解析不了容器 DNS 名 `nexent-minio:9000` → `EndpointConnectionError` → `MemoryPreparationException`），已实测 3 轮均失败，**未以低质截图充数**。解锁方案与截图采集脚本已就绪（覆盖 `NEXENT_SANDBOX_DEFAULT_LEVEL=local` 或改 `MINIO_ENDPOINT` 指向宿主机映射端口）。
+2. E2 四级消融的 **A3（multihop）尚未跑**；E8 配对终版为 Δ=0.0 的 honest null（n=6 小样本，不可反推机制无效）。
+3. 120 题全量测试集未建成，当前为 20 题 seed + 8 题判别集。
+
+以上三项均为**已知且已登记**的缺口，交付时以实际完成状态如实呈现。
 
 ---
 

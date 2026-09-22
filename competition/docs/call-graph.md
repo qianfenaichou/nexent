@@ -60,7 +60,6 @@ flowchart TB
 
     A2 --> M1
     A2 --> P1
-    A2 --> P2
     A3 --> M3
     A4 --> M4
 
@@ -132,8 +131,8 @@ flowchart TB
 
 | 表面 | 位置 | 说明 |
 |---|---|---|
-| Local MCP（平台内注册） | `backend/tool_collection/mcp/kg_tools.py` | `SERVICE_NAME="knowevo"`，`KG_MCP_TOOL_NAMES = (kg_search, kg_stats, kg_multi_hop, decision_card_render, skill_template_apply)` |
-| FastMCP 独立服务（SSE） | `backend/tool_collection/mcp/local_mcp_service.py` | `@local_mcp_service.tool(...)` + SSE URL 界面注册（官方文档 A） |
+| Local MCP（平台内注册） | `backend/tool_collection/mcp/kg_tools.py` | `SERVICE_NAME="knowevo"`，`KG_MCP_TOOL_NAMES = (kg_search, kg_stats, kg_multi_hop, decision_card_render, skill_template_apply)`；通过 `wire()` 把共享 FastMCP 实例挂载进上游的 `backend/tool_collection/mcp/local_mcp_service.py` |
+| FastMCP 独立服务（SSE） | `mcp_servers/knowevo_mcp/server.py`（schema 单源：`mcp_servers/knowevo_mcp/schemas.py`） | `@mcp.tool()` 注册 5 个工具；本项目即「独立 FastMCP 服务」这一表面 |
 | 平台侧工具 | `backend/apps/northbound_app.py` 等 | `knowledge_base_search` 为平台能力，Skill 直接引用；`asset_search` 仅 knowevo MCP 规格中的规划工具（backend 零实现/零注册），不列出 |
 
 > 单 schema 双注册：`tool_schemas()` 与 `handlers()` 两个表面共享同一组 handler，保证「同一工具名全平台唯一」。
