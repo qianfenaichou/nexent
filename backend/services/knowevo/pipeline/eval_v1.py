@@ -32,6 +32,14 @@ from typing import Any
 
 PROMPT_DIR = Path(__file__).resolve().parents[3] / "prompts"
 
+# T-28 additive: default testset for the validate CLI. The repo-root
+# competition corpus holds the frozen v1 seed; without this default the
+# ``--validate`` flag required an explicit ``--testset`` and the seed path
+# was duplicated in every caller. Resolved from this file's location (same
+# parents[4] walk as ablation.CORPUS_ROOT), never from CWD.
+CORPUS_ROOT = Path(__file__).resolve().parents[4] / "competition" / "corpus"
+DEFAULT_TESTSET_PATH = CORPUS_ROOT / "testset-v1-seed.json"
+
 # K4 6.1: four types and their target counts in the full 120 set.
 TYPE_TARGETS = {"F": 35, "M": 45, "V": 20, "X": 20}
 VALID_TYPES = set(TYPE_TARGETS)
@@ -111,6 +119,20 @@ def validate_testset(data: dict[str, Any]) -> list[str]:
         if not isinstance(eo, dict) or "blind_set_ratio" not in eo:
             errors.append(f"{loc}: missing evidence_origin.blind_set_ratio")
     return errors
+
+
+def validate_testset_file(path: str | Path) -> list[str]:
+    """Validate the testset JSON document at ``path`` (T-28 additive).
+
+    Thin loader over :func:`validate_testset` so callers (and the CLI)
+    can validate an alternative testset - e.g. the T-28 discriminating
+    set ``testset-discriminating-v1.json`` - by path without changing
+    the data-level contract. Unknown extra fields on questions (such as
+    the discriminating set's ``discriminating`` / ``probe_evidence``)
+    are tolerated: ``validate_testset`` only inspects the frozen shape.
+    """
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    return validate_testset(data)
 
 
 def passk_aggregate(runs: list[dict[str, Any]]) -> dict[str, float]:
@@ -214,7 +236,9 @@ def _testset_hash(data: dict[str, Any]) -> str:
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
         description="KnowEvo eval v1 scaffolding (validate / aggregate)")
-    parser.add_argument("--testset", help="path to testset JSON")
+    parser.add_argument("--testset", default=str(DEFAULT_TESTSET_PATH),
+                        help="path to testset JSON "
+                             "(default: the frozen v1 seed)")
     parser.add_argument("--validate", action="store_true",
                         help="validate the testset shape")
     parser.add_argument("--runs", help="path to runs JSON "
