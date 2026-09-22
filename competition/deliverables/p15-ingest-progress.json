@@ -1,0 +1,90 @@
+{
+  "task": "P1-5",
+  "title": "图谱摄取补齐（构建租户 6756b0ab）",
+  "generated_at": "2026-09-23T02:27:00+08:00",
+  "generated_by": "主会话（T-27 收口轮之后）",
+  "status": "running",
+  "tenant_id": "6756b0ab-39c0-462a-9745-aa12e1511fcd",
+
+  "blocker_history": [
+    {
+      "at": "2026-09-23T01:50:00+08:00",
+      "form": "probe_gateway.py 两次均失败：APIConnectionError: Connection error.，每次约 54s",
+      "initial_misdiagnosis": "曾判定为「模型网关侧降级、外部阻塞」并据此搁置摄取（错误）",
+      "discovery": "env | grep -i proxy 发现本机导出整套代理变量：HTTP_PROXY/HTTPS_PROXY/ALL_PROXY/ZCODE_HTTP_PROXY 全指向 http://127.0.0.1:7897",
+      "evidence": {
+        "via_proxy": "curl https://api.sensenova.cn -> connect=0.000118s, tls=0.000000s, total=17.85s, exit 35（TCP 瞬连 + TLS 永挂 = 中间有人在代答 TCP，是代理在场的指纹）",
+        "bypass_proxy": "curl --noproxy '*' 同一请求 -> code=404, connect=0.162s, tls=0.224s, total=0.269s（0.27s 全通）"
+      },
+      "root_cause": "本地代理进程对目标域名拦截并挂起 TLS 握手；且真实调用端点是 token.sensenova.cn（不是 api.sensenova.cn，后者只是按模型配置猜的）",
+      "resolution": "~/kw-ingest/run_batch_A.sh 起进程前显式 unset 全部代理变量；~/kw-ingest/probe_gateway.py 在构造 HTTP 客户端前自行摘掉代理（就地自带，避免每调用点重复）。不改任何全局设置、不入仓",
+      "after_fix_probe": "healthy=True；两次调用 1.3s / 2.0s，in=41 out=25/32，finish_reason=stop，token 正常回传",
+      "pitfall_id": 67
+    }
+  ],
+
+  "span_source": {
+    "what_120_means": "2 份指南 × 各 60 个平台分块 chunk",
+    "docs": [
+      {"doc": "2024 指南", "doc_id": "6571e51a-62d0-4e78-9955-468da238b080", "chunks": 60},
+      {"doc": "2020 指南", "doc_id": "ec300a7f-f6d7-42eb-b76e-50f4a7622b48", "chunks": 60}
+    ],
+    "batches_prepared_in": "~/kw-ingest/",
+    "batch_selection_rule": "G1 undone + G2 cjk>=0.10 + G3 len<=4500, ranked by R1 tier1_hits desc then len asc",
+    "batch_A_2024": {"file": "batch-A-2024.json", "spans": 12, "candidates_undone": 57, "eligible": 41},
+    "batch_B_2020": {"file": "batch-B-2020.json", "spans": 12, "candidates_undone": 48, "eligible": 32},
+    "batch_full": {"file": "batch-120.json", "spans": 120}
+  },
+
+  "progress": {
+    "spans_target": 120,
+    "spans_done_before_this_run": 15,
+    "spans_done_now": 17,
+    "spans_added_by_this_run": 2,
+    "note_on_15": "真库核对：created_at < 2026-09-23 00:00+08 的行数 = 15，**与文档记录的「15/120 段」一致**（此前我曾算出 14，是忘了本次运行已先落 2 行）"
+  },
+
+  "graph_delta": {
+    "entities": {"before": 136, "now": 141, "delta": 5},
+    "relations": {"before": 65, "now": 73, "delta": 8},
+    "evidence": {"before": 38, "now": 41, "delta": 3},
+    "before_source": "cost-ledger 行 r20-burst-c 的收盘快照（136/65/38）",
+    "now_source": "psql 直查 nexent.kg_{entity,relation,evidence}_t WHERE tenant_id=6756b0ab...（2026-09-23 02:27）",
+    "attribution": "上述增量对应本次新增的 2 个 span（kg_extract_run_t 今天落库行，各 llm_calls=1 / empty_content_calls=0）"
+  },
+
+  "this_run": {
+    "command": "~/kw-ingest/run_batch_A.sh batch-A-2024.json",
+    "driver": "~/kw-ingest/run_paced_ingest.py（沿用 r20-burst-a/b/c 实测过的节流行为）",
+    "log": "~/kw-ingest/ingest-A-2024.log",
+    "started_at": "2026-09-23T02:23:37+08:00",
+    "env_knobs": {"KW_PACE_S": 20, "KW_MAX_SPAN_FAILS": 1, "KW_ATTEMPT_TIMEOUT_S": 300, "KW_EMPTY_RETRY_SLEEP_S": 45},
+    "kw_max_span_fails_rationale": "pitfall #54：首个彻底失败即 raise，span 不落 done，避免被 span_hash 幂等永久跳过",
+    "observed_calls": [
+      {"kind": "extract", "tier": "mid", "seconds": 3.9, "in": 5007, "out": 646, "fr": "stop", "rt": 0},
+      {"kind": "align", "tier": "mid", "seconds": 1.7, "in": 86, "out": 185, "fr": "stop", "rt": 141},
+      {"kind": "align", "tier": "mid", "seconds": 1.9, "in": 84, "out": 161, "fr": "stop", "rt": 111},
+      {"kind": "align", "tier": "mid", "seconds": 2.2, "in": 84, "out": 142, "fr": "stop", "rt": 93},
+      {"kind": "extract", "tier": "mid", "seconds": 5.6, "in": 4763, "out": 1355, "fr": "stop", "rt": 0}
+    ],
+    "throttle_429_count_at_this_snapshot": 0,
+    "throttle_note": "本次 0 次 429，显著优于 r20-burst 的 429 风暴（历史行记录 23 次成功调用 + 27×429 等）"
+  },
+
+  "llm_usage": {
+    "measured_calls_at_snapshot": 5,
+    "aggregate": "未测量（进程仍在运行；驱动会在退出时把聚合写入 ~/kw-ingest/usage-<pid>.json）",
+    "honesty_note": "本快照不估算总量；最终用量以 usage-<pid>.json 为准"
+  },
+
+  "next_steps": [
+    "本批（12 段）跑完后取 ~/kw-ingest/usage-<pid>.json 的聚合用量，回填本文件与 cost-ledger",
+    "按同一配方续跑 batch-B-2020.json（12 段），每轮 ≤25 段",
+    "全部 120 段补齐后：E8 版本钉住 / E2-A3 multihop 消融可用真实规模重跑（P1-4）"
+  ],
+
+  "open_items": [
+    "章节标题解析污染（pitfall #66 关联）：add 57/215、delete 49/184 的锚点像正文散文，属真实缺陷，修则须重跑 probe_p5 并更新决定书",
+    "本轮运行的生产代码零改动；未发现新缺陷"
+  ]
+}

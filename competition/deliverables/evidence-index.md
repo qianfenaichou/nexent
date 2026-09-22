@@ -32,7 +32,7 @@
 | 跳数标定（depth=2 饱和） | 维度3 | ★★☆ | `cost-ledger` t09-curve 行 | ✅ 已有 |
 | 语料台账（58 份 + 批次核查） | 维度2 | ★★☆ | `corpus/registry.csv` + `docs/verification-reports/batch{1,2,3}-*.md` | ✅ 已有 |
 | 构建租户图谱（实体/关系/证据链） | 维度2/3 | ★★★ | `kg_graph` + `kg_evidence_t`（doc_id 链）；2026-09-21 r20 收盘快照：15/120 段、**136 实体 / 65 关系**（含 2024 权威关系 32 条、b_2024plus=13）、38 证据行（来源 `cost-ledger` 行 `r20-burst-c` + 报告 `data_reality` entities=136/relations=65）；D1 判别性计数 all=674 / t_v=2022-01-01=33 / t_v=2024-06-01=190 / t_v=2025-06-01=66，`discriminative:true`（E8 判别门已解锁） | 🟡 摄取中（120 段） |
-| 踩坑台账 66 条（调试迭代经验素材，2026-09-23 实数） | 维度4 | ★★★ | `docs/pitfalls.md` | ✅ 已有 |
+| 踩坑台账 67 条（调试迭代经验素材，2026-09-23 实数） | 维度4 | ★★★ | `docs/pitfalls.md` | ✅ 已有 |
 | 演进台账（evolution-log） | 维度4 | ★★☆ | `docs/evolution-log.md` | ✅ 已有 |
 | 模板复用统计 R/S/D（skill_template_t） | 维度4 | ★★☆ | `skill_template_t`（T-20 起真实落库） | ✅ 已有 |
 
