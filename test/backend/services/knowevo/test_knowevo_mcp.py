@@ -23,6 +23,8 @@ for _p in (str(_REPO_ROOT / "backend"), ):
         sys.path.insert(0, _p)
 
 import pytest
+from pydantic import ValidationError
+
 from mcp_servers.knowevo_mcp.schemas import (
     KGSearchInput,
     KGSearchOutput,
@@ -33,7 +35,6 @@ from mcp_servers.knowevo_mcp.server import (
     kg_search_handler,
     kg_stats_handler,
 )
-from pydantic import ValidationError
 
 TENANT_A = "11111111-1111-1111-1111-111111111111"
 
@@ -212,6 +213,105 @@ class TestStructuredErrors:
         assert isinstance(out, dict)
         assert out["error_code"] == "kg_stats_failed"
         assert "hint" in out
+
+
+# ---------------------------------------------------------------------------
+# T-27: request-scoped tenant resolution
+# ---------------------------------------------------------------------------
+
+class RecordingStore(FakeGraphStore):
+    """FakeGraphStore that records the tenant every lookup arrived with."""
+
+    def __init__(self):
+        super().__init__()
+        self.seen_tenants: list[str] = []
+
+    async def entity_lookup(self, tenant_id, query, top_k=5):
+        self.seen_tenants.append(tenant_id)
+        return await super().entity_lookup(tenant_id, query, top_k)
+
+
+def _fake_request(authorization: str | None):
+    headers = {} if authorization is None else {"Authorization": authorization}
+    return SimpleNamespace(headers=headers)
+
+
+def _raise_no_context():
+    raise RuntimeError("no request context available")
+
+
+@pytest.fixture
+def srv():
+    """The server module, with its settings restored after the test."""
+    from mcp_servers.knowevo_mcp import server as server_mod
+    yield server_mod
+    server_mod.configure(tenant_id="", store=None)
+
+
+class TestRequestScopedTenant:
+    """The shared MCP service mounts this app once for every tenant, so the
+    tenant must come from the caller's Authorization header (T-27)."""
+
+    def test_explicit_arg_wins(self, monkeypatch, srv):
+        monkeypatch.setattr(srv, "_request_tenant", lambda: "req-tenant")
+        assert srv._tenant("explicit-tenant") == "explicit-tenant"
+
+    def test_request_header_overrides_server_default(self, monkeypatch, srv):
+        srv.configure(tenant_id="server-default")
+        monkeypatch.setattr("fastmcp.server.dependencies.get_http_request",
+                            lambda: _fake_request("Bearer token"))
+        monkeypatch.setattr("utils.auth_utils.get_current_user_id",
+                            lambda authorization=None: ("user-1", TENANT_A))
+        assert srv._request_tenant() == TENANT_A
+        assert srv._tenant() == TENANT_A
+
+    def test_no_http_context_falls_back_to_server_default(
+            self, monkeypatch, srv):
+        srv.configure(tenant_id="server-default")
+        monkeypatch.setattr("fastmcp.server.dependencies.get_http_request",
+                            _raise_no_context)
+        assert srv._request_tenant() == ""
+        assert srv._tenant() == "server-default"
+
+    def test_auth_failure_degrades_to_server_default(self, monkeypatch, srv):
+        srv.configure(tenant_id="server-default")
+        monkeypatch.setattr("fastmcp.server.dependencies.get_http_request",
+                            lambda: _fake_request("Bearer expired"))
+
+        def _raise(*_a, **_k):
+            raise RuntimeError("token expired")
+
+        monkeypatch.setattr("utils.auth_utils.get_current_user_id", _raise)
+        assert srv._request_tenant() == ""
+        assert srv._tenant() == "server-default"
+
+    def test_missing_authorization_header_is_empty(self, monkeypatch, srv):
+        monkeypatch.setattr("fastmcp.server.dependencies.get_http_request",
+                            lambda: _fake_request(None))
+        assert srv._request_tenant() == ""
+
+    @pytest.mark.asyncio
+    async def test_kg_search_passes_request_tenant_to_store(
+            self, monkeypatch, srv):
+        store = RecordingStore()
+        store.entities = _store_with_graph().entities
+        monkeypatch.setattr(srv, "_request_tenant", lambda: TENANT_A)
+        out = await kg_search_handler(KGSearchInput(query="二甲双胍"),
+                                      store=store)
+        assert isinstance(out, KGSearchOutput)
+        assert store.seen_tenants == [TENANT_A]
+
+    @pytest.mark.asyncio
+    async def test_explicit_tenant_still_skips_request_lookup(
+            self, monkeypatch, srv):
+        store = RecordingStore()
+        store.entities = _store_with_graph().entities
+        monkeypatch.setattr("fastmcp.server.dependencies.get_http_request",
+                            _raise_no_context)
+        out = await kg_search_handler(KGSearchInput(query="二甲双胍"),
+                                      store=store, tenant_id=TENANT_A)
+        assert isinstance(out, KGSearchOutput)
+        assert store.seen_tenants == [TENANT_A]
 
 
 # ---------------------------------------------------------------------------

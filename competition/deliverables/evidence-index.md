@@ -15,7 +15,7 @@
 | Skill 三层编排（入口路由 + 检索/推理/证据装配） | 维度1 | ★★★ | `docs/agent-config.md` §5；`ag_skill_info_t` 真实 4 条 | ✅ 已有 |
 | 平台跑通（智能体发布/对话/模型注册截图） | 维度1/2 | ★★☆ | `deliverables/T-01-agent-published.png` / `T-01-chat-conversation.png` / `T-01-models-registered.png`（3 张，2026-09-14；**真实平台界面**） | ✅ 已有 |
 | 平台登录后首页 | 维度1/4 | ★★☆ | `deliverables/T23-home-loggedin.png`（2026-09-20；**真实页面**：登录态首页） | ✅ 已有 |
-| **示例问答截图 ≥3（真实问答，可回溯 decision_card_t）** | 维度2/4 | ★★★ | `deliverables/`（**待补**：kw_010 迁移已给 `knowevo_assistant` 绑定 5 个 KG MCP 工具 + EMBEDDING_ID 已修复（bge-m3, guard2 `_resolve_tenant_embedding_model_info`→`EmbeddingModelInfo name=bge-m3 dim=1024`），但 r25 实测 chat QA 走完整 `/api/agent/run` 时被**新环境缺陷**阻塞：`NEXENT_SANDBOX_DEFAULT_LEVEL=docker`+`AUTO_SYNC_OUTPUTS=true` → `get_sandbox_minio_client()`→`MinIOStorageClient(endpoint=http://nexent-minio:9000)`→`head_bucket`，宿主机 backend 解析不了 docker DNS 名 `nexent-minio` → `EndpointConnectionError`→`MemoryPreparationException`→「Agent execution failed」（3 轮均如此，已如实记录，未以低质图充数）。解锁需改 `NEXENT_SANDBOX_DEFAULT_LEVEL=local` 或启动 minio+改 `MINIO_ENDPOINT` 并重启 backend，属部署共享状态，待 team-lead 决策） | 🟡 待补（有阻塞说明） |
+| **示例问答截图 ≥3（真实问答，可回溯 decision_card_t）** | 维度2/4 | ★★★ | `deliverables/T-27-chat-qa-{1,2,3}.png`（2026-09-23 00:57–01:03；**真实平台界面** 1440×980 三张 md5 互异：登录态 + 会话列表 + 任务详情 + 「Knowevo 助手 / deepseek-flash」选择器）。3 轮问题 = 糖尿病前期含哪些情况 / 随机血糖能否诊断 / 空腹血糖阈值多少；`chat-qa-summary.json` `errors: []`、每轮 `/api/agent/run` 200。**智能体真实调用 KG 工具的铁证**：MCP 服务端日志 **71× `CallToolRequest`**（跨 10 sessions）；推理轨迹含 `local_knowevo_kg_search` / `kg_multi_hop`（`seeds=["Disease:糖尿病前期",...], depth=2, beam=3`）/ `decision_card_render`；答案含 `includes` 关系表（IGT / IFG）+ `version_valid:true`、`valid_view=2026-09-22T16:58:23.964908Z`、`Examination:空腹血糖` 实体级证据，并主动披露工具侧不一致。**解锁手段**（零仓内文件改动）：`NEXENT_SANDBOX_DEFAULT_LEVEL=local` + `MINIO_ENDPOINT=http://127.0.0.1:9010`（容器映射 9010→9000）+ 后端重启。**诚实标注**：平台内置本地 MCP 服务**不发** `Authorization` 头（日志实测 7 个头无它）→ request-scoped 租户解析**未触发**，实际生效的是 `KW_MCP_TENANT_ID` 服务级锚定。诊断报告 `docs/verification-reports/t27-chatqa-unlock.md` | ✅ 已有 |
 | **本体工作台截图（本体树 + 导航）** | 维度2 | ★★★ | `deliverables/t23-shot-ontology-workbench.png`（2026-09-21 04:03；**真实页面**：宿主机 next dev :3000 + uvicorn :5010，本体树视图） | ✅ 已有 |
 | 本体工作台-待审队列截图 | 维度2 | ★★☆ | `deliverables/t23-shot-ontology-queue.png`（2026-09-21 04:03；**真实页面**：待审队列视图） | ✅ 已有 |
 | **决策卡截图（证据链展开 + 版本戳 + 免责声明）** | 维度2 | ★★★ | `deliverables/T-23-decision-card.png`（2026-09-21 16:09 UTC；**真实页面** `/zh/decisionCard` + 真库行 `decision_card_t.id=284ff0c1-a3bb-450c-8069-e1bb60512d4b`；问题「糖尿病前期」/本体 v1.1.0；含导航+永久免责声明+`建议`/`知识版本:v1.1.0`/`截止 2025-01-01T00:00:00+00:00`/`时钟 fact_cutoff`/`version_pinned` 戳 + Top-1 候选(置信度0.80) + 展开证据链(EXTRACTED/版本钉住/kg_path)） | ✅ 已有 |
@@ -26,12 +26,12 @@
 | E2 消融报告（A1/A2/A3/A4 × E8） | 维度3 | ★★★ | `deliverables/e2-ablation-report.json`（**partial:true**）：**A1_pure_rag** n_q=10 acc=0.7241 / pass2=0.70 / n_judged=29/30；**A2_graph** n_q=4 acc=0.75 / n_judged=12/12；**A3_multihop 待跑**（insufficient_data）；**E8 配对终版**（`e2-ablation-paired2.json`，`same_invocation=true`、零空正文污染）：V 题 3 题×2runs 两臂各 acc=1.0 n=6/6 → **Δ=0.0**（取代 r22 并置 +0.3334，pitfalls #62；诚实限制：n=6 小样本+两臂满分，Δ=0 不反推机制无效） | 🟡 待续跑 |
 | 机制预验证四探针（P1 100% vs 20.6% / P2 VOI / P3 0.02ms / P4 98.8%） | 维度3 | ★★★ | `deliverables/algorithm-probes/probe_p{1..4}_*.json` | ✅ 已有 |
 | 版本钉住机制测试（TestVersionPinnedWalk） | 维度3 | ★★★ | `test/backend/services/knowevo/test_decision_service.py` | ✅ 已有 |
-| 消融单测 + PG 集成（688 passed，2026-09-21 r16 全量实测） | 维度3 | ★★★ | `pytest` 运行记录 | ✅ 已有 |
+| 消融单测 + PG 集成（knowevo 层 **718 passed / 30 skipped**，2026-09-23 T-27 收口轮实测） | 维度3 | ★★★ | `pytest ../test/backend/services/knowevo/ -q` 运行记录 | ✅ 已有 |
 | 性能 PoC（多跳 p95=12.5ms / supersede p95=22.7ms） | 维度2/3 | ★★★ | `docs/poc-graphstore.md` | ✅ 已有 |
 | 跳数标定（depth=2 饱和） | 维度3 | ★★☆ | `cost-ledger` t09-curve 行 | ✅ 已有 |
 | 语料台账（58 份 + 批次核查） | 维度2 | ★★☆ | `corpus/registry.csv` + `docs/verification-reports/batch{1,2,3}-*.md` | ✅ 已有 |
 | 构建租户图谱（实体/关系/证据链） | 维度2/3 | ★★★ | `kg_graph` + `kg_evidence_t`（doc_id 链）；2026-09-21 r20 收盘快照：15/120 段、**136 实体 / 65 关系**（含 2024 权威关系 32 条、b_2024plus=13）、38 证据行（来源 `cost-ledger` 行 `r20-burst-c` + 报告 `data_reality` entities=136/relations=65）；D1 判别性计数 all=674 / t_v=2022-01-01=33 / t_v=2024-06-01=190 / t_v=2025-06-01=66，`discriminative:true`（E8 判别门已解锁） | 🟡 摄取中（120 段） |
-| 踩坑台账 56 条（调试迭代经验素材，2026-09-21 实数） | 维度4 | ★★★ | `docs/pitfalls.md` | ✅ 已有 |
+| 踩坑台账 64 条（调试迭代经验素材，2026-09-23 实数） | 维度4 | ★★★ | `docs/pitfalls.md` | ✅ 已有 |
 | 演进台账（evolution-log） | 维度4 | ★★☆ | `docs/evolution-log.md` | ✅ 已有 |
 | 模板复用统计 R/S/D（skill_template_t） | 维度4 | ★★☆ | `skill_template_t`（T-20 起真实落库） | ✅ 已有 |
 
@@ -52,10 +52,9 @@
 
 | 缺口 | 阻塞源 | 解锁动作 | 状态 |
 |---|---|---|---|
-| 六类官方截图（本体工作台/决策卡/示例问答≥3/版本对比/Skill 库/评测图） | 前端栈（宿主机 next dev 3000 + uvicorn 5010；r17 实证 stock 镜像无 knowevo 路由） | **已拍 7 张**：`t23-shot-ontology-workbench.png` / `t23-shot-ontology-queue.png` / `t23-shot-skill-template.png`（r17，2026-09-21 04:03）、`t23-eval-report.png`（2026-09-21 11:54）、`T23-home-loggedin.png`（2026-09-20）、`T-23-decision-card.png` / `T-23-version-compare-{2024clock-refusal,2026}.png`（r22 `t23-capture2`，2026-09-21 16:09/16:14 UTC）；**待补 1 类**：示例问答≥3（阻塞：唯一智能体 `knowevo_assistant` 0 工具绑定 + 未配置向量模型） | 🟡 进行中 |
-| **待补截图：示例问答≥3** | r25 实测：工具绑定（kw_010）与向量模型（EMBEDDING_ID）已就位，但 chat QA 完整 `/api/agent/run` 被 sandbox/minio 环境缺陷阻塞（`nexent-minio:9000` docker DNS 名宿主机不可解析，`head_bucket` 抛 `EndpointConnectionError`→`MemoryPreparationException`→3 轮「Agent execution failed」） | 解锁动作待 team-lead：① `NEXENT_SANDBOX_DEFAULT_LEVEL=local`（跳过 minio 初始化）或 ② 启动 `nexent-minio` 容器 + `MINIO_ENDPOINT` 改 localhost:9010 并重启 backend；解锁后重采 chat QA，每个答案须可回溯 `decision_card_t`/`eval_run_t` 行 | 🟡 待补 |
+| 六类官方截图（本体工作台/决策卡/示例问答≥3/版本对比/Skill 库/评测图） | 前端栈（宿主机 next dev 3000 + uvicorn 5010；r17 实证 stock 镜像无 knowevo 路由） | **已拍 10 张**：`t23-shot-ontology-workbench.png` / `t23-shot-ontology-queue.png` / `t23-shot-skill-template.png`（r17，2026-09-21 04:03）、`t23-eval-report.png`（2026-09-21 11:54）、`T23-home-loggedin.png`（2026-09-20）、`T-23-decision-card.png` / `T-23-version-compare-{2024clock-refusal,2026}.png`（r22 `t23-capture2`）、糖化血红蛋白版本对比 2 张（r25，2026-09-22 04:23 UTC）、**示例问答 3 张**（T-27，2026-09-23 00:57–01:03）→ **六类已全部到齐** | ✅ 六类齐 |
 | 评测报告图 | E2 partial；`e8.arm_vintage.same_invocation=null`（E8 Δ 不可测） | 摄取 120/120 → `t22-resume.status.json` resume 四段命令 → 回填完整矩阵；已按现有真实数字出图（`t23-eval-report.png`），缺口格标注 insufficient_data；续跑后需重绘 | 🟡 |
-| 示例问答可回溯性核验 | 截图拍摄 | psql 查 `decision_card_t`/`eval_run_t` 行对应 | 🟡 |
+| 示例问答可回溯性核验 | 截图拍摄 | ✅ **已核**（2026-09-23 T-27 收口轮，真库直查）：3 张截图对应 `decision_card_t` 行 `e2e0a66f-f531-405c-aa8c-56e31a71ad3f`（糖尿病前期包括哪些情况？） / `348c8a4d-9d50-43ac-a205-d837546b9ec0`（随机血糖可以用来诊断糖尿病吗？） / `962c9cf2-3949-435e-8dc3-5b6259cf837c`（空腹血糖多少可以诊断糖尿病？），均 `INSUFFICIENT_EVIDENCE`，created_at 16:55:41 / 16:58:09 / 17:01:38 UTC。**互锁证据**：截图 2 中 `uncertainty_notes` 显示的 UUID 后缀 `…43ac-a205-d837546b9ec0` 与库行 `348c8a4d-9d50-43ac-a205-d837546b9ec0` 逐字符吻合。复核命令见 `docs/verification-reports/t27-chatqa-unlock.md` §二 | ✅ |
 | T-05 e2e 截图欠账（本体树 ≥30 节点 + diff 三色） | 同上起栈 | 补拍（T-05-receipt.md:41 未勾选） | 🟡 |
 | vision agent 逐张审图 | 截图就位后 | 按 `wave-plan.md:59` / vision skill 审图，结论回填本表 | 🟡 |
 
@@ -68,4 +67,5 @@
 - 2026-09-21 16:09/16:14 UTC（t23-capture2，配额空档）：新增 3 张真实截图——决策卡面板 `T-23-decision-card.png`（真库 `decision_card_t.id=284ff0c1`）与版本对比 `T-23-version-compare-{2024clock-refusal,2026}.png`（同题「糖尿病前期」+同本体 v1.1.0，仅 `as_of` 不同：2024→证据不足（版本钉住的诚实拒绝） / 2026→建议+证据链；真库 `3fd88441` / `9189abf8`）。示例问答≥3 经实测阻塞（智能体 0 工具绑定 + 无向量模型），如实标注，未伪造。
 - 素材核验方式：文件存在性 + DB 真实查询（`ag_tenant_agent_t` / `model_record_t` / `ag_skill_info_t` / `ag_tool_info_t`）
 - 2026-09-22 04:23 UTC（kw-qa r25 槽位）：新增糖化血红蛋白版本对比 2 张——`T-23-version-compare-2021clock.png`（`as_of=2021-06-01`→INSUFFICIENT_EVIDENCE，真库 `decision_card_t.id=9ed40a72`）与 `T-23-version-compare-2025clock.png`（`as_of=2025-06-01`→RECOMMEND+3证据，真库 `109425c1`），`ideal_shape=true`（旧时钟 0 证据诚实拒绝 vs 新时钟证据支撑，判别门通过）。同时完成 EMBEDDING_ID 修复（bge-m3，guard2 生产 resolver 验证 RESOLVE OK）与 chat QA 实测——chat QA 3 轮均「Agent execution failed」，根因=sandbox/minio 环境缺陷（`nexent-minio:9000` docker DNS 名宿主机不可解析），如实标注待 team-lead 解锁，未伪造。
+- 2026-09-23 00:57–01:03（**T-27 收口轮**）：新增**示例问答 3 张** `T-27-chat-qa-{1,2,3}.png`——P0 交付缺口「示例问答截图 ≥3」闭环，**六类官方截图至此全部到齐**。3 轮真实问答走完整 `/api/agent/run`（`errors: []`），智能体真实调用 KG 工具（MCP 服务端 **71× `CallToolRequest`**）。解锁根因与手段、含「平台本地 MCP 不发 Authorization 头 → 实际生效的是服务级 tenant 锚定」的诚实标注，见 `docs/verification-reports/t27-chatqa-unlock.md`；同步实物证据：`docs/pitfalls.md` #64。
 - 更新纪律：每新增/重拍一张截图、每落定一个评测数字，同步更新本表状态列。

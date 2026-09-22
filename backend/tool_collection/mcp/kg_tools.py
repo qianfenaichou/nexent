@@ -18,6 +18,7 @@ a second mount call.
 # package); make it importable from a backend-only process. Same pattern
 # as the test files (repo root on sys.path) - keeps the single-schema
 # source reachable by both registration surfaces.
+import os
 import sys
 from pathlib import Path
 
@@ -83,8 +84,18 @@ def handlers() -> dict[str, object]:
 
 def wire(tenant_id: str = "") -> FastMCP:
     """Return the mounted app after configuring the shared store binding.
-    T-08 calls this and mounts the result into local_mcp_service."""
-    knowevo_configure(tenant_id=tenant_id)
+
+    T-08 calls this with no argument and mounts the result into
+    local_mcp_service, so the mount is process-wide. Per-call tenants are
+    resolved from the caller's Authorization header when the platform
+    forwards one (mcp_servers/knowevo_mcp/server.py::_request_tenant); the
+    built-in local MCP server of Nexent v2.5.1 sends no header
+    (create_agent_info.py registers ``authorization_token: None``), so a
+    single-tenant deployment can pin its tenant here through
+    ``KW_MCP_TENANT_ID`` - the documented v0 server-level setting.
+    """
+    knowevo_configure(
+        tenant_id=tenant_id or os.getenv("KW_MCP_TENANT_ID", ""))
     return knowevo_mcp_app
 
 
