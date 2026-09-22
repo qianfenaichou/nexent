@@ -918,6 +918,12 @@ class DecisionService:
 
         if not chain.has_evidence():
             card.decision = DECISION_INSUFFICIENT
+            # Zero-LLM deterministic refusal: this branch never issues a
+            # model call, so the honest token budget is exactly 0. Recorded
+            # explicitly (T-29 observation gap) rather than left to the
+            # field default, so the refusal surface cannot be confused with
+            # an LLM path that simply failed to report usage.
+            card.used_tokens = 0
             card.uncertainty_notes.append(
                 "关键事实项证据全缺：检索路与推理路均未取到支撑证据，"
                 "按纪律不生成候选。")
@@ -935,8 +941,17 @@ class DecisionService:
             paths=_render_chain(chain),
             doc_hits=_render_doc_hits(chain),
             failed_paths=_render_failed(chain))
-        raw = await self._call_llm(system, user, kind="decision_card",
-                                   tier=TIER_MID)
+        raw, usage = await self._call_llm_with_usage(
+            system, user, kind="decision_card", tier=TIER_MID)
+        # T-29 observation gap: the card render is the one call whose cost
+        # the card itself can carry. Aggregate the measured counters (the
+        # measured-only rule - never estimated) into card.used_tokens so
+        # the DB row and the payload both show whether the LLM actually
+        # ran for this surface. Reasoning tokens are part of the provider's
+        # output accounting, so they are not added on top.
+        card.used_tokens = (
+            int(usage.get("input_tokens", 0) or 0)
+            + int(usage.get("output_tokens", 0) or 0))
         data = _parse_json(raw)
         if not isinstance(data, dict):
             raise TypeError("decision-card LLM output was not a JSON "
@@ -1219,6 +1234,32 @@ class DecisionService:
         if result is None:
             raise ValueError(f"llm returned no content for kind={kind}")
         return str(result)
+
+    async def _call_llm_with_usage(self, system: str, user: str, *, kind: str,
+                                   tier: str, temperature: float = 0.0,
+                                   ) -> tuple[str, dict[str, Any]]:
+        """Like ``_call_llm`` but also returns the call's usage dict.
+
+        Prefers the additive ``call_with_usage`` seam (llm_client.LlmRouter,
+        r21) when the injected callable exposes it, so the measured token
+        counters travel alongside the reply. The frozen
+        ``(prompt, *, kind, tier, temperature) -> str`` contract stays the
+        fallback: for a plain async callable the usage dict is empty and the
+        caller must report 0 - measured-only accounting, never an estimate.
+        """
+        if self.llm is None:
+            raise RuntimeError("no llm injected")
+        call_with_usage = getattr(self.llm, "call_with_usage", None)
+        if callable(call_with_usage):
+            prompt = f"{system}\n\n{user}" if system else user
+            raw, usage = await call_with_usage(
+                prompt, kind=kind, tier=tier, temperature=temperature)
+            if raw is None:
+                raise ValueError(f"llm returned no content for kind={kind}")
+            return str(raw), dict(usage or {})
+        raw = await self._call_llm(system, user, kind=kind, tier=tier,
+                                   temperature=temperature)
+        return raw, {}
 
 
 # ---------------------------------------------------------------------------
