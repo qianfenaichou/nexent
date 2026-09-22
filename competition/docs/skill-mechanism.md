@@ -70,7 +70,7 @@ description: 检索路执行：混合检索+图谱一跳，收集单点事实证
 
 ## 5. 分层编排落法（T-20 四个 SKILL.md 的设计依据）
 
-- 技术方案 §3.4（`competition/docs/plan/02-技术方案.md:325-337`）的编排树：`domain-asset-cognition`（入口·路由）→ `retrieval-path` / `reasoning-path` → `evidence-assembly`（含 decision_card_render）。
+- 技术方案 §3.4（根 [`02-技术方案.md`](../../../02-技术方案.md)，**勿引用 `docs/plan/` 快照**）的编排树：`domain-asset-cognition`（入口·路由）→ `retrieval-path` / `reasoning-path` → `evidence-assembly`（含 decision_card_render）。
 - 机制映射：入口 SKILL.md 的 body 写"路由判断 + 指示 `read_skill_md("retrieval-path"/...)`"；平台规则（§4.3）保证子技能按序加载、输出接力；每个子技能 body 写"允许原子工具 + 输出契约"，frontmatter `allowed-tools` 声明 `knowledge_base_search/kg_search/kg_multi_hop/decision_card_render`（后者 T-19 注册前被静默忽略，见 §1）。
 - "流程在 SKILL.md、职责在 duty prompt"（简报实现备注 3）：SKILL.md body 是流程层；agent duty prompt 不复制流程。
 
