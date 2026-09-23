@@ -1,0 +1,451 @@
+{
+  "probe": "p6_autonomy_tau",
+  "generated_at": "2026-09-23T12:28:25+08:00",
+  "question": "tau_a 对人工干预比例 / 放行错误率的真实杠杆有多大？",
+  "contract_anchors": {
+    "auto_accept_gate": "backend/services/knowevo/ontology_service.py:614-627 (auto_accept: three-condition AND gate)",
+    "build_ev_rich": "backend/services/knowevo/ontology_service.py:115-118 (build_ev_rich: >=2 distinct docs -> 1.0 else 0.6)"
+  },
+  "engine": "backend",
+  "data_reality": {
+    "frozen_at": "2026-09-23T12:30:00+08:00",
+    "export_sql": [
+      "select (op->>'op')||'|'||(op->>'target')||'|'||coalesce((op->'payload'->>'confidence'),'NA')||'|'||(op->'payload'->'evidence_spans')::text from nexent.ontology_version_t v, jsonb_array_elements(v.applied_ops) op where v.tenant_id='6756b0ab-39c0-462a-9745-aa12e1511fcd' and jsonb_array_length(v.applied_ops)=20;",
+      "select 'CLS:'||(elem->>'name') from jsonb_array_elements((select snapshot->'classes' from nexent.ontology_version_t where tenant_id='6756b0ab-39c0-462a-9745-aa12e1511fcd' and version='v1.1.0')) elem union all select 'REL:'||(elem->>'name') from jsonb_array_elements((select snapshot->'rel_types' from nexent.ontology_version_t where tenant_id='6756b0ab-39c0-462a-9745-aa12e1511fcd' and version='v1.1.0')) elem;",
+      "select tenant_id||'|'||target||'|'||confidence||'|'||status from nexent.ontology_change_proposal_t;"
+    ],
+    "pool_n": 21,
+    "pool_tenant_split": {
+      "kw_tenant": 20,
+      "cross_tenant_witness": 1
+    },
+    "as_built_facts": {
+      "proposals_in_kw_tenant": 0,
+      "proposals_cross_tenant_pending": 1,
+      "build_ops_v100": 20,
+      "snapshot_v110_members": 20
+    },
+    "gold": {
+      "adjudication_gold": {
+        "n_labeled": 0,
+        "status": "insufficient_data",
+        "why": "ontology_change_proposal_t 无已裁决行（唯一 1 行 status=pending）"
+      },
+      "survival_proxy": {
+        "n_labeled": 20,
+        "n_error": 0,
+        "protocol": "op.target 存在于 v1.1.0 现行快照 -> 记非错；缺失 -> 记错；跨租户见证项无金标"
+      }
+    }
+  },
+  "tau_grid": [
+    0.5,
+    0.55,
+    0.6,
+    0.65,
+    0.7,
+    0.75,
+    0.8,
+    0.85,
+    0.9,
+    0.95
+  ],
+  "curves": {
+    "arm_a_as_recorded": [
+      {
+        "tau": 0.5,
+        "n_auto": 0,
+        "n_manual": 21,
+        "manual_ratio": 1.0,
+        "error_axis": {
+          "status": "insufficient_data",
+          "reason": "labeled auto n=0 < 5",
+          "n_auto_gold": 0,
+          "n_err": 0
+        }
+      },
+      {
+        "tau": 0.55,
+        "n_auto": 0,
+        "n_manual": 21,
+        "manual_ratio": 1.0,
+        "error_axis": {
+          "status": "insufficient_data",
+          "reason": "labeled auto n=0 < 5",
+          "n_auto_gold": 0,
+          "n_err": 0
+        }
+      },
+      {
+        "tau": 0.6,
+        "n_auto": 0,
+        "n_manual": 21,
+        "manual_ratio": 1.0,
+        "error_axis": {
+          "status": "insufficient_data",
+          "reason": "labeled auto n=0 < 5",
+          "n_auto_gold": 0,
+          "n_err": 0
+        }
+      },
+      {
+        "tau": 0.65,
+        "n_auto": 0,
+        "n_manual": 21,
+        "manual_ratio": 1.0,
+        "error_axis": {
+          "status": "insufficient_data",
+          "reason": "labeled auto n=0 < 5",
+          "n_auto_gold": 0,
+          "n_err": 0
+        }
+      },
+      {
+        "tau": 0.7,
+        "n_auto": 0,
+        "n_manual": 21,
+        "manual_ratio": 1.0,
+        "error_axis": {
+          "status": "insufficient_data",
+          "reason": "labeled auto n=0 < 5",
+          "n_auto_gold": 0,
+          "n_err": 0
+        }
+      },
+      {
+        "tau": 0.75,
+        "n_auto": 0,
+        "n_manual": 21,
+        "manual_ratio": 1.0,
+        "error_axis": {
+          "status": "insufficient_data",
+          "reason": "labeled auto n=0 < 5",
+          "n_auto_gold": 0,
+          "n_err": 0
+        }
+      },
+      {
+        "tau": 0.8,
+        "n_auto": 0,
+        "n_manual": 21,
+        "manual_ratio": 1.0,
+        "error_axis": {
+          "status": "insufficient_data",
+          "reason": "labeled auto n=0 < 5",
+          "n_auto_gold": 0,
+          "n_err": 0
+        }
+      },
+      {
+        "tau": 0.85,
+        "n_auto": 0,
+        "n_manual": 21,
+        "manual_ratio": 1.0,
+        "error_axis": {
+          "status": "insufficient_data",
+          "reason": "labeled auto n=0 < 5",
+          "n_auto_gold": 0,
+          "n_err": 0
+        }
+      },
+      {
+        "tau": 0.9,
+        "n_auto": 0,
+        "n_manual": 21,
+        "manual_ratio": 1.0,
+        "error_axis": {
+          "status": "insufficient_data",
+          "reason": "labeled auto n=0 < 5",
+          "n_auto_gold": 0,
+          "n_err": 0
+        }
+      },
+      {
+        "tau": 0.95,
+        "n_auto": 0,
+        "n_manual": 21,
+        "manual_ratio": 1.0,
+        "error_axis": {
+          "status": "insufficient_data",
+          "reason": "labeled auto n=0 < 5",
+          "n_auto_gold": 0,
+          "n_err": 0
+        }
+      }
+    ],
+    "arm_b_ev_rich_relaxed": [
+      {
+        "tau": 0.5,
+        "n_auto": 11,
+        "n_manual": 10,
+        "manual_ratio": 0.4762,
+        "error_axis": {
+          "status": "measured",
+          "n_auto_gold": 10,
+          "n_err": 0,
+          "rate": 0.0,
+          "gold": "survival proxy (adjudication gold n=0 -> insufficient_data)",
+          "wilson_95": [
+            0.0,
+            0.2775
+          ]
+        }
+      },
+      {
+        "tau": 0.55,
+        "n_auto": 11,
+        "n_manual": 10,
+        "manual_ratio": 0.4762,
+        "error_axis": {
+          "status": "measured",
+          "n_auto_gold": 10,
+          "n_err": 0,
+          "rate": 0.0,
+          "gold": "survival proxy (adjudication gold n=0 -> insufficient_data)",
+          "wilson_95": [
+            0.0,
+            0.2775
+          ]
+        }
+      },
+      {
+        "tau": 0.6,
+        "n_auto": 11,
+        "n_manual": 10,
+        "manual_ratio": 0.4762,
+        "error_axis": {
+          "status": "measured",
+          "n_auto_gold": 10,
+          "n_err": 0,
+          "rate": 0.0,
+          "gold": "survival proxy (adjudication gold n=0 -> insufficient_data)",
+          "wilson_95": [
+            0.0,
+            0.2775
+          ]
+        }
+      },
+      {
+        "tau": 0.65,
+        "n_auto": 11,
+        "n_manual": 10,
+        "manual_ratio": 0.4762,
+        "error_axis": {
+          "status": "measured",
+          "n_auto_gold": 10,
+          "n_err": 0,
+          "rate": 0.0,
+          "gold": "survival proxy (adjudication gold n=0 -> insufficient_data)",
+          "wilson_95": [
+            0.0,
+            0.2775
+          ]
+        }
+      },
+      {
+        "tau": 0.7,
+        "n_auto": 11,
+        "n_manual": 10,
+        "manual_ratio": 0.4762,
+        "error_axis": {
+          "status": "measured",
+          "n_auto_gold": 10,
+          "n_err": 0,
+          "rate": 0.0,
+          "gold": "survival proxy (adjudication gold n=0 -> insufficient_data)",
+          "wilson_95": [
+            0.0,
+            0.2775
+          ]
+        }
+      },
+      {
+        "tau": 0.75,
+        "n_auto": 11,
+        "n_manual": 10,
+        "manual_ratio": 0.4762,
+        "error_axis": {
+          "status": "measured",
+          "n_auto_gold": 10,
+          "n_err": 0,
+          "rate": 0.0,
+          "gold": "survival proxy (adjudication gold n=0 -> insufficient_data)",
+          "wilson_95": [
+            0.0,
+            0.2775
+          ]
+        }
+      },
+      {
+        "tau": 0.8,
+        "n_auto": 11,
+        "n_manual": 10,
+        "manual_ratio": 0.4762,
+        "error_axis": {
+          "status": "measured",
+          "n_auto_gold": 10,
+          "n_err": 0,
+          "rate": 0.0,
+          "gold": "survival proxy (adjudication gold n=0 -> insufficient_data)",
+          "wilson_95": [
+            0.0,
+            0.2775
+          ]
+        }
+      },
+      {
+        "tau": 0.85,
+        "n_auto": 11,
+        "n_manual": 10,
+        "manual_ratio": 0.4762,
+        "error_axis": {
+          "status": "measured",
+          "n_auto_gold": 10,
+          "n_err": 0,
+          "rate": 0.0,
+          "gold": "survival proxy (adjudication gold n=0 -> insufficient_data)",
+          "wilson_95": [
+            0.0,
+            0.2775
+          ]
+        }
+      },
+      {
+        "tau": 0.9,
+        "n_auto": 11,
+        "n_manual": 10,
+        "manual_ratio": 0.4762,
+        "error_axis": {
+          "status": "measured",
+          "n_auto_gold": 10,
+          "n_err": 0,
+          "rate": 0.0,
+          "gold": "survival proxy (adjudication gold n=0 -> insufficient_data)",
+          "wilson_95": [
+            0.0,
+            0.2775
+          ]
+        }
+      },
+      {
+        "tau": 0.95,
+        "n_auto": 10,
+        "n_manual": 11,
+        "manual_ratio": 0.5238,
+        "error_axis": {
+          "status": "measured",
+          "n_auto_gold": 10,
+          "n_err": 0,
+          "rate": 0.0,
+          "gold": "survival proxy (adjudication gold n=0 -> insufficient_data)",
+          "wilson_95": [
+            0.0,
+            0.2775
+          ]
+        }
+      }
+    ]
+  },
+  "decomposition_tau_085": {
+    "tau": 0.85,
+    "binding_counts": {
+      "conf": 10,
+      "ev_rich": 21,
+      "rejected": 0
+    },
+    "per_item": {
+      "cls:Drug": [
+        "ev_rich"
+      ],
+      "cls:DrugClass": [
+        "ev_rich"
+      ],
+      "cls:Disease": [
+        "ev_rich"
+      ],
+      "cls:Complication": [
+        "ev_rich"
+      ],
+      "cls:Symptom": [
+        "ev_rich"
+      ],
+      "cls:Examination": [
+        "ev_rich"
+      ],
+      "cls:Indicator": [
+        "ev_rich"
+      ],
+      "cls:Treatment": [
+        "ev_rich"
+      ],
+      "cls:Lifestyle": [
+        "ev_rich"
+      ],
+      "cls:Population": [
+        "ev_rich"
+      ],
+      "rel:indicated_for": [
+        "conf",
+        "ev_rich"
+      ],
+      "rel:first_line": [
+        "conf",
+        "ev_rich"
+      ],
+      "rel:treats": [
+        "conf",
+        "ev_rich"
+      ],
+      "rel:contraindicated": [
+        "conf",
+        "ev_rich"
+      ],
+      "rel:adverse_effect": [
+        "conf",
+        "ev_rich"
+      ],
+      "rel:mechanism_of": [
+        "conf",
+        "ev_rich"
+      ],
+      "rel:monitors": [
+        "conf",
+        "ev_rich"
+      ],
+      "rel:has_target": [
+        "conf",
+        "ev_rich"
+      ],
+      "rel:complication_of": [
+        "conf",
+        "ev_rich"
+      ],
+      "rel:recommended_for": [
+        "conf",
+        "ev_rich"
+      ],
+      "cls:Metformin": [
+        "ev_rich"
+      ]
+    },
+    "n_blocked_by_ev_rich": 21,
+    "note": "an item can be blocked by several conditions; ev_rich binds all 21"
+  },
+  "conclusions": [
+    "arm A：人工干预比例在 tau_a∈[0.50,0.95] 全程 = 1.0（100%）——三条件门中 ev_rich（证据跨≥2文档）对 21/21 候选全部拒绝，tau_a 阈值根本轮不到生效。",
+    "arm B（放开 ev_rich）：干预比例 47.62%（tau≤0.90）→ 52.38%（tau=0.95），整个网格只有约 +4.8pp 的位移——候选 confidence 聚集在 {1.0, 0.9, 0.0}，阈值在该池上没有分辨率。",
+    "错误率轴：裁决金标 n=0 → insufficient_data；存活代理金标下放行集 0 错/10 （arm B，tau≤0.90），Wilson 95% 上界随 n 报告，不宣称低错误率。",
+    "综合：当前池上『提高自动化率』的杠杆是证据跨文档聚合（ev_rich）与候选分数的分布改善，调 tau_a 的边际收益 ≈ 0。"
+  ],
+  "limitations": [
+    "n=21 且候选分数三簇离散（1.0/0.9/0.0），曲线呈台阶而非连续；",
+    "存活代理金标只捕捉『被后续版本丢弃』类错误，捕捉不了仍存活的错误；",
+    "as-built 事实是构建租户 0 条提案队列行（种子层直接提交），本探针是 as-if 重放而非运行日志；",
+    "单一领域（2 型糖尿病）单租户，阈值结论不可外推到分数连续分布的池。"
+  ],
+  "upgrade_path": [
+    "本体工作台待审队列积累人工裁决（confirm/reject+reject_reason）后，裁决金标 n>0，同探针加 --live 复算错误率轴；",
+    "两级提案第二级（pending 池回流，mention_count>=3）产出带分数候选后，池的分数分布变连续，tau_a 扫描才有分辨率；",
+    "抽检协议：每次版本发布前对 auto_accepted 候选抽 20-30 条人工复核，复核记录落 ontology_change_proposal_t.status/reject_reason，即为抽检金标。"
+  ]
+}
