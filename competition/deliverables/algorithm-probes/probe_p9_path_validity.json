@@ -1,0 +1,35 @@
+{
+  "probe": "p9_path_validity",
+  "question": "Does version-predicate pushdown prune exactly E_v (no illegal edge in, no legal path dropped), and is the boolean predicate identical to the range predicate on well-formed rows?",
+  "config": {
+    "seed": 20260924,
+    "n_graphs": 40,
+    "n_nodes": 14,
+    "n_edges": 26,
+    "max_depth": 4,
+    "degenerate_prob": 0.05,
+    "live_version_pin_imported": false,
+    "scope_note": "适用范围：合成小图上的谓词代数与候选集等价机制验证，非真实库/索引层结论。"
+  },
+  "results": {
+    "check_B_pruning_completeness": {
+      "n_cases": 200,
+      "equal_R_eq_P": 200,
+      "sound_P_subset_R": 200,
+      "complete_R_subset_P": 200,
+      "all_pass": true
+    },
+    "check_A_predicate_equivalence": {
+      "n_cases": 200,
+      "agree_rows": 4935,
+      "disagree_rows": 0,
+      "degenerate_range_raise_rows": 265,
+      "all_pass": true
+    },
+    "search_space_compression": {
+      "mean_Ev_over_E": 0.12846153846153852,
+      "note": "mean fraction of edges that survive the predicate pushdown; empirical companion to proof draft §2.1 complexity table."
+    },
+    "scope_note": "适用范围：合成小图上的谓词代数与候选集等价机制验证，非真实库/索引层结论。"
+  }
+}
