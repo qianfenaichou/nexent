@@ -10,6 +10,52 @@ export interface DecisionCardProvenance {
   version_pinned: boolean;
 }
 
+/**
+ * What the evidence row's source line may show.
+ *
+ * - `fields`: a resolvable source; `doc` and/or `span` are cleaned non-empty
+ *   strings to join with " · ".
+ * - `graph`: kg-channel evidence whose document source never resolved -
+ *   still real graph evidence, shown under a label like "图谱内证据".
+ * - `missing`: nothing known about the source - shown as an em dash, never
+ *   as fabricated text.
+ */
+export type EvidenceSourceDisplay =
+  | { kind: "fields"; doc: string; span: string }
+  | { kind: "graph" }
+  | { kind: "missing" };
+
+/**
+ * Normalize one evidence row's provenance into what the panel may render.
+ *
+ * The wire contract types doc/span as strings, but live payloads carry JSON
+ * nulls and models echo literal "None"/"null" placeholders for sources the
+ * run never resolved - all of which must degrade to a fallback label rather
+ * than reach the screen as text (the panel once printed `None · None`).
+ */
+export function evidenceSourceDisplay(
+  provenance: DecisionCardProvenance | null | undefined,
+  sourceChannel: string
+): EvidenceSourceDisplay {
+  // Fields are read defensively: at runtime they may be null, undefined or
+  // a placeholder despite the declared `string` type.
+  const doc = cleanSourceField(provenance?.doc);
+  const span = cleanSourceField(provenance?.span);
+  if (doc !== "" || span !== "") {
+    return { kind: "fields", doc, span };
+  }
+  return sourceChannel.startsWith("kg")
+    ? { kind: "graph" }
+    : { kind: "missing" };
+}
+
+function cleanSourceField(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  const text = String(value).trim();
+  const lowered = text.toLowerCase();
+  return lowered === "none" || lowered === "null" ? "" : text;
+}
+
 export interface DecisionCardEvidenceItem {
   claim: string;
   provenance: DecisionCardProvenance;
