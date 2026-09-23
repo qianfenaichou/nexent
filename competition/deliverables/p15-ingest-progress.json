@@ -1,11 +1,10 @@
 {
   "task": "P1-5",
   "title": "图谱摄取补齐（构建租户 6756b0ab）",
-  "generated_at": "2026-09-23T02:27:00+08:00",
-  "generated_by": "主会话（T-27 收口轮之后）",
+  "generated_at": "2026-09-23T12:42:00+08:00",
+  "generated_by": "P1-5 执行轮（重试轮，接上一轮限流中断处续跑）",
   "status": "running",
   "tenant_id": "6756b0ab-39c0-462a-9745-aa12e1511fcd",
-
   "blocker_history": [
     {
       "at": "2026-09-23T01:50:00+08:00",
@@ -20,71 +19,197 @@
       "resolution": "~/kw-ingest/run_batch_A.sh 起进程前显式 unset 全部代理变量；~/kw-ingest/probe_gateway.py 在构造 HTTP 客户端前自行摘掉代理（就地自带，避免每调用点重复）。不改任何全局设置、不入仓",
       "after_fix_probe": "healthy=True；两次调用 1.3s / 2.0s，in=41 out=25/32，finish_reason=stop，token 正常回传",
       "pitfall_id": 67
+    },
+    {
+      "at": "2026-09-23T03:10:00+08:00",
+      "form": "上一轮子智能体在 batch-B 启动前因 API 限流（rps exhausted）中断，驱动进程未拉起",
+      "evidence": "重试轮开工核查：pgrep run_paced_ingest 无匹配；~/kw-ingest/ 下只有 ingest-A-2024.log 与 usage-275077.json，无 batch-B 日志；batch-B-2020.json 已于 01:39 生成但从未运行",
+      "resolution": "重试轮 12:21:35 直接以既有 batch-B-2020.json 续跑，未重复 batch-A（span_hash 幂等亦会跳过已完成段）",
+      "impact": "仅损失墙钟时间（01:39→12:21 约 10.7h 空转），无数据损失"
     }
   ],
-
   "span_source": {
     "what_120_means": "2 份指南 × 各 60 个平台分块 chunk",
     "docs": [
-      {"doc": "2024 指南", "doc_id": "6571e51a-62d0-4e78-9955-468da238b080", "chunks": 60},
-      {"doc": "2020 指南", "doc_id": "ec300a7f-f6d7-42eb-b76e-50f4a7622b48", "chunks": 60}
+      {
+        "doc": "2024 指南",
+        "doc_id": "6571e51a-62d0-4e78-9955-468da238b080",
+        "chunks": 60
+      },
+      {
+        "doc": "2020 指南",
+        "doc_id": "ec300a7f-f6d7-42eb-b76e-50f4a7622b48",
+        "chunks": 60
+      }
     ],
     "batches_prepared_in": "~/kw-ingest/",
     "batch_selection_rule": "G1 undone + G2 cjk>=0.10 + G3 len<=4500, ranked by R1 tier1_hits desc then len asc",
-    "batch_A_2024": {"file": "batch-A-2024.json", "spans": 12, "candidates_undone": 57, "eligible": 41},
-    "batch_B_2020": {"file": "batch-B-2020.json", "spans": 12, "candidates_undone": 48, "eligible": 32},
-    "batch_full": {"file": "batch-120.json", "spans": 120}
+    "batch_A_2024": {
+      "file": "batch-A-2024.json",
+      "spans": 12,
+      "candidates_undone": 57,
+      "eligible": 41
+    },
+    "batch_B_2020": {
+      "file": "batch-B-2020.json",
+      "spans": 12,
+      "candidates_undone": 48,
+      "eligible": 32
+    },
+    "batch_full": {
+      "file": "batch-120.json",
+      "spans": 120
+    }
   },
-
   "progress": {
     "spans_target": 120,
     "spans_done_before_this_run": 15,
-    "spans_done_now": 17,
-    "spans_added_by_this_run": 2,
-    "note_on_15": "真库核对：created_at < 2026-09-23 00:00+08 的行数 = 15，**与文档记录的「15/120 段」一致**（此前我曾算出 14，是忘了本次运行已先落 2 行）"
+    "spans_done_now": 35,
+    "spans_added_by_this_run": 20,
+    "as_of": "2026-09-23T13:05:00+08:00（batch-B 进行中，主会话监督轮直查）",
+    "measurement": "psql 直查 nexent.kg_extract_run_t WHERE tenant_id='6756b0ab-...' -> count(DISTINCT span_hash)=35（13:05）；同刻 kg_entity_t=298 / kg_relation_t=207 / kg_evidence_t=59。rows 与 distinct span_hash 相等，无重复段",
+    "note_on_15": "真库核对：created_at < 2026-09-23 00:00+08 的行数 = 15，**与文档记录的「15/120 段」一致**（此前曾算出 14，是忘了本轮运行已先落 2 行）"
   },
-
-  "graph_delta": {
-    "entities": {"before": 136, "now": 141, "delta": 5},
-    "relations": {"before": 65, "now": 73, "delta": 8},
-    "evidence": {"before": 38, "now": 41, "delta": 3},
-    "before_source": "cost-ledger 行 r20-burst-c 的收盘快照（136/65/38）",
-    "now_source": "psql 直查 nexent.kg_{entity,relation,evidence}_t WHERE tenant_id=6756b0ab...（2026-09-23 02:27）",
-    "attribution": "上述增量对应本次新增的 2 个 span（kg_extract_run_t 今天落库行，各 llm_calls=1 / empty_content_calls=0）"
+  "ceiling_analysis": {
+    "headline": "按预先登记的选择规则（G1/G2/G3），120 段目标**不可能达到**；可达上限 = 88/120，剩余 32 段被 G2/G3 门禁永久排除",
+    "measured_at": "2026-09-23T12:33:00+08:00（batch-B 进行中）",
+    "per_doc": {
+      "2024": {
+        "undone": 45,
+        "failed_G2_cjk": 2,
+        "failed_G3_len": 14,
+        "eligible": 29
+      },
+      "2020": {
+        "undone": 48,
+        "failed_G2_cjk": 4,
+        "failed_G3_len": 12,
+        "eligible": 32
+      }
+    },
+    "arithmetic": "已落 27 段 + 剩余 eligible (29+32=61，其中 12 段正被 batch-B 消耗) = 27 + 61 = 88；88 + 32(被排除) = 120 ✓",
+    "excluded_breakdown": {
+      "G2_cjk_lt_0.10": 6,
+      "G3_len_gt_4500": 26
+    },
+    "why_gates_exist": "G2 丢弃的是两份 PDF 的纯英文参考文献尾块（实测 CJK 密度 0.01-0.09，正文中位数约 0.30）；G3 是单段成本上界（>4500 字符的段 token 成本不可控）",
+    "honesty_note": "G1/G2/G3 在 select_subbatch.py 中**先于任何运行结果写定**（文件头 docstring 自述），本轮不因达不到 120 而回改门禁——否则即为事后调参。若主会话决定放宽门禁以逼近 120，应作为**新决策**另行登记（可选路径：G3 放宽到 len<=8000 可再纳入部分长段；G2 放宽到 0.05 可纳入英文尾块，但后者对本项目中文临床问答价值极低）",
+    "terminal_condition_expected": "exhausted（eligible 耗尽），非 done"
   },
-
-  "this_run": {
-    "command": "~/kw-ingest/run_batch_A.sh batch-A-2024.json",
-    "driver": "~/kw-ingest/run_paced_ingest.py（沿用 r20-burst-a/b/c 实测过的节流行为）",
-    "log": "~/kw-ingest/ingest-A-2024.log",
-    "started_at": "2026-09-23T02:23:37+08:00",
-    "env_knobs": {"KW_PACE_S": 20, "KW_MAX_SPAN_FAILS": 1, "KW_ATTEMPT_TIMEOUT_S": 300, "KW_EMPTY_RETRY_SLEEP_S": 45},
-    "kw_max_span_fails_rationale": "pitfall #54：首个彻底失败即 raise，span 不落 done，避免被 span_hash 幂等永久跳过",
-    "observed_calls": [
-      {"kind": "extract", "tier": "mid", "seconds": 3.9, "in": 5007, "out": 646, "fr": "stop", "rt": 0},
-      {"kind": "align", "tier": "mid", "seconds": 1.7, "in": 86, "out": 185, "fr": "stop", "rt": 141},
-      {"kind": "align", "tier": "mid", "seconds": 1.9, "in": 84, "out": 161, "fr": "stop", "rt": 111},
-      {"kind": "align", "tier": "mid", "seconds": 2.2, "in": 84, "out": 142, "fr": "stop", "rt": 93},
-      {"kind": "extract", "tier": "mid", "seconds": 5.6, "in": 4763, "out": 1355, "fr": "stop", "rt": 0}
-    ],
-    "throttle_429_count_at_this_snapshot": 0,
-    "throttle_note": "本次 0 次 429，显著优于 r20-burst 的 429 风暴（历史行记录 23 次成功调用 + 27×429 等）"
+  "batches": {
+    "A_2024": {
+      "file": "batch-A-2024.json",
+      "spans": 12,
+      "run_id": "42dd0306-060e-47ec-9c1b-4aaf6be72001",
+      "started_at": "2026-09-23T02:23:37+08:00",
+      "ended_at": "2026-09-23T03:07:31+08:00",
+      "wall_seconds": 2632.929,
+      "extracted": 12,
+      "skipped": 0,
+      "errors": [],
+      "merged": {
+        "added": 119,
+        "merged": 91,
+        "superseded": 0,
+        "contended": 3,
+        "pending": 0
+      },
+      "llm": {
+        "source": "~/kw-ingest/usage-275077.json（驱动退出时落盘，非估算）",
+        "calls": 132,
+        "calls_breakdown": {
+          "extract": 12,
+          "align": 120
+        },
+        "input_tokens": 51793,
+        "output_tokens": 32145,
+        "reasoning_tokens": 16222,
+        "parse_failures": 0,
+        "escalations": 0,
+        "timeouts": 0,
+        "slow_attempts": 0,
+        "throttle_429_attempts": 0,
+        "finish_reasons": {
+          "stop": 132
+        },
+        "empty_content_by_kind": {
+          "extract": 0,
+          "align": 0
+        }
+      },
+      "llm_calls_counting_caveat": "日志尾部 JSON 的 cost_ledger.llm_calls=12 是**段级**计数（每段 1 次 extract），不是真实 LLM 调用数；真实调用数 132（含每段 10 次 align）。登记台账时须用 132，否则 token/延迟会失真",
+      "graph_delta": {
+        "entities": {
+          "before": 136,
+          "after": 255,
+          "delta": 119
+        },
+        "relations": {
+          "before": 65,
+          "after": 142,
+          "delta": 77
+        },
+        "evidence": {
+          "before": 38,
+          "after": 50,
+          "delta": 12
+        },
+        "method": "psql 按 created_at 切窗归属（< 2026-09-23 02:23:00+08 = 批前；02:23~12:20 = 本批）",
+        "raw": "entity|136|119|6 / relation|65|77|0 / evidence|38|12|1（第三列 = 12:20 后 batch-B 已落行）",
+        "cross_check": "实体 delta 119 与驱动自报 merged.added=119 **完全一致**；evidence delta 12 = 12 段 × 1 条，与逐段落证据的契约一致"
+      }
+    },
+    "B_2020": {
+      "file": "batch-B-2020.json",
+      "spans": 12,
+      "status": "running",
+      "command": "nohup ~/kw-ingest/run_batch_A.sh batch-B-2020.json > ~/kw-ingest/ingest-B-2020.log 2>&1 &",
+      "started_at": "2026-09-23T12:21:35+08:00",
+      "pid": 17371,
+      "log": "~/kw-ingest/ingest-B-2020.log",
+      "spans_landed_at_1242": 2,
+      "run_id": null,
+      "run_id_note": "未收口；收口后从日志尾部 JSON 取 run_id 与 wall_seconds 回填",
+      "observed_anomaly": "12:36 出现一次 141.5s 的 align 调用（日志 'Finished call to create after 141.480(s), this was attempt n°2/3' = SDK 内层重试后成功，finish_reason=stop），单段耗时被拉长；非 429，未触发 hard fail",
+      "llm": "未测量（进程仍在运行；退出时写 ~/kw-ingest/usage-<pid>.json）"
+    }
   },
-
+  "graph_now": {
+    "entities": 298,
+    "relations": 207,
+    "evidence": 59,
+    "source": "psql 直查 nexent.kg_{entity,relation,evidence}_t WHERE tenant_id='6756b0ab-...'（2026-09-23 13:05 切窗值）",
+    "note": "含 batch-B 进行中已落的行；最终值须在全部批次收口后重查"
+  },
   "llm_usage": {
-    "measured_calls_at_snapshot": 5,
-    "aggregate": "未测量（进程仍在运行；驱动会在退出时把聚合写入 ~/kw-ingest/usage-<pid>.json）",
-    "honesty_note": "本快照不估算总量；最终用量以 usage-<pid>.json 为准"
+    "aggregate_so_far": "仅 batch-A 已测量：132 calls / in 51793 / out 32145（usage-275077.json）",
+    "honesty_note": "不估算未收口批次；最终总量以各批 usage-<pid>.json 逐份相加为准"
   },
-
-  "next_steps": [
-    "本批（12 段）跑完后取 ~/kw-ingest/usage-<pid>.json 的聚合用量，回填本文件与 cost-ledger",
-    "按同一配方续跑 batch-B-2020.json（12 段），每轮 ≤25 段",
-    "全部 120 段补齐后：E8 版本钉住 / E2-A3 multihop 消融可用真实规模重跑（P1-4）"
+  "suggested_cost_ledger_rows": [
+    "| P1-5 ingest batch-A (2024 指南, 12 段) | ingest_graph | run_id=42dd0306-060e-47ec-9c1b-4aaf6be72001 | llm_calls=132 (12 extract + 120 align) | in=51793 out=32145 (reasoning 16222) | wall=2632.9s | 429=0 | errors=0 | graph +119 entities/+77 relations/+12 evidence |",
+    "| P1-5 ingest batch-B (2020 指南, 12 段) | ingest_graph | run_id=待收口 | 待收口 | 待收口 | 待收口 | 待收口 |",
+    "（注：驱动日志尾部 JSON 的 llm_calls=12 为段级计数，登记须用真实调用数 132，来源 usage-275077.json）"
   ],
-
+  "next_steps": [
+    "batch-B 收口后：取 usage-<pid>.json 聚合 + 日志尾部 JSON（run_id/wall/merged/errors）回填本文件",
+    "用 select_subbatch.py 续选：2024 剩 29 eligible、2020 剩 32-12=20 eligible，每批 ≤25 段",
+    "全部 eligible 跑完后（预计 88/120）：status 收敛为 exhausted，并在最终报告里如实给出 32 段被门禁排除的原因与可选放宽路径",
+    "E8 版本钉住 / E2-A3 multihop 消融可用真实规模重跑（P1-4）——分母须按实际段数 88 或实际落库段数，不得沿用 120 假装"
+  ],
   "open_items": [
     "章节标题解析污染（pitfall #66 关联）：add 57/215、delete 49/184 的锚点像正文散文，属真实缺陷，修则须重跑 probe_p5 并更新决定书",
-    "本轮运行的生产代码零改动；未发现新缺陷"
+    "本轮运行的生产代码零改动；未发现新缺陷",
+    "上一轮子智能体限流中断导致 10.7h 空转（已记入 blocker_history）"
+  ],
+  "decisions": [
+    {
+      "at": "2026-09-23T13:05:00+08:00",
+      "by": "主会话（监督轮）",
+      "decision": "eligible（原门禁 G1/G2/G3）耗尽后，授权执行 G3 放宽批：复制 select_subbatch.py 为 select_subbatch_g3x.py，仅放宽 G3 为 len<=8000；G2（cjk>=0.10）不放宽",
+      "rationale": "原 G3=4500 是单段成本上界；放宽到 8000 后单段 token 成本仍可控（deepseek-flash 档），可把上限从 88/120 推到约 114/120，为 E8/A3 真数字提供图谱规模。G2 排除的 6 段为纯英文参考文献尾块（CJK 密度 0.01-0.09），对中文临床问答价值极低，不纳入",
+      "anti_posthoc_note": "门禁 G1/G2/G3 原样先于运行结果写定（select_subbatch.py 头 docstring 自述），本决策不回改原文件、不改动已跑批次的选择规则；放宽只通过带 G3' 标记的新脚本生效，meta 写明 rule 变更。此前不放宽——原门禁可跑的 49 段（batch-B 收口后口径）先跑完",
+      "denominator_discipline": "任何评测/报告分母用实际落库段数（当前轨迹 35→~114），不得沿用 120 假装；exhausted 时如实披露 G2 排除的 6 段",
+      "applies_after": "batch-C（2024 剩余 eligible）与 batch-D（2020 剩余 eligible）按原门禁跑完之后"
+    }
   ]
 }

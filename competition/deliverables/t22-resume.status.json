@@ -1,0 +1,164 @@
+{
+  "task": "T-22",
+  "artifact": "t22-resume.status.json",
+  "purpose": "T-22 消融 runner 就绪状态 + D1 前置判别性实测 + 真实 LLM 全量的 resume 四段命令",
+  "generated_at": "2026-09-23",
+  "branch": "fix/kw-r19-llm-extract-thinking",
+
+  "status": {
+    "runner_code": "READY",
+    "summary": "backend/services/knowevo/pipeline/ablation.py 已建成（A1-A4 四级 + E8 pin on/off 双臂 + by_type×by_level 交叉表 + Wilson CI + 断点续跑）；test_ablation.py 全部 mock LLM/DB（FakeRouter/FakeStore），无真实网络。执行器就绪，真实 LLM 全量待摄取批次收口后由主会话执行。",
+    "note_on_scope": "本 status 文件由评测流水线工程师会话在既有 runner 基础上复核 + 产出；未改写既有测试（遵守红线『不改既有测试来迁就代码』），未触碰接线/禁改文件。"
+  },
+
+  "d1_prerequisite": {
+    "what": "T-18b 判别性 SQL：t_v 两个取值下纳入事实数必须不同（version_pin.pin_predicate 单一谓词入口）",
+    "checked_at": "2026-09-23",
+    "source": "ablation.d1_check() / graph_presence() 直连真库 docker nexent-postgresql (localhost:5434)",
+    "counts": {
+      "all": 897,
+      "t_v_2022_01_01": 134,
+      "t_v_2024_06_01": 303,
+      "t_v_2025_06_01": 244,
+      "discriminative": true
+    },
+    "verdict": "PASS：t_v_2022(134) != t_v_2025(244)，两个 t_v 纳入事实数不同 → D1 判别性成立，放行 E8。",
+    "ablation_tenant": "6756b0ab-39c0-462a-9745-aa12e1511fcd",
+    "ablation_tenant_graph": {
+      "entities": 309,
+      "relations": 243
+    },
+    "data_reality_note": "构建租户图谱现已被真实摄取填充（309 实体 / 243 关系）——与 e2-ablation.md §0 记录的『图谱为空』历史快照不同，E8 的 Δ 不再结构性≈0，真实语料图已就位，续跑可产生可观测的 pin on/off 差异。"
+  },
+
+  "blockers_B1_B6": {
+    "B1": {
+      "title": "评测管线无图检索钩子",
+      "status": "RESOLVED",
+      "evidence": "ablation.py:414-430 build_channel A2 分支：store.neighbors(hop=1) → 1跳 PathSet → DecisionService.assemble_evidence 与文档通道融合（不另写融合），contested 标记经 edges_by_path 保留。"
+    },
+    "B2": {
+      "title": "图服务能力（search_entities/neighbors/graph_store.neighbors）",
+      "status": "RESOLVED",
+      "evidence": "ablation.py:180-203 seed_entities 走 store.entity_lookup；:415 store.neighbors(tenant_id, ids, hop=1, valid_view=True)。纯接线，无新算法。"
+    },
+    "B3": {
+      "title": "多跳调用路径（MCP vs 服务直调）",
+      "status": "RESOLVED",
+      "decision": "定死为 DecisionService.multi_hop 服务直调",
+      "reason_in_docstring": "ablation.py 模块 docstring 14-18 行：MCP kg_search handler 是 current-view、无版本语义，pinned 臂无法走它；服务直调免 MCP 往返与鉴权。",
+      "evidence": "ablation.py:438-442 svc.multi_hop(question, seeds=seeds, depth=2, beam=3, as_of=..., pin_version=pin_on)"
+    },
+    "B4": {
+      "title": "版本钉住参数未进评测管线",
+      "status": "RESOLVED",
+      "evidence": "as_of/version 从 CLI --pin-as-of 传入（DEFAULT_PIN_AS_OF=2024-06-01，ablation.py:139），经 version_pin.resolve_version_clock 单一入口（:437, :534）→ multi_hop(as_of=, pin_version=)。V 题按臂选金标：ablation.py:351-375 arm_item（old 臂对 answer_old / new 臂对 answer_new，参考 eval_v1.py:91-94 双金标校验）。"
+    },
+    "B5": {
+      "title": "A4 融合与渲染编排不存在",
+      "status": "RESOLVED",
+      "evidence": "ablation.py:506-592 _run_graph_question A4 分支：svc.route_async → build_channel(assemble_evidence 双路融合) → svc.render_card（全部复用既有服务函数）。"
+    },
+    "B6": {
+      "title": "D1 前置未关闭",
+      "status": "RESOLVED",
+      "evidence": "见 d1_prerequisite：真库判别性 SQL 2026-09-23 实测 t_v_2022=134 != t_v_2025=244，discriminative=true；机制护栏另有单测 TestDiscriminativeVersionPin + PG 集成 test_discriminative_version_pin_on_real_db 承载。"
+    }
+  },
+
+  "acceptance": {
+    "pytest": {
+      "command": "cd nexent && backend/.venv/bin/python -m pytest test/backend/services/knowevo/ -q",
+      "result": "718 passed, 30 skipped, 1 warning in 49.96s",
+      "baseline": "718 passed / 30 skipped",
+      "verdict": "PASS（与基线一致，只增不减；test_ablation.py 的 31 项编排单测含在内）"
+    },
+    "ruff_t22_exclusive": {
+      "ablation_py": {
+        "command": "backend/.venv/bin/python -m ruff check backend/services/knowevo/pipeline/ablation.py",
+        "result": "All checks passed! (0 errors)",
+        "verdict": "PASS（T-22-brief 验收命令的目标文件即此）"
+      }
+    },
+    "ruff_whole_dir_caveat": {
+      "command": "backend/.venv/bin/python -m ruff check backend/services/knowevo",
+      "result": "5 errors (all I001 import-sort) — 但均在 T-22 独占/禁改范围之外的既有文件：",
+      "locations": [
+        "backend/services/knowevo/decision_service.py:32  (禁改清单内)",
+        "backend/services/knowevo/kg_service.py:442        (非 T-22 独占)",
+        "backend/services/knowevo/kg_service.py:479        (非 T-22 独占)",
+        "backend/services/knowevo/llm_client.py:14          (非 T-22 独占)",
+        "backend/services/knowevo/pipeline/mine_skill_templates.py:149 (非 T-22 独占)"
+      ],
+      "verdict": "T-22 独占文件 ablation.py 已 0 错。目录级 5 错为提交前既有、归属其它任务的 import 排序，按『独占文件以其为准』与禁改清单不得在本任务内触碰——需路由给对应任务修，不在 T-22 范围。",
+      "note": "test_ablation.py 另有 2 项 lint（I001:24 import 排序、RUF059:225 未用解包变量 chain）——按红线『不改既有测试』保留原样，且该文件不在 ruff check backend/services/knowevo 验收范围内。"
+    }
+  },
+
+  "resume_commands": {
+    "how_resumable": "ablation.py 断点续跑：同命令重跑自动跳过已完成 (level,pin,gold) pair；--force 可强制重跑。预算到期在题边界 checkpoint（--budget-minutes）。",
+    "env_note": {
+      "required_env": [
+        "POSTGRES_HOST/PORT/USER/DB + NEXENT_POSTGRES_PASSWORD (真库)",
+        "KW_LLM_SMALL_MODEL_ID / KW_LLM_MID_MODEL_ID / KW_LLM_LARGE_MODEL_ID (llm_client 必填)"
+      ],
+      "corpus_root": "CORPUS_ROOT 非环境变量——由模块常量解析为 REPO_ROOT/competition/corpus（ablation.py:117）；题集用 --testset（默认 competition/corpus/testset-v1-seed.json）覆盖。",
+      "pace": "--pace 8（秒/LLM 调用，防限流，坑#39）；judge=large 档与生成模型不同族。"
+    },
+    "base_env": "cd backend && POSTGRES_HOST=localhost POSTGRES_PORT=5434 POSTGRES_USER=root POSTGRES_DB=nexent NEXENT_POSTGRES_PASSWORD=\"$(grep -m1 '^NEXENT_POSTGRES_PASSWORD=' ../deploy/env/.env | cut -d= -f2-)\" KW_LLM_SMALL_MODEL_ID=7 KW_LLM_MID_MODEL_ID=7 KW_LLM_LARGE_MODEL_ID=8 uv run python -m services.knowevo.pipeline.ablation",
+    "stages": [
+      {
+        "stage": 1,
+        "name": "A1 冒烟",
+        "purpose": "2题×1run 复核端点/judge/落库链路与成本（≈0.1% 预算），先确认链路健康再全量。",
+        "command": "<base_env> --levels A1 --runs 1 --limit 2 --pace 8 --no-persist",
+        "a1_full_variant": "<base_env> --levels A1 --runs 3 --top-k 5 --pace 8   # 交叉表 A1 基线需 20题×3runs 全量（去掉 --limit/--no-persist）"
+      },
+      {
+        "stage": 2,
+        "name": "A2 全量（+图检索 1 跳邻域）",
+        "purpose": "20题×3runs，文档+图谱两通道 assemble_evidence 融合。",
+        "command": "<base_env> --levels A2 --runs 3 --top-k 5 --pace 8 --budget-minutes 45"
+      },
+      {
+        "stage": 3,
+        "name": "A3 全量（+多跳束搜索）",
+        "purpose": "20题×3runs，DecisionService.multi_hop 直调（depth=2, beam=3）；每题 token/延迟高于 A1，先核算再决定是否加预算。",
+        "command": "<base_env> --levels A3 --runs 3 --top-k 5 --pace 8 --budget-minutes 45"
+      },
+      {
+        "stage": 4,
+        "name": "A4/E8 全量（+路由+双驱动+版本钉住）",
+        "purpose": "A4 headline 20题×3runs + E8 pin on/off × V,F 双臂（判分按臂选金标）。",
+        "a4_headline": "<base_env> --levels A4 --runs 3 --top-k 5 --pace 8 --pin on --budget-minutes 45",
+        "e8_pin_on_off": "<base_env> --levels A4 --pin on,off --types V,F --runs 3 --pace 8 --pin-as-of 2024-06-01 --budget-minutes 45"
+      }
+    ],
+    "execution_gate": "真实 LLM 全量需等后台摄取批次收口、模型网关解除限流后由主会话执行；在此之前不打真实评测全量（红线）。跑完把真跑数字落 competition/deliverables/e2-ablation-report.json，token/延迟入 competition/docs/cost-ledger.md，E2 登记 evolution-log.md。"
+  },
+
+  "deliverable_files": {
+    "runner": "backend/services/knowevo/pipeline/ablation.py",
+    "tests": "test/backend/services/knowevo/test_ablation.py",
+    "aggregation_additive": [
+      "backend/services/knowevo/pipeline/eval_v1.py (cross_table / wilson_interval)",
+      "backend/services/knowevo/pipeline/eval_e1.py (run_question / run_question_with_context / summarize 复用)"
+    ],
+    "report": "competition/deliverables/e2-ablation-report.json",
+    "narrative": "competition/docs/e2-ablation.md",
+    "this_status": "competition/deliverables/t22-resume.status.json"
+  },
+
+  "contract_drift_flag": {
+    "hard_rule": "AGENTS.md 三条硬规矩之『契约先行』：*.py.md 是接口冻结文档，代码与它冲突时停下报告，不自行改写契约迁就代码。",
+    "finding": "decision_service.py.md（工作区根 knowevo/ 权威版）与 decision_service.py 实现存在既有漂移——非 T-22 引入，属 T-09 交付物演进（版本钉住/多租户）后契约未回填：",
+    "drifts": [
+      "契约 multi_hop(...) -> list[Path]，无 as_of/pin_version；实现 multi_hop -> PathSet，带 as_of/pin_version（E8 依赖此参数）",
+      "契约 assemble_evidence(paths: list[Path])；实现 assemble_evidence(paths: list[Path] | PathSet)（contested 标记需 PathSet）",
+      "契约 render_card(question, chain, mode)；实现 render_card(..., question_id=, clock=)",
+      "契约 route(question, ctx) 同步；实现另有 route_async(question, ctx=\"\")",
+      "构造器 store=/llm=/ontology=/tenant_id= 契约未列"
+    ],
+    "action_taken": "按硬规矩停下报告，未编辑契约、未改 decision_service.py。ablation.py 消费的是实现的真实 API。请主会话决定是否按 graph_store.py.md『契约偏差回填』先例给 decision_service.py.md 补偏差注记（属换代级决策，不在 T-22 范围）。"
+  }
+}
