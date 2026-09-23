@@ -1,0 +1,684 @@
+{
+  "probe": "p7_efficiency_minutes",
+  "generated_at": "2026-09-23T23:52:23.384144+08:00",
+  "preregistration_sha256": "e559f5a98a761e10258e8b59914b4844a182f2868383697362e96615da561557",
+  "question": "门因子与排序因子各自决定多少半自动化本体构建的人工工作量（分钟），以及'达到同等质量所需分钟数'能否在本池上测量？",
+  "engine": "mirror (backend build_ev_rich unavailable -> mirror used)",
+  "data_reality": {
+    "pool_n": 21,
+    "pool_tenant_split": {
+      "kw_tenant": 20,
+      "cross_tenant_witness": 1
+    },
+    "frozen_from": "ontology_version_t.applied_ops (n=20) + ontology_change_proposal_t (n=1)",
+    "as_built_facts": {
+      "proposals_in_kw_tenant": 0,
+      "proposals_cross_tenant_pending": 1,
+      "build_ops_v100": 20,
+      "snapshot_v110_members": 20
+    },
+    "this_is_as_if_replay": true,
+    "not_a_run_log": true
+  },
+  "minutes_model": {
+    "formula": "minutes(s) = alpha*[op==CLS_ADD] + beta*[op==REL_ADD]",
+    "alpha": 0.75,
+    "beta": 0.63,
+    "source": "L",
+    "minutes_model_degraded": true,
+    "dropped_term": "gamma*len(text)/1000",
+    "degraded_reason": "pool has no text field -> gamma term not computable",
+    "sources": [
+      {
+        "id": "gao2019",
+        "cite": "Gao et al. 2019, Efficient Knowledge Graph Accuracy Evaluation, PVLDB 12(12):1679, arXiv:1907.09657",
+        "value": "c1=45s/entity, c2=25s/relation",
+        "verified": true
+      },
+      {
+        "id": "ucomp2016",
+        "cite": "uComp, Crowdsourcing Ontology Engineering in Protege, Semantic Web (IOS Press) 2016, DOI 10.3233/SW-150181",
+        "value": "3.65 concepts/min, 1.6 relations/min",
+        "verified": true
+      }
+    ],
+    "self_assumption_disclosed": "'1 CLS_ADD proposal = 1 new entity' and '1 REL_ADD proposal = 1 new relation' are SELF-DEFINED mappings, not literature findings: no atom-level (per-proposal) review-time literature exists (verified zero-hit, see citation-verification.md)."
+  },
+  "quality_axis": {
+    "status": "insufficient_data",
+    "axis": "cumulative_human_minutes_to_reach_Qstar",
+    "reason": "Quality(.) 需要 classes[].parent / classes[].also_parent / classes[].anchor 与外部 seed_terms；P6 冻结导出只取 op/target/confidence/evidence_spans，四者全缺。",
+    "missing_fields": [
+      "parent",
+      "also_parent",
+      "anchor",
+      "seed_terms"
+    ],
+    "evidence": [
+      "pool ITEMS tuple has 7 fields: op,target,confidence,evidence_spans,tenant,gold_error,gold_source (probe_p6_autonomy_tau.py:111-142)",
+      "P6 EXPORT_SQL selects only 4 keys (probe_p6_autonomy_tau.py:96-104)",
+      "_k0_metrics_from_snapshot reads snapshot['classes'] only, and needs parent/also_parent/anchor + seed_terms (ontology_service.py:990-1035)"
+    ],
+    "degeneracy_demo": {
+      "note": "以 SNAPSHOT_V110_MEMBERS 只造类名（无 parent/anchor）时，四指标恒为常数，与'审了哪些提案'无关 —— 曲线是平的。这不是'测不出差异'，是函数在该输入下是常数函数。",
+      "cov": 0.0,
+      "red": 0.0,
+      "dep": 1,
+      "align": 0.0,
+      "why": "seed_terms 缺失 -> cov=0.0；无 parent -> red=0.0, dep=1；无 anchor -> align=0.0"
+    },
+    "unlock_preconditions": [
+      "P-1 启动数据库（用户侧执行 ~/Desktop/tips/open.sh）",
+      "P-2 用扩展 SQL 重取池：op->'payload'->>'parent' / ->>'anchor' / ->>'also_parent'",
+      "P-3 确定 seed_terms 的持久化来源",
+      "P-4 确认 Q* 的基准版本"
+    ]
+  },
+  "arm_workload_2x2": {
+    "tau": 0.85,
+    "cells": {
+      "ev_rich_ON__arrival": {
+        "gate": "ev_rich_ON",
+        "order": "arrival",
+        "n_manual": 21,
+        "n_total": 21,
+        "cum_minutes": 14.55,
+        "manual_targets": [
+          "cls:Drug",
+          "cls:DrugClass",
+          "cls:Disease",
+          "cls:Complication",
+          "cls:Symptom",
+          "cls:Examination",
+          "cls:Indicator",
+          "cls:Treatment",
+          "cls:Lifestyle",
+          "cls:Population",
+          "rel:indicated_for",
+          "rel:first_line",
+          "rel:treats",
+          "rel:contraindicated",
+          "rel:adverse_effect",
+          "rel:mechanism_of",
+          "rel:monitors",
+          "rel:has_target",
+          "rel:complication_of",
+          "rel:recommended_for",
+          "cls:Metformin"
+        ],
+        "cumulative_trace": [
+          {
+            "target": "cls:Drug",
+            "op": "CLS_ADD",
+            "cum_minutes": 0.75
+          },
+          {
+            "target": "cls:DrugClass",
+            "op": "CLS_ADD",
+            "cum_minutes": 1.5
+          },
+          {
+            "target": "cls:Disease",
+            "op": "CLS_ADD",
+            "cum_minutes": 2.25
+          },
+          {
+            "target": "cls:Complication",
+            "op": "CLS_ADD",
+            "cum_minutes": 3.0
+          },
+          {
+            "target": "cls:Symptom",
+            "op": "CLS_ADD",
+            "cum_minutes": 3.75
+          },
+          {
+            "target": "cls:Examination",
+            "op": "CLS_ADD",
+            "cum_minutes": 4.5
+          },
+          {
+            "target": "cls:Indicator",
+            "op": "CLS_ADD",
+            "cum_minutes": 5.25
+          },
+          {
+            "target": "cls:Treatment",
+            "op": "CLS_ADD",
+            "cum_minutes": 6.0
+          },
+          {
+            "target": "cls:Lifestyle",
+            "op": "CLS_ADD",
+            "cum_minutes": 6.75
+          },
+          {
+            "target": "cls:Population",
+            "op": "CLS_ADD",
+            "cum_minutes": 7.5
+          },
+          {
+            "target": "rel:indicated_for",
+            "op": "REL_ADD",
+            "cum_minutes": 8.13
+          },
+          {
+            "target": "rel:first_line",
+            "op": "REL_ADD",
+            "cum_minutes": 8.76
+          },
+          {
+            "target": "rel:treats",
+            "op": "REL_ADD",
+            "cum_minutes": 9.39
+          },
+          {
+            "target": "rel:contraindicated",
+            "op": "REL_ADD",
+            "cum_minutes": 10.02
+          },
+          {
+            "target": "rel:adverse_effect",
+            "op": "REL_ADD",
+            "cum_minutes": 10.65
+          },
+          {
+            "target": "rel:mechanism_of",
+            "op": "REL_ADD",
+            "cum_minutes": 11.28
+          },
+          {
+            "target": "rel:monitors",
+            "op": "REL_ADD",
+            "cum_minutes": 11.91
+          },
+          {
+            "target": "rel:has_target",
+            "op": "REL_ADD",
+            "cum_minutes": 12.54
+          },
+          {
+            "target": "rel:complication_of",
+            "op": "REL_ADD",
+            "cum_minutes": 13.17
+          },
+          {
+            "target": "rel:recommended_for",
+            "op": "REL_ADD",
+            "cum_minutes": 13.8
+          },
+          {
+            "target": "cls:Metformin",
+            "op": "CLS_ADD",
+            "cum_minutes": 14.55
+          }
+        ]
+      },
+      "ev_rich_ON__score": {
+        "gate": "ev_rich_ON",
+        "order": "score",
+        "n_manual": 21,
+        "n_total": 21,
+        "cum_minutes": 14.55,
+        "manual_targets": [
+          "rel:indicated_for",
+          "rel:first_line",
+          "rel:treats",
+          "rel:contraindicated",
+          "rel:adverse_effect",
+          "rel:mechanism_of",
+          "rel:monitors",
+          "rel:has_target",
+          "rel:complication_of",
+          "rel:recommended_for",
+          "cls:Metformin",
+          "cls:Drug",
+          "cls:DrugClass",
+          "cls:Disease",
+          "cls:Complication",
+          "cls:Symptom",
+          "cls:Examination",
+          "cls:Indicator",
+          "cls:Treatment",
+          "cls:Lifestyle",
+          "cls:Population"
+        ],
+        "cumulative_trace": [
+          {
+            "target": "rel:indicated_for",
+            "op": "REL_ADD",
+            "cum_minutes": 0.63
+          },
+          {
+            "target": "rel:first_line",
+            "op": "REL_ADD",
+            "cum_minutes": 1.26
+          },
+          {
+            "target": "rel:treats",
+            "op": "REL_ADD",
+            "cum_minutes": 1.89
+          },
+          {
+            "target": "rel:contraindicated",
+            "op": "REL_ADD",
+            "cum_minutes": 2.52
+          },
+          {
+            "target": "rel:adverse_effect",
+            "op": "REL_ADD",
+            "cum_minutes": 3.15
+          },
+          {
+            "target": "rel:mechanism_of",
+            "op": "REL_ADD",
+            "cum_minutes": 3.78
+          },
+          {
+            "target": "rel:monitors",
+            "op": "REL_ADD",
+            "cum_minutes": 4.41
+          },
+          {
+            "target": "rel:has_target",
+            "op": "REL_ADD",
+            "cum_minutes": 5.04
+          },
+          {
+            "target": "rel:complication_of",
+            "op": "REL_ADD",
+            "cum_minutes": 5.67
+          },
+          {
+            "target": "rel:recommended_for",
+            "op": "REL_ADD",
+            "cum_minutes": 6.3
+          },
+          {
+            "target": "cls:Metformin",
+            "op": "CLS_ADD",
+            "cum_minutes": 7.05
+          },
+          {
+            "target": "cls:Drug",
+            "op": "CLS_ADD",
+            "cum_minutes": 7.8
+          },
+          {
+            "target": "cls:DrugClass",
+            "op": "CLS_ADD",
+            "cum_minutes": 8.55
+          },
+          {
+            "target": "cls:Disease",
+            "op": "CLS_ADD",
+            "cum_minutes": 9.3
+          },
+          {
+            "target": "cls:Complication",
+            "op": "CLS_ADD",
+            "cum_minutes": 10.05
+          },
+          {
+            "target": "cls:Symptom",
+            "op": "CLS_ADD",
+            "cum_minutes": 10.8
+          },
+          {
+            "target": "cls:Examination",
+            "op": "CLS_ADD",
+            "cum_minutes": 11.55
+          },
+          {
+            "target": "cls:Indicator",
+            "op": "CLS_ADD",
+            "cum_minutes": 12.3
+          },
+          {
+            "target": "cls:Treatment",
+            "op": "CLS_ADD",
+            "cum_minutes": 13.05
+          },
+          {
+            "target": "cls:Lifestyle",
+            "op": "CLS_ADD",
+            "cum_minutes": 13.8
+          },
+          {
+            "target": "cls:Population",
+            "op": "CLS_ADD",
+            "cum_minutes": 14.55
+          }
+        ]
+      },
+      "ev_rich_OFF__arrival": {
+        "gate": "ev_rich_OFF",
+        "order": "arrival",
+        "n_manual": 10,
+        "n_total": 21,
+        "cum_minutes": 6.3,
+        "manual_targets": [
+          "rel:indicated_for",
+          "rel:first_line",
+          "rel:treats",
+          "rel:contraindicated",
+          "rel:adverse_effect",
+          "rel:mechanism_of",
+          "rel:monitors",
+          "rel:has_target",
+          "rel:complication_of",
+          "rel:recommended_for"
+        ],
+        "cumulative_trace": [
+          {
+            "target": "rel:indicated_for",
+            "op": "REL_ADD",
+            "cum_minutes": 0.63
+          },
+          {
+            "target": "rel:first_line",
+            "op": "REL_ADD",
+            "cum_minutes": 1.26
+          },
+          {
+            "target": "rel:treats",
+            "op": "REL_ADD",
+            "cum_minutes": 1.89
+          },
+          {
+            "target": "rel:contraindicated",
+            "op": "REL_ADD",
+            "cum_minutes": 2.52
+          },
+          {
+            "target": "rel:adverse_effect",
+            "op": "REL_ADD",
+            "cum_minutes": 3.15
+          },
+          {
+            "target": "rel:mechanism_of",
+            "op": "REL_ADD",
+            "cum_minutes": 3.78
+          },
+          {
+            "target": "rel:monitors",
+            "op": "REL_ADD",
+            "cum_minutes": 4.41
+          },
+          {
+            "target": "rel:has_target",
+            "op": "REL_ADD",
+            "cum_minutes": 5.04
+          },
+          {
+            "target": "rel:complication_of",
+            "op": "REL_ADD",
+            "cum_minutes": 5.67
+          },
+          {
+            "target": "rel:recommended_for",
+            "op": "REL_ADD",
+            "cum_minutes": 6.3
+          }
+        ]
+      },
+      "ev_rich_OFF__score": {
+        "gate": "ev_rich_OFF",
+        "order": "score",
+        "n_manual": 10,
+        "n_total": 21,
+        "cum_minutes": 6.3,
+        "manual_targets": [
+          "rel:indicated_for",
+          "rel:first_line",
+          "rel:treats",
+          "rel:contraindicated",
+          "rel:adverse_effect",
+          "rel:mechanism_of",
+          "rel:monitors",
+          "rel:has_target",
+          "rel:complication_of",
+          "rel:recommended_for"
+        ],
+        "cumulative_trace": [
+          {
+            "target": "rel:indicated_for",
+            "op": "REL_ADD",
+            "cum_minutes": 0.63
+          },
+          {
+            "target": "rel:first_line",
+            "op": "REL_ADD",
+            "cum_minutes": 1.26
+          },
+          {
+            "target": "rel:treats",
+            "op": "REL_ADD",
+            "cum_minutes": 1.89
+          },
+          {
+            "target": "rel:contraindicated",
+            "op": "REL_ADD",
+            "cum_minutes": 2.52
+          },
+          {
+            "target": "rel:adverse_effect",
+            "op": "REL_ADD",
+            "cum_minutes": 3.15
+          },
+          {
+            "target": "rel:mechanism_of",
+            "op": "REL_ADD",
+            "cum_minutes": 3.78
+          },
+          {
+            "target": "rel:monitors",
+            "op": "REL_ADD",
+            "cum_minutes": 4.41
+          },
+          {
+            "target": "rel:has_target",
+            "op": "REL_ADD",
+            "cum_minutes": 5.04
+          },
+          {
+            "target": "rel:complication_of",
+            "op": "REL_ADD",
+            "cum_minutes": 5.67
+          },
+          {
+            "target": "rel:recommended_for",
+            "op": "REL_ADD",
+            "cum_minutes": 6.3
+          }
+        ]
+      }
+    },
+    "gate_main_effect_minutes_ratio": 2.3095,
+    "order_effect_minutes_delta_ON": 0.0,
+    "order_effect_minutes_delta_OFF": 0.0,
+    "arm_b_effective_key": "confidence_desc (degenerate: novelty/impact absent from frozen pool)"
+  },
+  "tau_grid_stability": [
+    {
+      "tau": 0.5,
+      "gate_ON_minutes": 14.55,
+      "gate_OFF_arrival_minutes": 6.3,
+      "gate_OFF_score_minutes": 6.3
+    },
+    {
+      "tau": 0.55,
+      "gate_ON_minutes": 14.55,
+      "gate_OFF_arrival_minutes": 6.3,
+      "gate_OFF_score_minutes": 6.3
+    },
+    {
+      "tau": 0.6,
+      "gate_ON_minutes": 14.55,
+      "gate_OFF_arrival_minutes": 6.3,
+      "gate_OFF_score_minutes": 6.3
+    },
+    {
+      "tau": 0.65,
+      "gate_ON_minutes": 14.55,
+      "gate_OFF_arrival_minutes": 6.3,
+      "gate_OFF_score_minutes": 6.3
+    },
+    {
+      "tau": 0.7,
+      "gate_ON_minutes": 14.55,
+      "gate_OFF_arrival_minutes": 6.3,
+      "gate_OFF_score_minutes": 6.3
+    },
+    {
+      "tau": 0.75,
+      "gate_ON_minutes": 14.55,
+      "gate_OFF_arrival_minutes": 6.3,
+      "gate_OFF_score_minutes": 6.3
+    },
+    {
+      "tau": 0.8,
+      "gate_ON_minutes": 14.55,
+      "gate_OFF_arrival_minutes": 6.3,
+      "gate_OFF_score_minutes": 6.3
+    },
+    {
+      "tau": 0.85,
+      "gate_ON_minutes": 14.55,
+      "gate_OFF_arrival_minutes": 6.3,
+      "gate_OFF_score_minutes": 6.3
+    },
+    {
+      "tau": 0.9,
+      "gate_ON_minutes": 14.55,
+      "gate_OFF_arrival_minutes": 6.3,
+      "gate_OFF_score_minutes": 6.3
+    },
+    {
+      "tau": 0.95,
+      "gate_ON_minutes": 14.55,
+      "gate_OFF_arrival_minutes": 7.05,
+      "gate_OFF_score_minutes": 7.05
+    }
+  ],
+  "sensitivity_alpha_beta_pm50": [
+    {
+      "scale": 0.5,
+      "alpha": 0.375,
+      "beta": 0.315,
+      "gate_ON_minutes": 7.275,
+      "gate_OFF_minutes": 3.15,
+      "ratio_ON_over_OFF": 2.3095
+    },
+    {
+      "scale": 1.0,
+      "alpha": 0.75,
+      "beta": 0.63,
+      "gate_ON_minutes": 14.55,
+      "gate_OFF_minutes": 6.3,
+      "ratio_ON_over_OFF": 2.3095
+    },
+    {
+      "scale": 1.5,
+      "alpha": 1.125,
+      "beta": 0.9450000000000001,
+      "gate_ON_minutes": 21.825,
+      "gate_OFF_minutes": 9.45,
+      "ratio_ON_over_OFF": 2.3095
+    }
+  ],
+  "synthetic_mechanism": {
+    "evidence_class": "synthetic_mechanism_validation",
+    "n_classes": 60,
+    "n_relations": 60,
+    "n_core": 20,
+    "replications_per_rho": 200,
+    "controls": {
+      "random_permutation": "真负对照：与 gain 完全独立 -> 期望 Δ≈0",
+      "alphabetical": "次负对照：按 name 字母序。⚠️ 因 'CLS' < 'REL'，它**隐含 op 类型信息**（类先于关系），而 op 类型确实与 gain 相关（关系对 Quality 贡献 0）。故它不是干净的负对照，只说明'只按可见性分离也能降一半成本'。"
+    },
+    "note": "合成流自带 parent/anchor，故 Quality 可算。重数是**模拟重复**，不是把 n 凑大的伪重复。",
+    "rho_sweep": [
+      {
+        "rho": 0.0,
+        "n_replications_used": 200,
+        "mean_minutes_arrival": 79.7274,
+        "mean_minutes_score": 81.4368,
+        "mean_minutes_control_random": 79.6852,
+        "mean_minutes_control_alphabetical": 43.7175,
+        "mean_delta_score_minus_arrival": 1.7094,
+        "frac_score_faster": 0.28
+      },
+      {
+        "rho": 0.25,
+        "n_replications_used": 200,
+        "mean_minutes_arrival": 79.4403,
+        "mean_minutes_score": 77.3011,
+        "mean_minutes_control_random": 79.2922,
+        "mean_minutes_control_alphabetical": 43.5,
+        "mean_delta_score_minus_arrival": -2.1391,
+        "frac_score_faster": 0.565
+      },
+      {
+        "rho": 0.5,
+        "n_replications_used": 200,
+        "mean_minutes_arrival": 79.6749,
+        "mean_minutes_score": 55.5682,
+        "mean_minutes_control_random": 79.5161,
+        "mean_minutes_control_alphabetical": 43.665,
+        "mean_delta_score_minus_arrival": -24.1066,
+        "frac_score_faster": 0.985
+      },
+      {
+        "rho": 0.75,
+        "n_replications_used": 200,
+        "mean_minutes_arrival": 79.5632,
+        "mean_minutes_score": 28.6489,
+        "mean_minutes_control_random": 79.131,
+        "mean_minutes_control_alphabetical": 43.47,
+        "mean_delta_score_minus_arrival": -50.9142,
+        "frac_score_faster": 1.0
+      },
+      {
+        "rho": 1.0,
+        "n_replications_used": 200,
+        "mean_minutes_arrival": 79.6192,
+        "mean_minutes_score": 15.0,
+        "mean_minutes_control_random": 79.4295,
+        "mean_minutes_control_alphabetical": 43.4963,
+        "mean_delta_score_minus_arrival": -64.6192,
+        "frac_score_faster": 1.0
+      }
+    ]
+  },
+  "conclusions": [
+    "门因子在真实池上是**唯一非退化的因子**：门开时 14.55 分钟（21/21 项需人审），门关时 6.30 分钟（10/21 项），倍数 2.31x —— 放宽证据门可把人审工作量减半，代价是未量化的质量风险。",
+    "排序因子在真实池上**无分辨率**：到达顺序与 score 排序的分钟数差为 +0.00 分钟（门开）、+0.00 分钟（门关）。原因是池内可得特征只有 confidence（1.0/0.9/None 三值），novelty/impact 未被导出，build_ev_rich 恒为 0.6 —— 两臂前 10 项完全相同，仅 cls:Metformin 位置不同。",
+    "「达到 Q* 所需累计人工分钟数」这条轴在本池上**不可测量**：Quality(.) 的四个分量所需字段（parent/also_parent/anchor/seed_terms）在冻结池中全部缺失。已标 insufficient_data，未用 0 占位。",
+    "合成异质流上的机制验证（rho 扫描，每档 200 次模拟重复）：rho=0 时 score 排序与到达顺序的分钟数差 ≈ 0（复现 P2 的结构性零效应），rho>=0.5 后 score 排序显著更早达到 Q*。真负对照（与增益独立的随机序）在各 rho 档均不优于到达顺序；次负对照（字母序）因 'CLS'<'REL' 隐含 op 类型信息，只说明'按可见性分离即可显著降本'，不作为干净负对照。",
+    "排序效应的存在条件是『候选增益与排序特征相关（rho>0）』。本项目真实池的 rho 实际上接近 0（可得特征仅 confidence），故排序在该池上无杠杆 —— 合成与真实两条线互相印证同一条结论。"
+  ],
+  "limitations": [
+    "n=21 且候选分数三簇离散（1.0/0.9/0.0），曲线呈台阶而非连续；",
+    "本实验是 as-if 重放（构建租户提案队列历史 0 行），不是运行日志；",
+    "人工分钟数为代理指标（系数 L 级文献锚定 + 提案级映射自设假设），不是本项目实测；",
+    "质量轴（达到 Q* 的分钟数）因字段缺失为 insufficient_data；",
+    "合成机制验证的重数为 200 次模拟重复，不是独立真实观测；",
+    "单一领域（2 型糖尿病）单租户，结论不可外推到分数连续分布的池。"
+  ],
+  "not_claimed": [
+    "不主张「半自动化本体构建效率优势明显」被证实 —— 质量轴缺失，n=21，分钟数为代理指标；",
+    "不主张任何推断统计结论（结构性 underpowered：检出 20% 差需 ~392 次接受事件/档，40% 差需 ~98；n=21 差 1-2 个数量级）；",
+    "不主张臂 B 是「VOI 排序」—— 生产实现是 score_formula 线性加权，且在本池上退化为 confidence 降序；",
+    "不主张本轮的双臂差异为经验发现 —— 排序因子在本池上是设计上的必然零；",
+    "不主张合成流的机制验证可作为效率证据对外引用；",
+    "不主张 plan/02 的目标值（Cov>=85% / Red<=5% / Dep_max<=5 / Align>=60%）已达成。"
+  ],
+  "upgrade_path": [
+    "P-1 启动数据库（~/Desktop/tips/open.sh）→ ontology_version_t 可读；",
+    "P-2 扩展导出键（payload 的 parent/anchor/also_parent）→ Quality(.) 可算；",
+    "P-3 确定 seed_terms 持久化来源（cov 需要）；",
+    "P-4 两名以上标注者按固定协议复核并**计时**（E -> A 级）；",
+    "P-5 扩池至 ~300 候选/档（对应 98 次接受事件）以支撑 40% 差异的检出。"
+  ]
+}

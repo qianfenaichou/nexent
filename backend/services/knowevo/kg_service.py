@@ -439,9 +439,8 @@ class PgStore:
             return True
 
     async def deprecate_entity(self, tenant_id, stable_id, split_into):
-        from sqlalchemy import func as sqla_func
-
         from database.knowevo_db import KgEntity, _get_db_session
+        from sqlalchemy import func as sqla_func
         with _get_db_session() as session:
             row = session.query(KgEntity).filter(
                 KgEntity.tenant_id == tenant_id,
@@ -476,9 +475,8 @@ class PgStore:
         return create_row(KgRelation, tenant_id=tenant_id, **values)
 
     async def supersede_relation(self, tenant_id, edge_id):
-        from sqlalchemy import func as sqla_func
-
         from database.knowevo_db import KgRelation, _get_db_session
+        from sqlalchemy import func as sqla_func
         with _get_db_session() as session:
             row = session.query(KgRelation).filter(
                 KgRelation.tenant_id == tenant_id,

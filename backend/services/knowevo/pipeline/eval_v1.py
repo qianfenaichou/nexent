@@ -18,9 +18,10 @@ build on:
 
 No LLM call and no database in v0: the judge/expand prompts render here
 and the real tier routing is a T-08 wiring concern. Evidence shape matches
-eval_run_t.metrics keys (acc/pass2/pass3/...). The pass^k scorer logic is
-rewritten from tau2-bench (arXiv:2505.23319) pass^k aggregation - "Design
-inspired by tau2-bench" per 03-development-plan 4.2.3.
+        eval_run_t.metrics keys (acc/pass2/pass3/...). The pass^k scorer logic is
+        rewritten from tau-bench (arXiv:2406.12045, which proposes the pass^k
+        metric); tau2-bench is arXiv:2506.07982 - "Design inspired by
+        tau-bench / tau2-bench" per 03-development-plan 4.2.3.
 """
 import argparse
 import hashlib

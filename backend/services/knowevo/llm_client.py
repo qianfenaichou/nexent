@@ -18,8 +18,6 @@ import logging
 import threading
 from typing import Any
 
-from nexent.core.models.openai_llm import OpenAIModel
-
 from consts.const import (
     KW_LLM_LARGE_MODEL_ID,  # noqa: F401 - read live via _tier_model_id()
     KW_LLM_MID_MODEL_ID,  # noqa: F401 - read live via _tier_model_id()
@@ -27,6 +25,7 @@ from consts.const import (
     MODEL_CONFIG_MAPPING,
 )
 from database.model_management_db import get_model_by_model_id
+from nexent.core.models.openai_llm import OpenAIModel
 from utils.config_utils import get_model_name_from_config, tenant_config_manager
 
 logger = logging.getLogger(__name__)

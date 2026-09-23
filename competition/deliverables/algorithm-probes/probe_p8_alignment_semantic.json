@@ -1,0 +1,441 @@
+{
+  "probe": "p8_alignment_semantic",
+  "purpose": "Replace the min_shared_tokens token-overlap matcher with a semantically-clustered, FDR-controlled alignment and report the replacement's recall / alignment_precision_pooled / false positives / Wilson interval, plus a threshold-sensitivity contrast.",
+  "engine": "real_backend_module",
+  "engine_path": "backend/services/knowevo/alignment_service.py",
+  "inputs": {
+    "run": "/home/qianqian/Work/All/Nexent/nexent/competition/deliverables/alignment-diff.json",
+    "gold": "/home/qianqian/Work/All/Nexent/nexent/competition/corpus/guideline_diff_seed.md"
+  },
+  "seed": 20260923,
+  "gold_eligible_topics": 9,
+  "negative_control_topics": 14,
+  "legacy_grid": [
+    {
+      "max_df_fraction": 0.02,
+      "min_shared_tokens": 2,
+      "recall_matched": 7,
+      "recall_total": 9,
+      "recall": 0.7777777777777778,
+      "precision_lower_bound": 0.06769825918762089,
+      "matched_groups": 35,
+      "machine_groups": 517
+    },
+    {
+      "max_df_fraction": 0.02,
+      "min_shared_tokens": 3,
+      "recall_matched": 2,
+      "recall_total": 9,
+      "recall": 0.2222222222222222,
+      "precision_lower_bound": 0.009671179883945842,
+      "matched_groups": 5,
+      "machine_groups": 517
+    },
+    {
+      "max_df_fraction": 0.05,
+      "min_shared_tokens": 2,
+      "recall_matched": 9,
+      "recall_total": 9,
+      "recall": 1.0,
+      "precision_lower_bound": 0.12379110251450677,
+      "matched_groups": 64,
+      "machine_groups": 517
+    },
+    {
+      "max_df_fraction": 0.05,
+      "min_shared_tokens": 3,
+      "recall_matched": 3,
+      "recall_total": 9,
+      "recall": 0.3333333333333333,
+      "precision_lower_bound": 0.02127659574468085,
+      "matched_groups": 11,
+      "machine_groups": 517
+    },
+    {
+      "max_df_fraction": 0.1,
+      "min_shared_tokens": 2,
+      "recall_matched": 9,
+      "recall_total": 9,
+      "recall": 1.0,
+      "precision_lower_bound": 0.12572533849129594,
+      "matched_groups": 65,
+      "machine_groups": 517
+    },
+    {
+      "max_df_fraction": 0.1,
+      "min_shared_tokens": 3,
+      "recall_matched": 4,
+      "recall_total": 9,
+      "recall": 0.4444444444444444,
+      "precision_lower_bound": 0.04061895551257253,
+      "matched_groups": 21,
+      "machine_groups": 517
+    },
+    {
+      "max_df_fraction": 0.2,
+      "min_shared_tokens": 2,
+      "recall_matched": 9,
+      "recall_total": 9,
+      "recall": 1.0,
+      "precision_lower_bound": 0.12572533849129594,
+      "matched_groups": 65,
+      "machine_groups": 517
+    },
+    {
+      "max_df_fraction": 0.2,
+      "min_shared_tokens": 3,
+      "recall_matched": 4,
+      "recall_total": 9,
+      "recall": 0.4444444444444444,
+      "precision_lower_bound": 0.04061895551257253,
+      "matched_groups": 21,
+      "machine_groups": 517
+    },
+    {
+      "max_df_fraction": 1.0,
+      "min_shared_tokens": 2,
+      "recall_matched": 9,
+      "recall_total": 9,
+      "recall": 1.0,
+      "precision_lower_bound": 0.12572533849129594,
+      "matched_groups": 65,
+      "machine_groups": 517
+    },
+    {
+      "max_df_fraction": 1.0,
+      "min_shared_tokens": 3,
+      "recall_matched": 5,
+      "recall_total": 9,
+      "recall": 0.5555555555555556,
+      "precision_lower_bound": 0.05222437137330754,
+      "matched_groups": 27,
+      "machine_groups": 517
+    }
+  ],
+  "semantic_headline": {
+    "recall_matched": 9,
+    "recall_total": 9,
+    "recall": 1.0,
+    "declared_groups": 26,
+    "machine_groups": 517,
+    "false_positives": 0,
+    "false_positives_easy": 0,
+    "alignment_precision_pooled": 1.0,
+    "precision_identifiable": false,
+    "precision_caveat": "alignment_precision_pooled 是特异性代理量而非已标定的 precision：本语料的金标是**非穷尽**的（9 verified + 7 unverified），因此不存在可构造的域内阴性集——任何被当作'未变更'的章节都可能是金标未列入的真实变更，对照臂的声明无法被裁定为假阳还是'真实但漏列'。故 precision 轴在本数据上**不可辨识**（insufficient_data），该值只可用于同口径下的相对比较，不得对外当作 precision 宣称。",
+    "hard_negative_slot_rate": 0.6944444444444444,
+    "wilson_95": [
+      0.8712669561953784,
+      1.0
+    ],
+    "pairs_tested": 26,
+    "pairs_rejected": 26,
+    "params": {
+      "capacity": 3,
+      "top_k": 15,
+      "fdr_q": 0.1,
+      "n_perm": 1000,
+      "seed": 20260923
+    },
+    "topic_groups": {
+      "1": [
+        "ADD|血糖控制目标须个体化a",
+        "ADD|对于糖化血红蛋白hba1c≥90%或空腹血",
+        "DELETE|血糖控制目标过严严格的血糖控制会增加"
+      ],
+      "2": [
+        "ADD|伴动脉粥样硬化性心血管疾病ascvd或其",
+        "ADD|老年糖尿病患者动脉粥样硬化性心血管疾病",
+        "DELETE|优化代谢综合征的防治可预防心血管疾病及"
+      ],
+      "4": [
+        "DELETE|药物治疗",
+        "ADD|临床首选他汀类药物治疗a",
+        "ADD|起始的药物治疗可以单用二甲双胍或胰岛"
+      ],
+      "6": [
+        "DELETE|起始胰岛素治疗的时机",
+        "DELETE|胰岛素治疗胰岛素使用原则与治疗dka",
+        "ADD|胰岛素治疗胰岛素为类固醇糖尿病的首选"
+      ],
+      "7": [
+        "ADD|推荐hip患者行自我血糖监测smbg或持",
+        "DELETE|hba1c联合自我血糖监测smbg和持续葡",
+        "ADD|hba1c联合自我血糖监测smbg和持续葡"
+      ],
+      "10": [
+        "DELETE|代谢手术需要多学科协作进行术前术中及",
+        "DELETE|代谢手术后患者应定期监测微量营养素和评"
+      ],
+      "11": [
+        "DELETE|生活方式干预和二甲双胍为t2dm患者高血",
+        "DELETE|二甲双胍为t2dm患者控制高血糖的一线用",
+        "DELETE|关于孕前药物应用对二甲双胍无法控制的"
+      ],
+      "13": [
+        "ADD|糖尿病前期个体应给予生活方式干预以降",
+        "DELETE|糖尿病及糖尿病前期患者均需要接受个体化",
+        "MOVE|糖尿病及糖尿病前期患者均需要接受个体化"
+      ],
+      "16": [
+        "ADD|型糖尿病t2dm为主1型糖尿病t1dm和其",
+        "ADD|推荐所有2型糖尿病t2dm及病程≥5年的",
+        "ADD|糖尿病相关技术效性和便利性例如每日轮换进行餐前和餐后2h"
+      ]
+    }
+  },
+  "semantic_grid_on_legacy_params": [
+    {
+      "max_df_fraction": 0.02,
+      "min_shared_tokens": 2,
+      "recall_matched": 9,
+      "recall": 1.0,
+      "declared_groups": 26,
+      "false_positives": 0,
+      "alignment_precision_pooled": 1.0
+    },
+    {
+      "max_df_fraction": 0.02,
+      "min_shared_tokens": 3,
+      "recall_matched": 9,
+      "recall": 1.0,
+      "declared_groups": 26,
+      "false_positives": 0,
+      "alignment_precision_pooled": 1.0
+    },
+    {
+      "max_df_fraction": 0.05,
+      "min_shared_tokens": 2,
+      "recall_matched": 9,
+      "recall": 1.0,
+      "declared_groups": 26,
+      "false_positives": 0,
+      "alignment_precision_pooled": 1.0
+    },
+    {
+      "max_df_fraction": 0.05,
+      "min_shared_tokens": 3,
+      "recall_matched": 9,
+      "recall": 1.0,
+      "declared_groups": 26,
+      "false_positives": 0,
+      "alignment_precision_pooled": 1.0
+    },
+    {
+      "max_df_fraction": 0.1,
+      "min_shared_tokens": 2,
+      "recall_matched": 9,
+      "recall": 1.0,
+      "declared_groups": 26,
+      "false_positives": 0,
+      "alignment_precision_pooled": 1.0
+    },
+    {
+      "max_df_fraction": 0.1,
+      "min_shared_tokens": 3,
+      "recall_matched": 9,
+      "recall": 1.0,
+      "declared_groups": 26,
+      "false_positives": 0,
+      "alignment_precision_pooled": 1.0
+    },
+    {
+      "max_df_fraction": 0.2,
+      "min_shared_tokens": 2,
+      "recall_matched": 9,
+      "recall": 1.0,
+      "declared_groups": 26,
+      "false_positives": 0,
+      "alignment_precision_pooled": 1.0
+    },
+    {
+      "max_df_fraction": 0.2,
+      "min_shared_tokens": 3,
+      "recall_matched": 9,
+      "recall": 1.0,
+      "declared_groups": 26,
+      "false_positives": 0,
+      "alignment_precision_pooled": 1.0
+    },
+    {
+      "max_df_fraction": 1.0,
+      "min_shared_tokens": 2,
+      "recall_matched": 9,
+      "recall": 1.0,
+      "declared_groups": 26,
+      "false_positives": 0,
+      "alignment_precision_pooled": 1.0
+    },
+    {
+      "max_df_fraction": 1.0,
+      "min_shared_tokens": 3,
+      "recall_matched": 9,
+      "recall": 1.0,
+      "declared_groups": 26,
+      "false_positives": 0,
+      "alignment_precision_pooled": 1.0
+    }
+  ],
+  "semantic_own_sweep": {
+    "top_k": [
+      {
+        "top_k": 5,
+        "recall_matched": 9,
+        "declared_groups": 26,
+        "false_positives": 0,
+        "alignment_precision_pooled": 1.0
+      },
+      {
+        "top_k": 10,
+        "recall_matched": 9,
+        "declared_groups": 26,
+        "false_positives": 0,
+        "alignment_precision_pooled": 1.0
+      },
+      {
+        "top_k": 15,
+        "recall_matched": 9,
+        "declared_groups": 26,
+        "false_positives": 0,
+        "alignment_precision_pooled": 1.0
+      },
+      {
+        "top_k": 25,
+        "recall_matched": 9,
+        "declared_groups": 26,
+        "false_positives": 0,
+        "alignment_precision_pooled": 1.0
+      },
+      {
+        "top_k": 40,
+        "recall_matched": 9,
+        "declared_groups": 26,
+        "false_positives": 0,
+        "alignment_precision_pooled": 1.0
+      }
+    ],
+    "fdr_q": [
+      {
+        "fdr_q": 0.01,
+        "recall_matched": 9,
+        "declared_groups": 24,
+        "false_positives": 0,
+        "alignment_precision_pooled": 1.0
+      },
+      {
+        "fdr_q": 0.05,
+        "recall_matched": 9,
+        "declared_groups": 26,
+        "false_positives": 0,
+        "alignment_precision_pooled": 1.0
+      },
+      {
+        "fdr_q": 0.1,
+        "recall_matched": 9,
+        "declared_groups": 26,
+        "false_positives": 0,
+        "alignment_precision_pooled": 1.0
+      },
+      {
+        "fdr_q": 0.2,
+        "recall_matched": 9,
+        "declared_groups": 26,
+        "false_positives": 0,
+        "alignment_precision_pooled": 1.0
+      },
+      {
+        "fdr_q": 0.5,
+        "recall_matched": 9,
+        "declared_groups": 26,
+        "false_positives": 0,
+        "alignment_precision_pooled": 1.0
+      }
+    ],
+    "capacity": [
+      {
+        "capacity": 1,
+        "recall_matched": 9,
+        "declared_groups": 9,
+        "false_positives": 0,
+        "alignment_precision_pooled": 1.0
+      },
+      {
+        "capacity": 2,
+        "recall_matched": 9,
+        "declared_groups": 18,
+        "false_positives": 0,
+        "alignment_precision_pooled": 1.0
+      },
+      {
+        "capacity": 3,
+        "recall_matched": 9,
+        "declared_groups": 26,
+        "false_positives": 0,
+        "alignment_precision_pooled": 1.0
+      },
+      {
+        "capacity": 5,
+        "recall_matched": 9,
+        "declared_groups": 42,
+        "false_positives": 2,
+        "alignment_precision_pooled": 0.9523809523809523
+      }
+    ]
+  },
+  "decoy_arm": {
+    "n_decoy_topics": 14,
+    "declared_groups": 0,
+    "declared_group_keys": [],
+    "pairs_tested": 0,
+    "degenerate": true
+  },
+  "hard_negative_arm": {
+    "n_hard_topics": 12,
+    "declared_groups": 25,
+    "declared_group_keys": [
+      "ADD|mmoll或尿酮阳性++以上为糖尿病酮症",
+      "ADD|个体教育指糖尿病教育者与患者进行一对",
+      "ADD|伴有急性并发症或严重慢性并发症时慎行",
+      "ADD|伴有急性并发症或严重慢性并发症时慎行39mmoll183",
+      "ADD|基本信息了解患者的年龄病程血糖控制病教育者或糖尿病专科护士营养专业人员运动",
+      "ADD|糖尿病妊娠女性合并高血压建议血压控制",
+      "ADD|糖尿病患者的血压控制目标应个体化一般",
+      "ADD|糖尿病的教育和管理培养和糖尿病教育管理跨专业团队的建设加强对",
+      "ADD|糖尿病足溃疡dfu的治疗不但要强调多学",
+      "ADD|表21不同texas分类糖尿病足的临床特征640",
+      "ADD|运动治疗运动在儿童和青少年t2dm的治698",
+      "DELETE|dspn的筛查dspn是糖尿病神经病变的最",
+      "DELETE|严重低血糖糖尿病酮症酸中毒等急性代谢",
+      "DELETE|严重酸中毒ph值70需适当补充碳酸氢钠",
+      "DELETE|伴有急性并发症或严重慢性并发症时慎行",
+      "DELETE|口腔黏膜病变糖尿病患者唾液减少表现",
+      "DELETE|天芪降糖胶囊在一项纳入420例糖耐量异滴丸研究发现该药改善早期糖尿病视网膜病变眼",
+      "DELETE|弥漫性神经病变",
+      "DELETE|所有糖尿病足溃疡怀疑cli存在时应尽早完",
+      "DELETE|有效的降糖治疗血压控制可延缓糖尿病肾病",
+      "DELETE|糖尿病急性并发症睡等症状呼吸深快呼气中有烂苹果味丙酮气",
+      "DELETE|糖尿病慢性并发症",
+      "DELETE|良好的血糖控制可以延缓糖尿病神经病变的",
+      "DELETE|表16糖尿病视网膜病变的国际临床分级标准",
+      "MOVE|伴有急性并发症或严重慢性并发症时慎行"
+    ],
+    "pairs_tested": 25,
+    "degenerate": false
+  },
+  "sensitivity_contrast": {
+    "recall_span": {
+      "legacy_grid": [
+        "2/9",
+        "9/9"
+      ],
+      "semantic_grid": [
+        "9/9",
+        "9/9"
+      ]
+    },
+    "legacy_recall_range": 7,
+    "semantic_recall_range": 0
+  },
+  "estimand_note": "alignment_precision_pooled 是**含假阳计数的特异性受控对齐质量点估计**（分母 = 本次声明的对齐组，假阳由阴性对照臂实测）。它与 T-21 的 64/517 **不可直接比较**：后者是相关率（分母 = 全体机器组，无假阳计数）。两者 estimand 不同。",
+  "scope": "适用范围：对既有真实产物（alignment-diff.json + guideline_diff_seed.md）的回溯核算，零 LLM / 零 DB / 零网络；不是新一次抽取跑分。"
+}
