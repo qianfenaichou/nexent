@@ -64,10 +64,10 @@
   "progress": {
     "spans_target": 120,
     "spans_done_before_this_run": 15,
-    "spans_done_now": 35,
-    "spans_added_by_this_run": 20,
-    "as_of": "2026-09-23T13:05:00+08:00（batch-B 进行中，主会话监督轮直查）",
-    "measurement": "psql 直查 nexent.kg_extract_run_t WHERE tenant_id='6756b0ab-...' -> count(DISTINCT span_hash)=35（13:05）；同刻 kg_entity_t=298 / kg_relation_t=207 / kg_evidence_t=59。rows 与 distinct span_hash 相等，无重复段",
+    "spans_done_now": 38,
+    "spans_added_by_this_run": 23,
+    "as_of": "2026-09-23T13:35:00+08:00（监督轮实测，batch-B 仍在 429 退避中）",
+    "measurement": "psql 直查 -> count(DISTINCT span_hash)=38（13:35）；同刻 kg_entity_t=325 / kg_relation_t=249 / kg_evidence_t=62。rows 与 distinct 相等，无重复段",
     "note_on_15": "真库核对：created_at < 2026-09-23 00:00+08 的行数 = 15，**与文档记录的「15/120 段」一致**（此前曾算出 14，是忘了本轮运行已先落 2 行）"
   },
   "ceiling_analysis": {
@@ -175,10 +175,10 @@
     }
   },
   "graph_now": {
-    "entities": 298,
-    "relations": 207,
-    "evidence": 59,
-    "source": "psql 直查 nexent.kg_{entity,relation,evidence}_t WHERE tenant_id='6756b0ab-...'（2026-09-23 13:05 切窗值）",
+    "entities": 325,
+    "relations": 249,
+    "evidence": 62,
+    "source": "psql 直查（2026-09-23 13:35 切窗值）",
     "note": "含 batch-B 进行中已落的行；最终值须在全部批次收口后重查"
   },
   "llm_usage": {
