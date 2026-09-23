@@ -6,7 +6,7 @@
 // the dependency tree).
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, Empty, Input, Space, Tag } from "antd";
+import { Alert, Button, Empty, Input, Space, Tag } from "antd";
 import {
   Radar,
   RadarChart,
@@ -34,22 +34,28 @@ export function DiffAndQualityPanel() {
   const [from, setFrom] = useState("v1.0.0");
   const [to, setTo] = useState("v1.1.0");
   const [diff, setDiff] = useState<OntologyDiffResult | null>(null);
+  const [diffError, setDiffError] = useState(false);
   const [metrics, setMetrics] = useState<OntologyMetrics | null>(null);
+  const [metricsError, setMetricsError] = useState(false);
   const [metricsVersion, setMetricsVersion] = useState("v1.0.0");
 
   const runDiff = useCallback(async () => {
+    setDiffError(false);
     try {
       setDiff(await ontologyService.diff(from, to));
     } catch {
       setDiff(null);
+      setDiffError(true);
     }
   }, [from, to]);
 
   const loadMetrics = useCallback(async (v: string) => {
+    setMetricsError(false);
     try {
       setMetrics(await ontologyService.versionMetrics(v));
     } catch {
       setMetrics(null);
+      setMetricsError(true);
     }
   }, []);
 
@@ -95,7 +101,15 @@ export function DiffAndQualityPanel() {
             {t("knowledgeGraph.diff.run", { defaultValue: "回放" })}
           </Button>
         </Space>
-        {!diff || diff.ops.length === 0 ? (
+        {diffError ? (
+          <Alert
+            type="error"
+            showIcon
+            description={t("knowledgeGraph.diff.loadFailed", {
+              defaultValue: "加载版本 Diff 失败，请检查版本号或刷新重试",
+            })}
+          />
+        ) : !diff || diff.ops.length === 0 ? (
           <Empty
             description={t("knowledgeGraph.diff.empty", {
               defaultValue: "无差异操作（版本号有误或未提交）",
@@ -139,7 +153,15 @@ export function DiffAndQualityPanel() {
             })}
           />
         </Space>
-        {metrics ? (
+        {metricsError ? (
+          <Alert
+            type="error"
+            showIcon
+            description={t("knowledgeGraph.quality.loadFailed", {
+              defaultValue: "加载质量指标失败，请检查版本或刷新重试",
+            })}
+          />
+        ) : metrics ? (
           <>
             <div className="mb-2 flex flex-wrap gap-2 text-sm">
               <Tag>cov {metrics.cov}</Tag>
