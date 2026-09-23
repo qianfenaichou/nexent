@@ -6,8 +6,9 @@
 // branch; if it is absent at build time the panel degrades to a plain list.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Empty, Spin, Tag, message } from "antd";
-import { Graph } from "@antv/g6";
+import { Alert, Empty, Spin, Tag } from "antd";
+import { Graph, treeToGraphData } from "@antv/g6";
+import type { GraphData, TreeData } from "@antv/g6";
 import type {
   OntologyClassNode,
   OntologyVersionRow,
@@ -20,26 +21,29 @@ interface Props {
   committedRow?: OntologyVersionRow | null;
 }
 
-function classesToTree(classes: OntologyClassNode[]) {
+function classesToTree(classes: OntologyClassNode[]): TreeData {
   // Build name -> node index, attach children under their parent; classes
   // whose parent is missing mount at the root (same rule _apply_ops uses).
-  const byName = new Map<
-    string,
-    { id: string; children: unknown[]; cls: OntologyClassNode }
-  >();
+  const byName = new Map<string, { node: TreeData; parent?: string | null }>();
   for (const c of classes) {
-    byName.set(c.name, { id: c.name, children: [], cls: c });
+    byName.set(c.name, {
+      node: { id: c.name, children: [] },
+      parent: c.parent,
+    });
   }
-  const roots: unknown[] = [];
-  for (const node of byName.values()) {
-    const parent = node.cls.parent;
-    const parentNode = parent ? byName.get(parent) : undefined;
-    if (parentNode && parentNode.cls.name !== node.cls.name) {
-      parentNode.children.push(node);
+  const roots: TreeData[] = [];
+  for (const [name, entry] of byName) {
+    const parentNode =
+      entry.parent && entry.parent !== name
+        ? byName.get(entry.parent)
+        : undefined;
+    if (parentNode) {
+      (parentNode.node.children ??= []).push(entry.node);
     } else {
-      roots.push(node);
+      roots.push(entry.node);
     }
   }
+  // Synthetic ROOT anchors the mindmap layout even for a flat forest.
   return { id: "ROOT", children: roots };
 }
 
@@ -49,12 +53,17 @@ export function OntologyTreePanel({ committedRow }: Props) {
     committedRow ?? null
   );
   const [loading, setLoading] = useState(!committedRow);
+  // Load failure (network/5xx) must never masquerade as "no data": 404 is
+  // already mapped to `null` by the service and renders the Empty state.
+  const [loadError, setLoadError] = useState(false);
+  const [renderError, setRenderError] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (committedRow) {
       // Fresh commit from the queue session: render it directly.
       setVersionRow(committedRow);
+      setLoadError(false);
       setLoading(false);
       return;
     }
@@ -64,9 +73,15 @@ export function OntologyTreePanel({ committedRow }: Props) {
       try {
         // Read-only display source; POST /versions stays the only write.
         const row = await ontologyService.activeVersion();
-        if (alive) setVersionRow(row);
+        if (alive) {
+          setVersionRow(row);
+          setLoadError(false);
+        }
       } catch {
-        if (alive) setVersionRow(null);
+        if (alive) {
+          setVersionRow(null);
+          setLoadError(true);
+        }
       } finally {
         if (alive) setLoading(false);
       }
@@ -76,21 +91,25 @@ export function OntologyTreePanel({ committedRow }: Props) {
     };
   }, [committedRow]);
 
-  const treeData = useMemo(
-    () => classesToTree(versionRow?.snapshot?.classes ?? []),
+  // G6 v5 `Graph` only accepts GraphData ({nodes, edges, combos}); nested
+  // tree objects must go through the official converter first, otherwise
+  // the canvas silently renders 0 nodes / 0 edges.
+  const graphData = useMemo<GraphData>(
+    () => treeToGraphData(classesToTree(versionRow?.snapshot?.classes ?? [])),
     [versionRow]
   );
 
   useEffect(() => {
-    if (loading || !containerRef.current) return;
+    if (loading || loadError || !containerRef.current) return;
     const classes = versionRow?.snapshot?.classes ?? [];
     if (classes.length === 0) return;
+    setRenderError(false);
     try {
       const graph = new Graph({
         container: containerRef.current,
         width: containerRef.current.clientWidth,
         height: 480,
-        data: treeData as never,
+        data: graphData,
         layout: { type: "mindmap", direction: "LR", nodeSep: 12, rankSep: 48 },
         node: {
           style: (datum: { id?: string }) => {
@@ -108,16 +127,18 @@ export function OntologyTreePanel({ committedRow }: Props) {
         },
         behaviors: ["drag-canvas", "zoom-canvas", "collapse-expand"],
       });
-      void graph.render();
+      // render() is async; a rejected render must surface as an error state
+      // instead of leaving a silent blank canvas behind.
+      void graph.render().catch(() => {
+        setRenderError(true);
+      });
       return () => {
         void graph.destroy();
       };
     } catch {
-      message.error(
-        t("knowledgeGraph.tree.renderFailed", { defaultValue: "树渲染失败" })
-      );
+      setRenderError(true);
     }
-  }, [treeData, loading, versionRow, t]);
+  }, [graphData, loading, loadError, versionRow, t]);
 
   const classes = versionRow?.snapshot?.classes ?? [];
 
@@ -137,6 +158,14 @@ export function OntologyTreePanel({ committedRow }: Props) {
         <div className="flex justify-center py-16">
           <Spin />
         </div>
+      ) : loadError ? (
+        <Alert
+          type="error"
+          showIcon
+          message={t("knowledgeGraph.tree.loadFailed", {
+            defaultValue: "加载本体数据失败，请刷新后重试",
+          })}
+        />
       ) : classes.length === 0 ? (
         <Empty
           description={t("knowledgeGraph.tree.empty", {
@@ -145,12 +174,24 @@ export function OntologyTreePanel({ committedRow }: Props) {
         />
       ) : (
         <>
+          {renderError && (
+            <Alert
+              type="error"
+              showIcon
+              message={t("knowledgeGraph.tree.renderFailed", {
+                defaultValue: "树渲染失败",
+              })}
+            />
+          )}
           <div ref={containerRef} className="rounded-lg border border-border" />
-          <p className="text-xs text-neutral-500">
-            {t("knowledgeGraph.tree.legend", {
-              defaultValue: "蓝框 = 锚定标准条目 · 灰 = 已废弃 · 拖拽/滚轮缩放",
-            })}
-          </p>
+          {!renderError && (
+            <p className="text-xs text-neutral-500">
+              {t("knowledgeGraph.tree.legend", {
+                defaultValue:
+                  "蓝框 = 锚定标准条目 · 灰 = 已废弃 · 拖拽/滚轮缩放",
+              })}
+            </p>
+          )}
         </>
       )}
     </div>
