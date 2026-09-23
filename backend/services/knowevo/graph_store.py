@@ -42,7 +42,58 @@ from database.knowevo_db import (
     KgRelation,
     _get_db_session,
     valid_now,
+    valid_range_contains,
 )
+from sqlalchemy import insert, select
+from sqlalchemy import tuple_ as sa_tuple
+
+# Default number of rows per batched statement (K below). 1000 is a balance:
+# large enough to amortise per-statement overhead, small enough that a single
+# multi-row INSERT / IN-list stays well inside PostgreSQL's planner and memory
+# sweet spot. Unbounded unnest on 20k+ rows tends to regress because the
+# planner materialises the whole array and the bound payload balloons.
+DEFAULT_GRAPH_BATCH_SIZE = 1000
+
+
+def _batch_size_for(store) -> int:
+    """Validated batch size for the batched upsert paths.
+
+    Guards a silent-data-loss landmine found during the 2026-09-24 real-PG
+    closure review: a non-positive ``K`` makes ``range(0, n, K)`` yield nothing,
+    so **every existence lookup is skipped and every row is treated as new**.
+    For ``kg_relation_t`` (no unique constraint) that inserts duplicates with no
+    error; for ``kg_entity_t`` it would raise an IntegrityError at commit. A
+    loud ``ValueError`` here is strictly better than either outcome.
+    """
+    k = getattr(store, "batch_size", DEFAULT_GRAPH_BATCH_SIZE)
+    if isinstance(k, bool) or not isinstance(k, int) or k < 1:
+        raise ValueError(
+            f"batch_size must be a positive int, got {k!r} - a non-positive "
+            f"value would silently skip every existence lookup"
+        )
+    return k
+
+
+def current_view_predicate(model, as_of, *, range_form: bool):
+    """Pick the bi-temporal current-view predicate for a read query.
+
+    ``valid_now`` is the original two-conjunct boolean form. ``valid_range_contains``
+    is the logically identical half-open-range containment that a GiST index on
+    ``tstzrange(valid_at, COALESCE(invalid_at,'infinity'),'[)')`` (migration
+    ``v2.5.5_kw_011``) can answer in one probe. They are equivalent row for row
+    -- see the equivalence argument in ``valid_range_contains`` -- so switching
+    is a performance decision, not a semantic one.
+
+    Kept behind a switch because the switch is only worth flipping once
+    ``EXPLAIN`` has confirmed the planner actually picks ``ix_kr_valid_range``,
+    and because the range form *raises* on a degenerate row
+    (``invalid_at < valid_at``) where the boolean form returned false. The
+    default is therefore the original boolean predicate: byte-for-byte
+    behaviour preservation.
+    """
+    if range_form:
+        return valid_range_contains(model, as_of=as_of)
+    return valid_now(model, as_of=as_of)
 
 # ---------------------------------------------------------------------------
 # Result shapes (contract graph_store.py.md: Subgraph / Path / HopPlan).
@@ -200,6 +251,15 @@ class PgJsonbGraphStore(GraphStore):
     (valid_at, invalid_at) b-tree. One hop is one query - the service
     layer loops for multi-hop so beam scoring can prune between hops."""
 
+    #: When True, the read path filters the current view with the half-open
+    #: range-containment predicate instead of the boolean one, so the GiST
+    #: index from migration ``v2.5.5_kw_011`` can be used. **Default False**:
+    #: flipping it is gated on (1) the ``kw_011`` preflight returning zero
+    #: degenerate rows (``invalid_at < valid_at``) and (2) ``EXPLAIN``
+    #: confirming the planner picks ``ix_kr_valid_range``. Registered as a
+    #: wiring item in the session-B receipt rather than flipped blind.
+    use_range_predicate: bool = False
+
     # ── upserts (idempotent reruns) ────────────────────────────────────
 
     async def upsert_entities(self, tenant_id: str,
@@ -209,16 +269,77 @@ class PgJsonbGraphStore(GraphStore):
 
         T-18b D1: an explicit ``valid_at`` in the entity dict is honoured on
         insert (business time); the bi-temporal window of an existing row is
-        still never touched here (supersede is the service layer's job)."""
-        for e in ents:
-            sid = e["stable_id"]
-            with _get_db_session() as session:
-                existing = session.query(KgEntity).filter(
-                    KgEntity.tenant_id == tenant_id,
-                    KgEntity.stable_id == sid,
-                ).first()
-                if existing is None:
-                    values: dict[str, Any] = {
+        still never touched here (supersede is the service layer's job).
+
+        Batched rewrite (was one DB session + one query + one commit PER ROW):
+        N rows previously cost ~2N round-trips + N commits. Now the cost is
+        ceil(S/K) existence lookups (S = distinct stable_ids, one lookup per
+        K-key chunk) + ceil(inserts/K) INSERTs + ceil(updates/K) UPDATEs,
+        where K = ``self.batch_size`` (default ``DEFAULT_GRAPH_BATCH_SIZE``).
+        For the common all-new case that is ceil(N/K) + ceil(N/K) round-trips
+        in a SINGLE commit - e.g. 20000 rows at K=1000 is ~40 round-trips, not
+        40000.
+        The lookup is chunked, not one giant ``IN`` list: a single IN clause
+        carrying every candidate key makes the PostgreSQL parser recurse once
+        per element and abort the whole write with ``StatementTooComplex:
+        stack depth limit exceeded`` (measured: 30000 relation keys on PG
+        16.15 with the default 2MB max_stack_depth).
+        Semantics are preserved exactly: the lookup reuses the unique
+        (tenant_id, stable_id) constraint; updates merge props (incoming wins)
+        and append+dedup aliases without touching the bi-temporal window; an
+        explicit ``valid_at`` is honoured on insert only. A working copy of
+        the existing state tracks in-batch duplicates so repeated stable_ids
+        in one call behave like the original sequential loop (deterministic
+        and idempotent rerun)."""
+        if not ents:
+            return
+        K = _batch_size_for(self)
+        with _get_db_session() as session:
+            # 1) Existence lookup for all candidate keys, CHUNKED by K
+            #    (reuses the unique (tenant_id, stable_id) lookup). One
+            #    statement per chunk: a single IN carrying every key blows the
+            #    PostgreSQL parser's recursion budget (StatementTooComplex).
+            #    Result: sid -> {id, props, aliases}.
+            existing: dict[str, dict[str, Any]] = {}
+            sids = list({e["stable_id"] for e in ents})
+            for i in range(0, len(sids), K):
+                rows = session.execute(
+                    select(KgEntity.id, KgEntity.stable_id,
+                           KgEntity.props, KgEntity.aliases).where(
+                        KgEntity.tenant_id == tenant_id,
+                        KgEntity.stable_id.in_(sids[i:i + K]),
+                    )
+                ).all()
+                for r in rows:
+                    existing[r.stable_id] = {
+                        "id": r.id,
+                        "props": dict(r.props or {}),
+                        "aliases": list(r.aliases or []),
+                    }
+            # 2) Decide insert vs update, exactly mirroring the old per-row
+            #    semantics (incoming props win, aliases appended + deduped).
+            to_insert: list[dict[str, Any]] = []
+            to_update: list[dict[str, Any]] = []
+            for e in ents:
+                sid = e["stable_id"]
+                if sid in existing:
+                    cur = existing[sid]
+                    merged = dict(cur["props"])
+                    merged.update(e.get("props") or {})
+                    new_aliases = list(cur["aliases"])
+                    for a in (e.get("aliases") or []):
+                        if a not in new_aliases:
+                            new_aliases.append(a)
+                    to_update.append({
+                        "id": cur["id"],
+                        "props": merged,
+                        "aliases": new_aliases,
+                    })
+                    existing[sid] = {"id": cur["id"],
+                                     "props": merged, "aliases": new_aliases}
+                else:
+                    row: dict[str, Any] = {
+                        "id": uuid.uuid4(),
                         "tenant_id": tenant_id, "stable_id": sid,
                         "name": e.get("name", sid),
                         "aliases": e.get("aliases") or [],
@@ -228,18 +349,18 @@ class PgJsonbGraphStore(GraphStore):
                         "status": e.get("status") or "active",
                     }
                     if e.get("valid_at") is not None:
-                        values["valid_at"] = e["valid_at"]
-                    session.add(KgEntity(**values))
-                else:
-                    merged = dict(existing.props or {})
-                    merged.update(e.get("props") or {})
-                    existing.props = merged
-                    existing_aliases = list(existing.aliases or [])
-                    for a in (e.get("aliases") or []):
-                        if a not in existing_aliases:
-                            existing_aliases.append(a)
-                    existing.aliases = existing_aliases
-                    session.flush()
+                        row["valid_at"] = e["valid_at"]
+                    to_insert.append(row)
+                    existing[sid] = {"id": row["id"],
+                                     "props": row["props"],
+                                     "aliases": row["aliases"]}
+            # 3) Bulk writes, chunked by K. executemany => one round-trip per
+            #    statement; the session __exit__ commits once for the whole call.
+            for i in range(0, len(to_insert), K):
+                session.execute(insert(KgEntity), to_insert[i:i + K])
+            for i in range(0, len(to_update), K):
+                session.bulk_update_mappings(
+                    KgEntity, to_update[i:i + K])
 
     async def upsert_relations(self, tenant_id: str,
                                rels: list[dict[str, Any]]) -> None:
@@ -249,27 +370,71 @@ class PgJsonbGraphStore(GraphStore):
 
         T-18b D1: an explicit ``valid_at`` in the relation dict is honoured
         on insert, so a fact's business time is the source document's
-        publication date rather than the ingest wall clock."""
-        for r in rels:
-            with _get_db_session() as session:
-                existing = session.query(KgRelation).filter(
-                    KgRelation.tenant_id == tenant_id,
-                    KgRelation.src == r["src"],
-                    KgRelation.dst == r["dst"],
-                    KgRelation.rel_type == r["rel_type"],
-                    valid_now(KgRelation),
-                ).first()
-                if existing is not None and existing.claim == r.get("claim"):
-                    continue
-                values: dict[str, Any] = {
-                    "tenant_id": tenant_id, "src": r["src"], "dst": r["dst"],
-                    "rel_type": r["rel_type"], "claim": r.get("claim", ""),
+        publication date rather than the ingest wall clock.
+
+        Batched rewrite (was one DB session + one query + one commit PER ROW):
+        N rows previously cost ~2N round-trips + N commits. Now the cost is
+        ceil(Kc/K) existence lookups (Kc = distinct candidate keys, one lookup
+        per K-key chunk, under valid_now) + ceil(inserts/K) INSERTs, where
+        K = self.batch_size (default ``DEFAULT_GRAPH_BATCH_SIZE``). Relations
+        have NO unique constraint (unlike entities), so we cannot use
+        ON CONFLICT; instead we do ``valid_now``-filtered lookups of the
+        current rows for the candidate keys (the same predicate the old
+        per-row query used - reused from ``knowevo_db.valid_now``, not
+        re-derived), then INSERT only the genuinely-new rows plus rows whose
+        claim differs from the current one.
+        A working copy of the current-view claim tracks in-batch duplicates so
+        repeated keys in one call reproduce the original sequential loop
+        (deterministic, idempotent rerun)."""
+        if not rels:
+            return
+        K = _batch_size_for(self)
+        with _get_db_session() as session:
+            # 1) Current-view existence lookup for all candidate keys, CHUNKED
+            #    by K. Reuses valid_now() so the temporal semantics stay in
+            #    exactly one place. Chunking is load-bearing, not cosmetic: one
+            #    IN clause holding every candidate triple makes the PostgreSQL
+            #    parser recurse per tuple and the write dies with
+            #    ``StatementTooComplex: stack depth limit exceeded`` (measured
+            #    on PG 16.15 at 30000 relation keys).
+            existing: dict[tuple[str, str, str], str] = {}
+            keys = list({(r["src"], r["dst"], r["rel_type"]) for r in rels})
+            for i in range(0, len(keys), K):
+                rows = session.execute(
+                    select(KgRelation.src, KgRelation.dst,
+                           KgRelation.rel_type, KgRelation.claim).where(
+                        KgRelation.tenant_id == tenant_id,
+                        valid_now(KgRelation),
+                        sa_tuple(KgRelation.src, KgRelation.dst,
+                                 KgRelation.rel_type).in_(keys[i:i + K]),
+                    )
+                ).all()
+                for r in rows:
+                    existing[(r.src, r.dst, r.rel_type)] = r.claim
+            # 2) Decide inserts, exactly mirroring the old per-row semantics.
+            to_insert: list[dict[str, Any]] = []
+            for r in rels:
+                key = (r["src"], r["dst"], r["rel_type"])
+                claim = r.get("claim", "")
+                if key in existing and existing[key] == claim:
+                    continue  # same claim under current view -> no-op
+                row: dict[str, Any] = {
+                    "id": uuid.uuid4(),
+                    "tenant_id": tenant_id,
+                    "src": r["src"], "dst": r["dst"],
+                    "rel_type": r["rel_type"], "claim": claim,
                     "props": r.get("props") or {},
                 }
                 if r.get("valid_at") is not None:
-                    values["valid_at"] = r["valid_at"]
-                session.add(KgRelation(**values))
-                session.flush()
+                    row["valid_at"] = r["valid_at"]
+                to_insert.append(row)
+                # Update working view so a later duplicate key in this call
+                # sees this claim (matches the original sequential loop).
+                existing[key] = claim
+            # 3) Bulk INSERT, chunked by K. executemany => one round-trip per
+            #    statement; the session __exit__ commits once for the whole call.
+            for i in range(0, len(to_insert), K):
+                session.execute(insert(KgRelation), to_insert[i:i + K])
 
     # ── queries ────────────────────────────────────────────────────────
 
@@ -306,7 +471,8 @@ class PgJsonbGraphStore(GraphStore):
                 if rel_types:
                     q = q.filter(KgRelation.rel_type.in_(rel_types))
                 if valid_view:
-                    q = q.filter(valid_now(KgRelation, as_of=as_of))
+                    q = q.filter(current_view_predicate(
+                        KgRelation, as_of, range_form=self.use_range_predicate))
                 else:
                     q = q.filter(KgRelation.invalid_at.isnot(None))
                 q = q.filter(
@@ -340,7 +506,8 @@ class PgJsonbGraphStore(GraphStore):
             if valid_view:
                 q = q.filter(KgEntity.status == "active")
                 if as_of is not None:
-                    q = q.filter(valid_now(KgEntity, as_of=as_of))
+                    q = q.filter(current_view_predicate(
+                        KgEntity, as_of, range_form=self.use_range_predicate))
             entities = [_entity_to_card(r) for r in q.all()]
         return Subgraph(entities=entities, edges=edges)
 

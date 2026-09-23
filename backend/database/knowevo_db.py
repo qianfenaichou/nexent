@@ -404,6 +404,45 @@ def valid_now(model, as_of: Optional[datetime] = None):
     )
 
 
+def valid_range_contains(model, as_of: Optional[datetime] = None):
+    """Index-usable form of :func:`valid_now` (same semantics, one GiST hit).
+
+    ``valid_now`` is a two-conjunct boolean predicate. A b-tree cannot serve
+    its second conjunct -- ``invalid_at IS NULL OR invalid_at > as_of`` mixes a
+    NULL test with a range test -- so only the ``valid_at <= as_of`` prefix
+    ever uses an index. The identical test expressed as half-open range
+    containment is a single ``&&``/``@>`` operator that a GiST index on the
+    range expression answers in one probe.
+
+    Equivalence (must hold for the swap to be safe)::
+
+        [valid_at, COALESCE(invalid_at, 'infinity'))  @>  as_of
+        <=>  valid_at <= as_of  AND  as_of < COALESCE(invalid_at, 'infinity')
+        <=>  valid_at <= as_of  AND  (invalid_at IS NULL OR invalid_at > as_of)
+
+    The expression below is deliberately written to be **textually identical**
+    to the index expression created by migration ``v2.5.5_kw_011``
+    (``tstzrange(valid_at, COALESCE(invalid_at, 'infinity'::timestamptz), '[)')``).
+    PostgreSQL matches an expression index by parsed expression tree, so any
+    deviation here silently loses the index.
+
+    PRECONDITION (data invariant, enforced by ``ck_kr_valid_order`` /
+    ``ck_ke_valid_order`` in ``kw_011``): ``invalid_at IS NULL OR invalid_at >=
+    valid_at``. Unlike the boolean predicate, *constructing* a range with
+    ``invalid_at < valid_at`` raises ``range lower bound must be less than or
+    equal to range upper bound`` rather than returning false. Run the preflight
+    query in the ``kw_011`` header before switching a query over to this form.
+    """
+    if as_of is None:
+        as_of = func.now()
+    span = func.tstzrange(
+        model.valid_at,
+        func.coalesce(model.invalid_at, text("'infinity'::timestamptz")),
+        text("'[)'"),
+    )
+    return span.op("@>")(as_of)
+
+
 def create_row(model, **values) -> Dict[str, Any]:
     """Insert one row of any Knowevo table and return its primary key."""
     with _get_db_session() as session:

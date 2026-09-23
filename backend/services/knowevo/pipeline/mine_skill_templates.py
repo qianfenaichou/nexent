@@ -146,9 +146,8 @@ def _self_check(tenant_id: str) -> dict:
 
 async def _pick_tenant(explicit: str | None) -> str | None:
     """Explicit --tenant, else the tenant holding the most decision cards."""
-    from sqlalchemy import func
-
     from database.knowevo_db import DecisionCard, _get_db_session
+    from sqlalchemy import func
 
     if explicit:
         return explicit

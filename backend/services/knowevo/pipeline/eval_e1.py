@@ -12,8 +12,8 @@ Pipeline per question:
 K4 protocol (02-technical-plan 6): each question runs 3x, pass^2 (share of
 questions with >=2 passing runs) is the headline metric, p95 latency and
 tokens are reported alongside. The judge prompt is the frozen
-``knowevo_judge_*`` pair; the scorer logic is rewritten from tau2-bench
-(arXiv:2505.23319) "Design inspired by tau2-bench".
+``knowevo_judge_*`` pair; the scorer logic is rewritten from tau-bench
+(arXiv:2406.12045) "Design inspired by tau-bench / tau2-bench (arXiv:2506.07982)".
 
 CLI (from backend/):
     python -m services.knowevo.pipeline.eval_e1 \
