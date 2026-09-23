@@ -69,3 +69,4 @@
 
 | 42dd0306-060e-47ec-9c1b-4aaf6be72001 | 2026-09-23 03:07 | 图谱抽取 | - (tier routing T-08) | 0 | 0 | 0 | 2632.929 | spans=12 extracted=12 skipped=0 llm_calls=12 errors=0 |
 | p1-4b-tau(probe_p6) | 2026-09-23 12:28 | 评测(τ_a 效率·零 LLM) | 无（冻结导出回放，零 DB/零网络） | 0 | 0 | 0 | <1s(探针) | P1-4b τ_a 扫描：n=21 候选（20 构建租户 v1.0.0 ops + 1 跨租户队列见证）重放 auto_accept 三条件门（engine=backend 直调生产 build_ev_rich）——arm A 人工干预比例全程 1.0（ev_rich 绑定 21/21，τ_a 轮不到生效）；arm B 放开 ev_rich 后 0.4762（τ≤0.90 平台）→0.5238（τ=0.95），全网格仅 +0.0476（分数三簇 1.0/0.9/0.0 无分辨率）；错误率轴裁决金标 n=0→insufficient_data，存活代理 0/10 + Wilson 95% [0.0, 0.2775]，不宣称低错误率。结论=自动化率杠杆是证据跨文档聚合与分数分布，调 τ_a 边际收益≈0。产物 probe_p6_autonomy_tau.json + docs/tau-a-autonomy.md（逐位一致） | |
+| 98e1e808-4403-465f-9667-e15f658703fd | 2026-09-23 13:39 | 图谱抽取 | - (tier routing T-08) | 0 | 0 | 0 | 4683.716 | spans=12 extracted=12 skipped=0 llm_calls=12 errors=0 |
