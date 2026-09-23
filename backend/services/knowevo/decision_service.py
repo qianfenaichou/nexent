@@ -35,14 +35,14 @@ import json
 import logging
 import re
 import time
+import uuid as uuid_mod
 from collections.abc import Callable, Iterable
 from dataclasses import asdict
 from datetime import datetime
 from typing import Any
 
-from pydantic import ValidationError
-
 from consts.const import KW_MULTIHOP_BEAM, KW_MULTIHOP_MAX_DEPTH, LANGUAGE
+from pydantic import ValidationError
 from services.knowevo.graph_store import EdgeCard, HopPlan, Path, Subgraph
 from services.knowevo.kg_service import _render_prompt
 from services.knowevo.schemas import (
@@ -814,6 +814,54 @@ class DecisionService:
 
     # ── evidence-chain assembly and fusion (02-tech-plan 3.4) ──────────
 
+    def _evidence_sources(self, evidence_ids: Iterable[Any],
+                          ) -> dict[str, tuple[str, str]]:
+        """Resolve kg-channel source labels: evidence_id -> (doc title, span).
+
+        Follows the link every merged edge carries (``props.evidence_id``
+        -> kg_evidence_t.span_loc/doc_id -> doc_asset_t.title) so an
+        evidence row can name its own document and passage instead of
+        showing "None · None" in the card. A broken or absent link resolves
+        to nothing and the row degrades to the panel's source fallback -
+        a guessed source would be worse than none. The DB is optional here
+        the way calibration is: tests and dry runs have no kg_evidence_t to
+        read and must not fail for it.
+        """
+        wanted: dict[str, Any] = {}
+        for raw in evidence_ids:
+            if raw is None or str(raw) in wanted:
+                continue
+            try:
+                wanted[str(raw)] = uuid_mod.UUID(str(raw))
+            except (TypeError, ValueError):
+                continue  # not a row id this lookup could ever resolve
+        if not wanted:
+            return {}
+        try:
+            from database.knowevo_db import DocAsset, KgEvidence, _get_db_session
+            with _get_db_session() as session:
+                rows = (session.query(KgEvidence)
+                        .filter(KgEvidence.tenant_id == self.tenant_id,
+                                KgEvidence.id.in_(wanted.values())).all())
+                doc_ids = {r.doc_id for r in rows if r.doc_id is not None}
+                titles: dict[Any, str] = {}
+                if doc_ids:
+                    titles = {r.id: _clean_str(r.title) for r in
+                              session.query(DocAsset).filter(
+                                  DocAsset.tenant_id == self.tenant_id,
+                                  DocAsset.id.in_(doc_ids)).all()}
+                rows_by_id = {r.id: r for r in rows}
+                out: dict[str, tuple[str, str]] = {}
+                for raw, row_id in wanted.items():
+                    row = rows_by_id.get(row_id)
+                    if row is not None:
+                        out[raw] = (titles.get(row.doc_id, ""),
+                                    _span_label(row.span_loc))
+                return out
+        except Exception as exc:  # noqa: BLE001 - absent table is valid state
+            logger.info("evidence source lookup unavailable: %s", exc)
+            return {}
+
     async def assemble_evidence(self, paths: list[Path] | PathSet,
                                 doc_hits: list[DocHit] | None = None,
                                 ) -> EvidenceChain:
@@ -841,6 +889,14 @@ class DecisionService:
             edges_by_path = {}
             pinned = False
 
+        # Source labels for the kg rows: batched forward lookup of the
+        # evidence ids the edges ride on (see _evidence_sources), so the
+        # card can print "doc title · span locator" instead of nothing.
+        sources = self._evidence_sources(
+            (edge.props or {}).get("evidence_id")
+            for path in path_list
+            for edge in (edges_by_path.get(id(path)) or []) if edge)
+
         for path in path_list:
             claims = claims_by_path.get(id(path)) or [
                 c for c in (path.claims or []) if c]
@@ -851,13 +907,12 @@ class DecisionService:
                     continue
                 edge = edges[idx] if idx < len(edges) else None
                 contested = bool(edge is not None and edge.contested)
+                doc, span = _edge_source(edge, sources)
                 chain.items.append(EvidenceItem(
                     claim=claim,
                     provenance=Provenance(
-                        doc=str((edge.props or {}).get("doc_title", ""))
-                        if edge is not None else "",
-                        span=str((edge.props or {}).get("span", ""))
-                        if edge is not None else "",
+                        doc=doc,
+                        span=span,
                         kg_path=kg_path,
                         version_pinned=pinned),
                     tag=TAG_EXTRACTED,
@@ -868,8 +923,9 @@ class DecisionService:
 
         for hit in doc_hits:
             chain.items.append(EvidenceItem(
-                claim=hit.span_text,
-                provenance=Provenance(doc=hit.doc_title, span=hit.span_text,
+                claim=_clean_str(hit.span_text),
+                provenance=Provenance(doc=_clean_str(hit.doc_title),
+                                      span=_clean_str(hit.span_text),
                                       kg_path=[], version_pinned=pinned),
                 tag=TAG_EXTRACTED,
                 source_channel=CHANNEL_DOC))
@@ -966,6 +1022,10 @@ class DecisionService:
                 # rather than trusting the prompt to have obeyed.
                 if idx > 0:
                     built.counterfactual = None
+                # Doc/span are assembly facts the prompt never carried, so
+                # the model's echo of them is guesswork: take them back from
+                # the chain wherever a claim matches (see _backfill).
+                _backfill_provenance(built.evidence_chain, chain.items)
                 card.candidates.append(built)
 
         card.decision = str(
@@ -1374,6 +1434,85 @@ def _render_failed(chain: EvidenceChain) -> str:
     return "\n".join(lines) if lines else "(none)"
 
 
+def _clean_str(value: Any) -> str:
+    """Display text that must never render as the literal "None".
+
+    JSON nulls reach here from LLM echoes and half-filled props; the plain
+    ``str(x)`` turns them into "None", which the panel then prints as a
+    source line ("None · None"). The model's textual "None"/"null"
+    placeholders count as missing for the same reason.
+    """
+    if value is None:
+        return ""
+    text = str(value).strip()
+    return "" if text.lower() in ("none", "null") else text
+
+
+def _span_label(span_loc: Any) -> str:
+    """Readable locator for kg_evidence_t.span_loc ({chunk_idx, page, ...}).
+
+    chunk_idx is the parse chunk the span was extracted from - the
+    "paragraph number" a reviewer jumps to; the page rides along when the
+    source document had one.
+    """
+    if not isinstance(span_loc, dict):
+        return ""
+    parts = []
+    if span_loc.get("chunk_idx") is not None:
+        parts.append(f"chunk {span_loc.get('chunk_idx')}")
+    if span_loc.get("page") is not None:
+        parts.append(f"p.{span_loc.get('page')}")
+    return ", ".join(parts)
+
+
+def _edge_source(edge: Any, sources: dict[str, tuple[str, str]],
+                 ) -> tuple[str, str]:
+    """(doc title, span locator) for one kg-channel edge.
+
+    Props win when they state a source explicitly (fixtures and imports
+    that carry one); anything missing falls back to the evidence row the
+    edge's ``evidence_id`` points at. Unresolved stays empty - the panel
+    shows its honest fallback rather than a fabricated source.
+    """
+    if edge is None:
+        return "", ""
+    props = edge.props or {}
+    doc = _clean_str(props.get("doc_title"))
+    span = _clean_str(props.get("span"))
+    if doc and span:
+        return doc, span
+    ev = props.get("evidence_id")
+    title, loc = sources.get(str(ev), ("", "")) if ev is not None else ("", "")
+    return doc or title, span or loc
+
+
+def _backfill_provenance(items: list[EvidenceItem],
+                         assembled: list[EvidenceItem]) -> None:
+    """Give LLM-built items the provenance the assembled chain already has.
+
+    The card prompt shows claims and walks but no doc/span (only assembly
+    resolves those), so those fields come back from the model as guesses -
+    nulls or placeholders. The chain is the authority: an item whose claim
+    matches one of its entries inherits the missing doc/span/kg_path. An
+    unmatched item keeps what it has, cleaned, rather than borrowing a
+    source it cannot claim.
+    """
+    pool = list(assembled)
+    for item in items:
+        if not item.claim:
+            continue
+        match = next((m for m in pool if m.claim == item.claim), None)
+        if match is None:
+            continue
+        pool.remove(match)
+        if not item.provenance.doc:
+            item.provenance.doc = match.provenance.doc
+        if not item.provenance.span:
+            item.provenance.span = match.provenance.span
+        if not item.provenance.kg_path:
+            item.provenance.kg_path = list(match.provenance.kg_path)
+
+
 def _build_candidates(cand: dict[str, Any],
                       clock: VersionClock) -> list[Candidate]:
     """Build Candidates from one LLM candidate object.
@@ -1399,11 +1538,12 @@ def _build_candidates(cand: dict[str, Any],
         if pinned and clock.ontology_version is None:
             pinned = False
         items.append(EvidenceItem(
-            claim=str(item.get("claim", "")),
+            claim=_clean_str(item.get("claim")),
             provenance=Provenance(
-                doc=str(prov.get("doc", "")),
-                span=str(prov.get("span", "")),
-                kg_path=[str(p) for p in (prov.get("kg_path") or [])],
+                doc=_clean_str(prov.get("doc")),
+                span=_clean_str(prov.get("span")),
+                kg_path=[t for t in (_clean_str(p) for p in
+                                     (prov.get("kg_path") or [])) if t],
                 version_pinned=pinned),
             tag=str(item.get("tag") or TAG_EXTRACTED).upper(),
             source_channel=str(item.get("source_channel") or CHANNEL_KG)))

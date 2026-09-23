@@ -12,6 +12,7 @@ pinned/unpinned ablation be tested without Postgres.
 Layer 2 (RUN_POSTGRES_INTEGRATION=1): persist to decision_card_t, and
 rerun_marked recording the old-vs-new conclusion diff (Q2 ledger material).
 """
+import json
 import os
 import sys
 import time
@@ -771,6 +772,49 @@ class TestEvidenceAssembly:
         chain = await svc.assemble_evidence(result)
         assert all(i.provenance.version_pinned is False for i in chain.items)
 
+    @pytest.mark.asyncio
+    async def test_kg_rows_resolve_their_source_from_the_evidence_row(self):
+        """The kg row's source line comes from real data, never from str().
+
+        The edge's ``evidence_id`` resolves to its kg_evidence_t/doc_asset_t
+        row (doc title + span locator); props that state a source explicitly
+        win (fixtures, imports). What is forbidden is a str(None) "None" in
+        either field - the panel used to print exactly that.
+        """
+        from services.knowevo.graph_store import Path
+        from services.knowevo.schemas import PathSet
+
+        svc = DecisionService(tenant_id=TENANT)
+        svc._evidence_sources = lambda ids: {  # DB-free stand-in for the
+            "ev-1": ("指南2024版", "chunk 3, p.5")}  # kg_evidence_t lookup
+        linked = Path(entities=["a", "b"], claims=["c"])
+        stated = Path(entities=["b", "c"], claims=["d"])
+        bare = Path(entities=["c", "d"], claims=["e"])
+        pset = PathSet(
+            paths=[linked, stated, bare], version_pinned=True,
+            claims_by_path={id(linked): ["c"], id(stated): ["d"],
+                            id(bare): ["e"]},
+            edges_by_path={
+                id(linked): [EdgeCard(
+                    id="e1", src="a", dst="b", rel_type="r", claim="c",
+                    props={"evidence_id": "ev-1"})],
+                id(stated): [EdgeCard(
+                    id="e2", src="b", dst="c", rel_type="r", claim="d",
+                    props={"doc_title": "自带来源", "span": "§1"})],
+                id(bare): [EdgeCard(
+                    id="e3", src="c", dst="d", rel_type="r", claim="e",
+                    props={"evidence_id": "ev-missing", "doc_title": None,
+                           "span": None})],
+            })
+        chain = await svc.assemble_evidence(pset)
+        by_claim = {i.claim: i.provenance for i in chain.items}
+        assert (by_claim["c"].doc, by_claim["c"].span) == ("指南2024版",
+                                                           "chunk 3, p.5")
+        assert (by_claim["d"].doc, by_claim["d"].span) == ("自带来源", "§1")
+        assert (by_claim["e"].doc, by_claim["e"].span) == ("", ""), (
+            "an unresolvable source stays empty so the panel can fall back "
+            "to its label; a guessed or stringified-none source is worse")
+
 
 # ---------------------------------------------------------------------------
 # Decision card (02-tech-plan 3.3)
@@ -882,6 +926,51 @@ class TestDecisionCard:
         # that provenance claim is unbacked and must be dropped.
         assert all(not i.provenance.version_pinned
                    for i in card.candidates[0].evidence_chain)
+
+    @pytest.mark.asyncio
+    async def test_llm_null_provenance_backfills_from_the_chain(self):
+        """doc/span are assembly facts, not model output.
+
+        The card prompt never carried them, so the model echoes null - and a
+        plain str() used to publish that as the literal "None" (the panel
+        printed "None · None" as a source line). A claim the chain knows
+        must inherit the chain's provenance instead.
+        """
+        llm = FakeLLM(replies={"决策卡": """{
+          "candidates": [{"option": "首选 SGLT2i（恩格列净）",
+            "evidence_chain": [{
+              "claim": "eGFR 45 时 SGLT2i 仍可起始",
+              "provenance": {"doc": null, "span": null,
+                             "kg_path": [], "version_pinned": true},
+              "tag": "EXTRACTED", "source_channel": "kg"}],
+            "risks": []}],
+          "decision": "RECOMMEND"}"""})
+        svc = DecisionService(llm=llm, tenant_id=TENANT)
+        card = await svc.render_card("q", _chain_with_claim())
+        prov = card.candidates[0].evidence_chain[0].provenance
+        assert (prov.doc, prov.span) == ("指南2024版", "§9.2 用药"), (
+            "a matched claim takes its provenance from the assembled chain")
+        assert prov.kg_path == ["Drug:sglt2i", "CKD_G3a"]
+
+    @pytest.mark.asyncio
+    async def test_unmatched_null_provenance_stays_empty_never_none(self):
+        """No chain match means no source - empty, so the panel degrades to
+        its fallback label. The literal string "None" must not survive the
+        parse anywhere in the payload (the exact rendering defect)."""
+        llm = FakeLLM(replies={"决策卡": """{
+          "candidates": [{"option": "猜一个",
+            "evidence_chain": [{
+              "claim": "链上没有的命题",
+              "provenance": {"doc": "None", "span": null,
+                             "kg_path": [null], "version_pinned": false},
+              "tag": "EXTRACTED", "source_channel": "kg"}],
+            "risks": []}],
+          "decision": "RECOMMEND"}"""})
+        svc = DecisionService(llm=llm, tenant_id=TENANT)
+        card = await svc.render_card("q", _chain_with_claim())
+        prov = card.candidates[0].evidence_chain[0].provenance
+        assert (prov.doc, prov.span, prov.kg_path) == ("", "", [])
+        assert "None" not in json.dumps(card.to_payload(), ensure_ascii=False)
 
     @pytest.mark.asyncio
     async def test_markdown_fenced_json_is_accepted(self):
