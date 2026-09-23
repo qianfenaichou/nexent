@@ -47,6 +47,9 @@ export function ProposalQueue({
   const { t } = useTranslation();
   const [data, setData] = useState<OntologyQueuePage | null>(null);
   const [loading, setLoading] = useState(true);
+  // Load failure is rendered as its own state: it must never fall through
+  // to the "queue is empty" Empty state.
+  const [loadError, setLoadError] = useState(false);
   const [cursor, setCursor] = useState(0); // index within current page
   const [outcomes, setOutcomes] = useState<ConfirmOutcome[]>([]);
   const [reparentFor, setReparentFor] = useState<OntologyProposal | null>(null);
@@ -64,16 +67,16 @@ export function ProposalQueue({
       setData(page);
       setCursor(0);
       setOutcomes([]);
+      setLoadError(false);
     } catch {
-      message.error(
-        t("knowledgeGraph.queue.loadFailed", {
-          defaultValue: "加载提案队列失败",
-        })
-      );
+      // Drop the stale page so the A/X/P keyboard flow cannot act on it,
+      // and surface a persistent error state (not a transient toast).
+      setData(null);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
-  }, [pageSize, t]);
+  }, [pageSize]);
 
   useEffect(() => {
     void load();
@@ -198,6 +201,23 @@ export function ProposalQueue({
       <div className="flex justify-center py-16">
         <Spin />
       </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <Alert
+        type="error"
+        showIcon
+        message={t("knowledgeGraph.queue.loadFailed", {
+          defaultValue: "加载提案队列失败",
+        })}
+        action={
+          <Button size="small" onClick={() => void load()}>
+            {t("common.retry", { defaultValue: "重试" })}
+          </Button>
+        }
+      />
     );
   }
 
