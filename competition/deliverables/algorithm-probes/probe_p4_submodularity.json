@@ -1,7 +1,7 @@
 {
   "probe": "p4_submodularity",
   "purpose": "Empirical evidence for the plan section 3.1 claim: coverage-type impact is submodular so greedy carries the (1 - 1/e) approximation guarantee; the real impact function contains non-coverage terms, so only an approximate/empirical statement is made for it.",
-  "generated_at_utc": "2026-09-18T18:46:36Z",
+  "generated_at_utc": "2026-09-23T06:19:21Z",
   "config": {
     "seed": 20260919,
     "part_a_seed": 20260919,

@@ -35,9 +35,9 @@
       "fraction": 0.25
     },
     "propagation_ms": {
-      "mean": 0.021134719863766804,
-      "min": 0.01836199953686446,
-      "max": 0.048971000069286674,
+      "mean": 0.023616799917363096,
+      "min": 0.019699999029398896,
+      "max": 0.05177200000616722,
       "n_timed_runs": 50,
       "method": "time.perf_counter around the full two-layer propagation (set-union index queries), after 1 warmup run; counts are deterministic given the seed"
     },

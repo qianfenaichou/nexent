@@ -35,7 +35,7 @@
 | 踩坑台账 67 条（调试迭代经验素材，2026-09-23 实数） | 维度4 | ★★★ | `docs/pitfalls.md` | ✅ 已有 |
 | 演进台账（evolution-log） | 维度4 | ★★☆ | `docs/evolution-log.md` | ✅ 已有 |
 | 模板复用统计 R/S/D（skill_template_t） | 维度4 | ★★☆ | `skill_template_t`（T-20 起真实落库） | ✅ 已有 |
-| **开发设计文档 Word（官方模板1 初稿）** | 维度1/2/3/4（总装） | ★★★ | `deliverables/dev-design-doc.docx`（2026-09-23，由 `docs/dev-design-doc.md` 母本程序化生成：25 页、六节+附、TOC 域、罗马/阿拉伯页码分区、封面 R1+DM-1；postcheck **0 错误**；visual-judge 视觉验收进行中）；生成器在仓外 `~/kw-docx/generate.js`（node + docx npm）。**待人工**：封面个人信息 4 项【学校/队名/队长/手机号】待填；官方版式模板文件不在工作区，套版后按 `【赛题3-模板1】创新赛-开发设计文档-学校-队名-队长姓名-手机号` 重命名 | ✅ 已有（待套官方模板） |
+| **开发设计文档 Word（官方模板1 初稿）** | 维度1/2/3/4（总装） | ★★★ | `deliverables/dev-design-doc.docx`（2026-09-23，由 `docs/dev-design-doc.md` 母本程序化生成：25 页、六节+附、TOC 域、罗马/阿拉伯页码分区、封面 R1+DM-1；postcheck **0 错误**；visual-judge 视觉验收进行中）；生成器在仓外 `~/kw-docx/generate.js`（node + docx npm）。**待人工**：封面个人信息 4 项【学校/队名/队长/手机号】待填；官方版式模板文件不在工作区，套版后按 `【赛题3-模板1】创新赛-开发设计文档-学校-队名-队长姓名-手机号` 重命名 | ✅ 套版稿已出（2026-09-23，官方模板套版，29 页；postcheck：六节父标题齐/无 None·占位/§5.10 归第一章/封面四项个人信息待填；视觉验收待 provider 恢复） |
 | **τ_a 半自动构建效率实验（P1-4b）** | 维度2/3 | ★★★ | `experiments/probe_p6_autonomy_tau.py` + `deliverables/algorithm-probes/probe_p6_autonomy_tau.json`（2026-09-23，零 LLM/零 DB/零网络、<1s 可复跑，engine=**backend** 直调生产 `build_ev_rich`）+ `docs/experiment-reports.md（第四部分 τ_a）`（与 JSON 逐位一致）。核心发现：**ev_rich（证据跨≥2 文档）绑定 21/21 候选 → 人工干预比例全程 100%，τ_a 根本轮不到生效**；反事实放开 ev_rich 后 τ_a 全网格（0.50→0.95）仅 +0.0476 干预位移（候选分数三簇离散 1.0/0.9/0.0，阈值无分辨率）；错误率轴裁决金标 n=0→`insufficient_data`，存活代理 0/10 + Wilson 95% [0.0, 0.2775]（不宣称低错误率）。结论=自动化率杠杆是**证据跨文档聚合与分数分布**，调 τ_a 边际收益≈0 | ✅ 已有 |
 
 ---
