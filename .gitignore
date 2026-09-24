@@ -102,3 +102,13 @@ competition/.alignment-cache/
 # KnowEvo docx build scratch — 提交件 .docx 由 content.py + generate.js 复现，依赖不入库
 competition/deliverables/build-docx/node_modules/
 competition/deliverables/build-docx/package-lock.json
+
+# 提交打包产物（2026-09-24 永续窗口新增）—— 05-代码附件 是本仓自身的 `git archive HEAD` 快照
+# （自引用：内容随每次 commit 变化，入库即等于把仓库复制进仓库，且必然过期）；
+# 06-截图 与 01-开发设计文档/*.docx 是 deliverables/ 下既有文件的**副本**；04 的 tarball 同理。
+# 这些文件**保留在本地磁盘**供用户打包提交，只是不入版本库；可复现方式见
+# competition/deliverables/submission-package/打包核验记录-流C.md 与 MANIFEST.sha256。
+competition/deliverables/submission-package/05-代码附件/
+competition/deliverables/submission-package/06-截图/
+competition/deliverables/submission-package/*/*.docx
+competition/deliverables/submission-package/04-MCP与知识库文件实体/*.tar.gz
