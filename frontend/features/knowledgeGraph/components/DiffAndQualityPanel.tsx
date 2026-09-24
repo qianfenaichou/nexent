@@ -6,7 +6,7 @@
 // the dependency tree).
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Alert, Button, Empty, Input, Space, Tag } from "antd";
+import { Alert, Button, Empty, Input, Space, Spin, Tag } from "antd";
 import {
   Radar,
   RadarChart,
@@ -35,27 +35,38 @@ export function DiffAndQualityPanel() {
   const [to, setTo] = useState("v1.1.0");
   const [diff, setDiff] = useState<OntologyDiffResult | null>(null);
   const [diffError, setDiffError] = useState(false);
+  // Loading is its own state: while the fetch is in flight the panel must
+  // NOT fall through to the "no diff" Empty state (pitfall #71 - a state
+  // that looks like "empty" but is really "not loaded yet" is not provable).
+  const [diffLoading, setDiffLoading] = useState(true);
   const [metrics, setMetrics] = useState<OntologyMetrics | null>(null);
   const [metricsError, setMetricsError] = useState(false);
+  const [metricsLoading, setMetricsLoading] = useState(true);
   const [metricsVersion, setMetricsVersion] = useState("v1.0.0");
 
   const runDiff = useCallback(async () => {
     setDiffError(false);
+    setDiffLoading(true);
     try {
       setDiff(await ontologyService.diff(from, to));
     } catch {
       setDiff(null);
       setDiffError(true);
+    } finally {
+      setDiffLoading(false);
     }
   }, [from, to]);
 
   const loadMetrics = useCallback(async (v: string) => {
     setMetricsError(false);
+    setMetricsLoading(true);
     try {
       setMetrics(await ontologyService.versionMetrics(v));
     } catch {
       setMetrics(null);
       setMetricsError(true);
+    } finally {
+      setMetricsLoading(false);
     }
   }, []);
 
@@ -101,7 +112,11 @@ export function DiffAndQualityPanel() {
             {t("knowledgeGraph.diff.run", { defaultValue: "回放" })}
           </Button>
         </Space>
-        {diffError ? (
+        {diffLoading ? (
+          <div className="flex justify-center py-8">
+            <Spin />
+          </div>
+        ) : diffError ? (
           <Alert
             type="error"
             showIcon
@@ -153,7 +168,11 @@ export function DiffAndQualityPanel() {
             })}
           />
         </Space>
-        {metricsError ? (
+        {metricsLoading ? (
+          <div className="flex justify-center py-8">
+            <Spin />
+          </div>
+        ) : metricsError ? (
           <Alert
             type="error"
             showIcon

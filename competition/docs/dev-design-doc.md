@@ -106,7 +106,7 @@ L0 Nexent 底座 v2.6.0（fork · 零修改）
 
 ### 3.2 抽取与实体对齐（两个正确性设计）
 
-- 本体锚定抽取：子图检索注入 fewshot，约束实体类别（A：构建租户摄取 **15/120 段、136 实体 / 65 关系**，2026-09-21 r20 收盘快照——来源 `cost-ledger` 行 `r20-burst-c`（runs 13→15 / 实体 113→136 / 关系 46→65 / 2024 关系 13→32 / 证据 35→38）+ 报告 `data_reality` 实测 entities=136 / relations=65；其中实体类别分布 Disease×15 / Population×7 / Symptom×6 / Examination×6 / Indicator×4 / Drug×1 / Treatment×1 为 **40 实体期快照**（2026-09-21 早，未随新增段重算）；0 缺 doc_id / 0 缺 valid_at，质量门禁全绿）。
+- 本体锚定抽取：子图检索注入 fewshot，约束实体类别（A：构建租户摄取 **15/120 段、136 实体 / 65 关系**，2026-09-21 r20 收盘快照——来源 `cost-ledger` 行 `r20-burst-c`（runs 13→15 / 实体 113→136 / 关系 46→65 / 2024 关系 13→32 / 证据 35→38）+ 报告 `data_reality` 实测 entities=136 / relations=65；其中实体类别分布 Disease×15 / Population×7 / Symptom×6 / Examination×6 / Indicator×4 / Drug×1 / Treatment×1 为 **40 实体期快照**（2026-09-21 早，未随新增段重算）；0 缺 doc_id / 0 缺 valid_at，质量门禁全绿）。**2026-09-24 口径更新（任务Q6）**：上列 r20 快照已过时，真库实测（构建租户 `6756b0ab`，库=docker 容器 `nexent-postgresql`）= **46/120 段 / 357 实体 / 294 关系 / 70 证据行**；命令与输出见 `00-索引与状态.md` §八 任务Q6。
 - 三级实体对齐：外部主键 blocking（药品 ID/ATC 码等）+ 别名合并（重抽 merge 去重）。
 
 ### 3.3 bi-temporal 增量更新与冲突消解
@@ -244,7 +244,7 @@ A：置信度校准 ECE 目标 ≤0.10（无校准表诚实标 `calibration_appl
 |---|---|---|
 | 语料登记 | 58 份 | `corpus/registry.csv` |
 | 语料构成 | 药品说明书 28 / 临床指南 11 / 诊疗路径 9 / 检验 2 / 科普 8 | `verification-reports/batch{1,2,3}-*.md` |
-| 图谱资产 | 摄取 15/120 段；**136 实体 / 65 关系 / 38 证据行**（2026-09-21 r20 收盘） | `cost-ledger` 行 `r20-burst-c`；`e2-ablation-report.json` 的 `data_reality` |
+| 图谱资产 | 摄取 15/120 段；**136 实体 / 65 关系 / 38 证据行**（2026-09-21 r20 收盘旧快照；**2026-09-24 真库实测更新：46/120 段 / 357 实体 / 294 关系 / 70 证据行**，构建租户 `6756b0ab`，见 `00-索引与状态.md` §八 任务Q6） | `cost-ledger` 行 `r20-burst-c`；`e2-ablation-report.json` 的 `data_reality`；2026-09-24 真库实测 |
 | 本体 | 10 类 / 10 关系，`fact_cutoff=2025-01-01`（v1.1.0） | `OntologyService.commit_version` |
 | 平台记忆 | `memory_records_t`（Dreaming 整理） | 平台「可进化」实据之一 |
 

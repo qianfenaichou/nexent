@@ -83,6 +83,8 @@
 | 语料登记 | 58 份（`corpus/registry.csv`） | T-02 溯源核查通过 |
 | 语料构成 | 药品说明书 28 + 临床指南 11 + 诊疗路径 9 + 检验 2 + 科普 8（batch1-3 核查报告） | `docs/verification-reports/batch{1,2,3}-*.md` |
 | 图谱资产 | `kg_graph`（实体/关系 + `kg_evidence_t` doc_id 证据链），构建租户持续摄取（120 段语料分块）。**当前快照（2026-09-21 r20 收盘，权威口径）**：摄取 **15/120 段**、**136 实体 / 65 关系（含 2024 权威关系 32 条）、38 证据行**——来源 `cost-ledger` 行 `r20-burst-c` + `deliverables/e2-ablation-report.json` 的 `data_reality.ablation_tenant_graph`（entities=136 / relations=65）。实体类别分布（Disease 15 / Population 7 / Symptom 6 / Examination 6 / Indicator 4 / Drug 1 / Treatment 1）为**更早的 40 实体期快照**，未随新增段重算，引用时须注明 | 构建租户图谱摄取管线 |
+
+> ⚠️ **2026-09-24 口径更新（任务Q6）**：上表「r20 收盘快照」（15/120 段、136 实体/65 关系/38 证据行）**已过时**，保留备查。**真库现状实测**（构建租户 `6756b0ab`，库 = docker 容器 `nexent-postgresql`，`docker exec nexent-postgresql psql -U root -d nexent`，2026-09-24 13:40 CST）：摄取 **46/120 段**、**357 实体 / 294 关系 / 70 证据行**。完整命令与原始输出见 `00-索引与状态.md` §八 任务Q6；两套 PG 的身份区分见同文件 §四·补。
 | 本体 | 10 类 / 10 关系 / `fact_cutoff=2025-01-01`（ontology v1.1.0） | OntologyService.commit_version |
 | 平台记忆 | `memory_records_t`（Dreaming 整理） | 平台「可进化」实据之一 |
 
