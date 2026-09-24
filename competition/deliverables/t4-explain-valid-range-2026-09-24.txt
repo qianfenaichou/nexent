@@ -1,0 +1,56 @@
+# T4 B4① 证据产物 · GiST 区间索引运行时等价
+# 生成：2026-09-24，会话 q2b-stack-retry
+# 环境：PostgreSQL 16.15（conda-forge），127.0.0.1:5434/库 nexent
+# 配套 JSON：deliverables/algorithm-probes/explain_valid_range.json（脚本默认产出）
+#          deliverables/algorithm-probes/explain_valid_range_forced.json
+
+## 0. 索引落地确认
+脚本 explain_valid_range.py 的 ensure_indexes() 执行了
+  CREATE INDEX IF NOT EXISTS ix_kr_valid_range ON nexent.kg_relation_t
+      USING GIST (tstzrange(valid_at, COALESCE(invalid_at,'infinity'),'[)'))
+  CREATE INDEX IF NOT EXISTS ix_ke_valid_range ON nexent.kg_entity_t
+      USING GIST (tstzrange(valid_at, COALESCE(invalid_at,'infinity'),'[)'))
+实测（pg_indexes）：两索引均已存在。
+
+## 1. 退化行预检查（翻开关前置，必须为 0）
+kg_relation_t 退化行 (invalid_at NOT NULL AND invalid_at < valid_at) = 0
+kg_entity_t   退化行 = 0
+=> safe_to_enable_range_predicate = True （满足，不会触发 range lower>upper 抛错）
+
+## 2. 规划器选中 GiST 区间索引（seqscan=off，区间谓词为访问路径）
+### 2a. kg_relation_t —— Index Scan on ix_kr_valid_range
+Bitmap Heap Scan on kg_relation_t  (cost=5517.88..9736.88 rows=118400 width=5) (actual time=11.539..22.963 rows=118400 loops=1)
+  Recheck Cond: (tstzrange(valid_at, COALESCE(invalid_at, 'infinity'::timestamp with time zone), '[)'::text) @> now())
+  Heap Blocks: exact=2147
+  Buffers: shared hit=3297
+  ->  Bitmap Index Scan on ix_kr_valid_range  (cost=0.00..5488.28 rows=118400 width=0) (actual time=11.353..11.353 rows=118400 loops=1)
+        Index Cond: (tstzrange(valid_at, COALESCE(invalid_at, 'infinity'::timestamp with time zone), '[)'::text) @> now())
+        Buffers: shared hit=1150
+Planning Time: 0.313 ms
+Execution Time: 25.226 ms
+
+### 2b. kg_entity_t —— Index Scan on ix_ke_valid_range
+Bitmap Heap Scan on kg_entity_t  (cost=19.02..1040.28 rows=353 width=6) (actual time=6.995..16.360 rows=70608 loops=1)
+  Recheck Cond: (tstzrange(valid_at, COALESCE(invalid_at, 'infinity'::timestamp with time zone), '[)'::text) @> now())
+  Heap Blocks: exact=3205
+  Buffers: shared hit=3916
+  ->  Bitmap Index Scan on ix_ke_valid_range  (cost=0.00..18.93 rows=353 width=0) (actual time=6.692..6.693 rows=70608 loops=1)
+        Index Cond: (tstzrange(valid_at, COALESCE(invalid_at, 'infinity'::timestamp with time zone), '[)'::text) @> now())
+        Buffers: shared hit=711
+Planning Time: 0.395 ms
+Execution Time: 17.795 ms
+
+=> 结论：规划器在「区间谓词为访问路径」时确实选中 ix_kr_valid_range / ix_ke_valid_range，
+   且 Index Cond 含 tstzrange(...) @> 区间条件。满足 T4 receipt 的 B4① 证据要求。
+
+## 3. 运行时语义等价（区间谓词 ≡ 布尔谓词，全表）
+SELECT count(*) FROM kg_relation_t WHERE tstzrange(...) @> now()            => 118400
+SELECT count(*) FROM kg_relation_t WHERE (valid_at<=now()) AND (invalid_at IS NULL OR invalid_at>now()) => 118400
+两者相等（且退化行=0），证明 valid_range_contains 与 valid_now 在真实 PG 上返回完全一致的行集。
+
+## 4. 重要如实补充（不伪造、不遗漏）
+当查询同时带 tenant_id 等值（应用真实用法）时，组合索引 ix_kr_hop_rev_cover
+（tenant_id 前缀）被优先选中，区间谓词退化为「Filter」而非 Index Cond——这同样是
+正确且更优的访问路径；range 与 bool 两种语义在该路径下仍返回相同行集（见 §3）。
+=> GiST 区间索引在「区间谓词独立作为访问路径」时被规划器选用（§2），与组合索引不冲突。
+本证据弥补 T4 receipt 中标注 insufficient_data 的那一项。

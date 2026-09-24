@@ -1,0 +1,72 @@
+{
+  "probe": "explain_valid_range",
+  "question": "时间区间索引下推（ix_kr_valid_range / ix_ke_valid_range）是否在真实 PG 上被规划器选用，且对多跳 p95 有改善？",
+  "scope_note": "适用范围：需要真实 PostgreSQL（含 KnowEvo schema 与 kw_011 索引已落地）；无数据库时本脚本以清晰原因退出，不编造任何测量数字。",
+  "steps_requested": [
+    "explain"
+  ],
+  "generated_at": "2026-09-24T13:28:14",
+  "results": {
+    "explain": {
+      "tenant": "227cfe1f-f764-4c3b-9aec-300eb5855131",
+      "synthetic_graph": {
+        "entities": 3000,
+        "edges": 9000,
+        "seed": 20260923
+      },
+      "preflight_on_tenant": {
+        "query": "invalid_at IS NOT NULL AND invalid_at < valid_at (kg_relation_t + kg_entity_t)",
+        "kg_relation_t_degenerate_rows": 0,
+        "kg_entity_t_degenerate_rows": 0,
+        "required_zero": true,
+        "observed_zero": true,
+        "safe_to_enable_range_predicate": true,
+        "note": "0 行退化，满足翻开关前置条件。"
+      },
+      "force_seqscan_off": true,
+      "relation_bool_predicate": {
+        "sql": "SELECT nexent.kg_relation_t.dst \nFROM nexent.kg_relation_t \nWHERE nexent.kg_relation_t.tenant_id = '227cfe1f-f764-4c3b-9aec-300eb5855131' AND nexent.kg_relation_t.valid_at <= now() AND (nexent.kg_relation_t.invalid_at IS NULL OR nexent.kg_relation_t.invalid_at > now())",
+        "plan": "Index Scan using ix_kr_hop_rev_cover on kg_relation_t  (cost=0.42..8.43 rows=1 width=6) (actual time=0.021..2.478 rows=9000 loops=1)\n  Index Cond: (tenant_id = '227cfe1f-f764-4c3b-9aec-300eb5855131'::uuid)\n  Filter: ((valid_at <= now()) AND ((invalid_at IS NULL) OR (invalid_at > now())))\n  Buffers: shared hit=9032\nPlanning:\n  Buffers: shared hit=4\nPlanning Time: 0.206 ms\nExecution Time: 2.659 ms",
+        "flags": {
+          "uses_ix_kr_valid_range": false,
+          "uses_ix_ke_valid_range": false,
+          "bitmap_index_scan": false,
+          "index_scan": true,
+          "seq_scan": false,
+          "index_only_scan": false
+        }
+      },
+      "relation_range_predicate": {
+        "sql": "SELECT nexent.kg_relation_t.dst \nFROM nexent.kg_relation_t \nWHERE nexent.kg_relation_t.tenant_id = '227cfe1f-f764-4c3b-9aec-300eb5855131' AND (tstzrange(nexent.kg_relation_t.valid_at, coalesce(nexent.kg_relation_t.invalid_at, 'infinity'::timestamptz), '[)') @> now())",
+        "plan": "Index Scan using ix_kr_hop_rev_cover on kg_relation_t  (cost=0.42..8.43 rows=1 width=6) (actual time=0.012..3.277 rows=9000 loops=1)\n  Index Cond: (tenant_id = '227cfe1f-f764-4c3b-9aec-300eb5855131'::uuid)\n  Filter: (tstzrange(valid_at, COALESCE(invalid_at, 'infinity'::timestamp with time zone), '[)'::text) @> now())\n  Buffers: shared hit=9032\nPlanning:\n  Buffers: shared hit=5\nPlanning Time: 0.095 ms\nExecution Time: 3.451 ms",
+        "flags": {
+          "uses_ix_kr_valid_range": false,
+          "uses_ix_ke_valid_range": false,
+          "bitmap_index_scan": false,
+          "index_scan": true,
+          "seq_scan": false,
+          "index_only_scan": false
+        }
+      },
+      "entity_range_predicate": {
+        "sql": "SELECT nexent.kg_entity_t.stable_id \nFROM nexent.kg_entity_t \nWHERE nexent.kg_entity_t.tenant_id = '227cfe1f-f764-4c3b-9aec-300eb5855131' AND (tstzrange(nexent.kg_entity_t.valid_at, coalesce(nexent.kg_entity_t.invalid_at, 'infinity'::timestamptz), '[)') @> now())",
+        "plan": "Index Scan using ix_ke_class on kg_entity_t  (cost=0.29..16.15 rows=1 width=6) (actual time=0.008..0.939 rows=3000 loops=1)\n  Index Cond: (tenant_id = '227cfe1f-f764-4c3b-9aec-300eb5855131'::uuid)\n  Filter: (tstzrange(valid_at, COALESCE(invalid_at, 'infinity'::timestamp with time zone), '[)'::text) @> now())\n  Buffers: shared hit=551\nPlanning:\n  Buffers: shared hit=2\nPlanning Time: 0.064 ms\nExecution Time: 1.003 ms",
+        "flags": {
+          "uses_ix_kr_valid_range": false,
+          "uses_ix_ke_valid_range": false,
+          "bitmap_index_scan": false,
+          "index_scan": true,
+          "seq_scan": false,
+          "index_only_scan": false
+        }
+      },
+      "conclusion": {
+        "range_predicate_used_ix_kr_valid_range": false,
+        "bool_predicate_used_ix_kr_valid_range": false,
+        "range_predicate_used_ix_ke_valid_range": false,
+        "bool_predicate_fell_to_seq_scan": false,
+        "verdict": "需要在真实 PG 上读取上述 plan 文本人工/自动裁定（可能二者都未命中，或规划器在合成小表上选择了 Seq Scan）。"
+      }
+    }
+  }
+}

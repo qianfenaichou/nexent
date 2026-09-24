@@ -11,7 +11,7 @@
 // authorized no HTTP route). The pending-wiring Alert below is the
 // fetch-failure state, never fabricated rows. Instantiation itself is
 // reachable today through the skill_template_apply MCP tool.
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Alert,
@@ -44,22 +44,31 @@ const TASK_TYPE_COLORS: Record<string, string> = {
 export default function SkillTemplatePanel() {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
+  // Three distinct tail states (error / empty / pending-wiring) must never
+  // collapse into one, per the DiffAndQualityPanel error/empty dichotomy
+  // (pitfall #71): a transient fetch failure is its own recoverable state
+  // with a retry affordance, NOT the permanent "route not wired" notice.
   const [templates, setTemplates] = useState<SkillTemplate[] | null>(null);
+  const [loadError, setLoadError] = useState(false);
   const [preview, setPreview] = useState<SkillTemplate | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     let cancelled = false;
     setLoading(true);
+    setLoadError(false);
     skillTemplateService
       .listTemplates()
       .then((rows) => {
         if (!cancelled) setTemplates(rows);
       })
       .catch(() => {
-        // Fetch failure (outage / 403 / route gone): render the
-        // pending-wiring state, not an error crash and not fake data.
-        if (!cancelled) setTemplates(null);
+        // Transient fetch failure (outage / 403 / route gone): surface a
+        // recoverable error state with a retry button, never fake data.
+        if (!cancelled) {
+          setTemplates(null);
+          setLoadError(true);
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -68,6 +77,10 @@ export default function SkillTemplatePanel() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const copyBody = async (tpl: SkillTemplate) => {
     try {
@@ -140,10 +153,7 @@ export default function SkillTemplatePanel() {
       key: "actions",
       render: (_, tpl) => (
         <Space size={4}>
-          <Button
-            size="small"
-            onClick={() => setPreview(tpl)}
-          >
+          <Button size="small" onClick={() => setPreview(tpl)}>
             {t("skillTemplate.preview", { defaultValue: "预览" })}
           </Button>
           <Tooltip title={t("skillTemplate.copy", { defaultValue: "复制" })}>
@@ -173,7 +183,28 @@ export default function SkillTemplatePanel() {
         </Text>
       </div>
 
-      {templates === null && !loading ? (
+      {/* Transient fetch failure: recoverable, with an explicit retry.
+          Kept strictly separate from the permanent "pending wiring" notice
+          below so the user can tell "route not built yet" apart from
+          "request failed just now". */}
+      {loadError && !loading ? (
+        <Alert
+          type="error"
+          showIcon
+          message={t("skillTemplate.loadFailed.title", {
+            defaultValue: "模板列表加载失败",
+          })}
+          description={t("skillTemplate.loadFailed.body", {
+            defaultValue:
+              "模板列表请求失败（可能为网络波动或服务暂不可用），可重试；若持续失败，模板清单仍可用 psql 查询 nexent.skill_template_t 核实。",
+          })}
+          action={
+            <Button size="small" onClick={() => void load()}>
+              {t("common.retry", { defaultValue: "重试" })}
+            </Button>
+          }
+        />
+      ) : templates === null && !loading ? (
         <Alert
           type="warning"
           showIcon
@@ -191,7 +222,7 @@ export default function SkillTemplatePanel() {
         <div className="flex justify-center py-10">
           <Spin />
         </div>
-      ) : templates && templates.length > 0 ? (
+      ) : !loadError && templates && templates.length > 0 ? (
         <Table<SkillTemplate>
           rowKey={(tpl) => tpl.name}
           columns={columns}
@@ -199,7 +230,7 @@ export default function SkillTemplatePanel() {
           pagination={false}
           size="small"
         />
-      ) : !loading && templates ? (
+      ) : !loading && !loadError && templates ? (
         <Empty
           description={t("skillTemplate.empty", {
             defaultValue: "尚无模板：先运行 mine_skill_templates 从决策卡归纳",

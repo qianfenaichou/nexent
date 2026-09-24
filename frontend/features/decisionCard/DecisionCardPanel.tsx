@@ -87,11 +87,18 @@ export default function DecisionCardPanel() {
   const [mode, setMode] = useState<DecisionCardMode>("full");
   const [loading, setLoading] = useState(false);
   const [card, setCard] = useState<DecisionCardPayload | null>(null);
+  // Render failure (5xx / llm_unavailable / network) must surface as a
+  // persistent inline state, not only a vanishing toast, so the user can
+  // tell "generation failed" apart from "no card yet" and retry directly
+  // (error/empty dichotomy, pitfall #71). This is distinct from the
+  // INSUFFICIENT_EVIDENCE business state, which is rendered normally.
+  const [renderError, setRenderError] = useState(false);
 
   const render = async () => {
     const q = question.trim();
     if (!q) return;
     setLoading(true);
+    setRenderError(false);
     try {
       const result = await decisionCardService.renderCard({
         question: q,
@@ -101,6 +108,7 @@ export default function DecisionCardPanel() {
       });
       setCard(result);
     } catch {
+      setRenderError(true);
       message.error(
         t("decisionCard.renderFailed", { defaultValue: "决策卡生成失败" })
       );
@@ -322,6 +330,28 @@ export default function DecisionCardPanel() {
           })}
         />
       )}
+
+      {/* Persistent generation-failure state (distinct from empty /
+          insufficient-evidence): stays on screen with a retry affordance. */}
+      {renderError && !loading ? (
+        <Alert
+          className="mt-3"
+          type="error"
+          showIcon
+          message={t("decisionCard.renderFailed", {
+            defaultValue: "决策卡生成失败",
+          })}
+          description={t("decisionCard.renderFailedHint", {
+            defaultValue:
+              "可能是网络波动、知识库暂不可用或模型服务异常。可重试；若持续失败，请稍后或检查服务状态。",
+          })}
+          action={
+            <Button size="small" onClick={render}>
+              {t("common.retry", { defaultValue: "重试" })}
+            </Button>
+          }
+        />
+      ) : null}
     </div>
   );
 }

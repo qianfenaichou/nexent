@@ -1,7 +1,17 @@
 # Provider Key 配置与环境就绪计划 · 2026-09-24
 
 > 会话：任务Q3（环境就绪规划）。工作区 `/home/qianqian/Work/All/Nexent`。
-> 背景：2026-09-23 子智能体 provider（sensenova2）报 `Invalid API Key`（见 `archive/交接记录-2026-09/HANDOFF-待推送与provider-2026-09-23.md`），卡住 visual-judge 视觉验收与 E2 全量 LLM 侧。
+> 背景：2026-09-23 子智能体 provider 报 `Invalid API Key`（见 `archive/交接记录-2026-09/HANDOFF-待推送与provider-2026-09-23.md`），卡住 visual-judge 视觉验收与 E2 全量 LLM 侧。
+>
+> 🔴 **2026-09-24 12:00 用户提供配置截图后的关键更正（推翻本文此前"provider 名 = sensenova2"的假设）**
+>
+> 用户编排工具里**实际配置的供应商名是 `sensenova1`**。而本文写作时全仓 **11+ 处**写的是 `sensenova2`，`grep -rn sensenova1` 在全仓**命中 0 处**。配置实测（截图）：Base URL `https://token.sensenova.cn/v1`、API 格式 `Chat Completions (/chat/completions)`、启用模型 **6 个** = `deepseek-flash` / `glm-5.2` / `kimi-k3` / `sensenova-6.8-flash-lite` / `sensenova-u1.5-lite` / `sensenova-u1.5-fast`。
+>
+> **⇒ 根因假设（待验证，优先级高于本文 §零 的 U4）**：`sensenova2` 这个名字**在本机根本不存在**。`Invalid API Key` 很可能是"引用了不存在的 provider 名"的**下游症状**——与本仓已反复记录的"命名/接线错位不报真因"同族（坑 #31 / #40 / #44 / #48）。这一点解释了为什么此前在代码仓里怎么 grep `api_key` 都定位不到问题：**真因在名字上，不在代码里。**
+>
+> **阅读纪律**：本文其余章节出现的 `sensenova2` 是对历史交接记录的**保真引用**，不作为当前配置依据；**现行配置一律以 `sensenova1` 为准**。
+>
+> ⚠️ **安全**：该截图同时暴露了 key 明文，且截图已进入对话记录 → **建议轮换该 key**。
 > 铁律：① 不读/不复制/不输出任何真实密钥值，本文件只写"从哪拿 → 填到哪 → 重启什么 → 用哪条命令验证"；② 不自行 commit；③ 不伪造数字；④ 涉及官网/赛事规则一律逐字抄录 + 记 URL 与访问日期。
 
 ---
@@ -15,7 +25,7 @@
 | U1 | 从商汤 sensenova（或所选 LLM 供应商）控制台取得新 API Key | 供应商官网控制台 | 5–15 分钟 |
 | U2 | 在 **Nexent 平台**（租户管理员登录）→ `/models` 注册 LLM 模型，填 provider=对应厂商、api_key、base_url、模型名 | 平台 UI → 写库 `model_record_t` | 10–20 分钟 |
 | U3 | 在平台 UI 设置 `KW_LLM_SMALL/MID/LARGE_MODEL_ID` 指向 U2 注册的模型（或把值写入部署 `.env` 后重启） | 平台配置 / `backend/consts/const.py` 读取的环境变量 | 5–10 分钟 + 重启 |
-| U4 | 在**智能体编排工具（ZCode）设置**里为子智能体指定 sensenova2/deepseek-flash 并填有效 key（**这是 09-23 真正卡住的那条轨**） | ZCode / 编排工具设置页（不在本代码仓） | 5–10 分钟 |
+| U4 | 在**智能体编排工具**设置里为子智能体指定供应商 —— **名称必须与本机实际配置逐字一致：`sensenova1`（不是 `sensenova2`）**；模型建议 `deepseek-flash`（或 `glm-5.2`）；key 填在供应商卡片内（**这是 09-23 真正卡住的那条轨**） | 编排工具设置页 → 供应商卡片（不在本代码仓） | 3–5 分钟 |
 | U5 | 跑下方最小验证命令确认生效 | 见各步"验证命令" | 1–2 分钟/次 |
 
 > 注：U2/U3 是"平台侧模型注册轨"（影响 in-platform 智能体 LLM 调用）；U4 是"子智能体 provider 轨"（影响 visual-judge / E2 LLM 侧）。两条轨独立，缺任何一条都会在不同环节报密钥错。
