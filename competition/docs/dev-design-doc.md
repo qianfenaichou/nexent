@@ -199,7 +199,7 @@ A：置信度校准 ECE 目标 ≤0.10（无校准表诚实标 `calibration_appl
 | 机制预验证四探针 | ✅（seed 固定可复跑） | P1 V 题 100% vs 20.6%/25.0%；P2 VOI 净差 +1~+6；P3 0.02ms；P4 98.8% |
 | E2 四级消融 | 🟡 partial（报告 `partial:true`；已跑 A1 10 题 / A2 4 题 / A4 两臂配对，A3 待跑） | **A1_pure_rag** n_q=10，acc=0.7241 / pass2=0.70 / n_judged=**29/30**（F .7857(14) / M .6667(15) / V·X insufficient_data）；**A2_graph** n_q=4，acc=0.75 / n_judged=12/12（仅 F）；**A4_full 配对终版**（`e2-ablation-paired2.json`，`same_invocation=true`、零空正文污染）：V 题 3 题×2 runs **两臂各 acc=1.0（n=6/6）→ Δ=0.0**；**A3_multihop 待跑**（0 题，`insufficient_data`——零判定不等于 0 分） |
 | E8 版本钉住 on/off | ✅（honest null） | **Δ=0.0**（配对终版，取代早期跨 invocation 的 +0.3334 伪方向，见 `pitfalls.md` #62）。**诚实限制：n=6 小样本 + 两臂均满分，Δ=0 不得反推「版本钉住无效」**；机制证据改用判别题双时钟对（糖化血红蛋白：`as_of=2021-06-01` → `INSUFFICIENT_EVIDENCE` 旧时钟 0 证据诚实拒绝 vs `as_of=2025-06-01` → `RECOMMEND` + 3 证据） |
-| PG 集成 + knowevo 全量单测 | ✅ | **711 passed / 30 skipped / 0 failed**（2026-09-22 本次提交实测，`pytest ../test/backend/services/knowevo/ -q`） |
+| PG 集成 + knowevo 全量单测 | ✅ | **721 passed / 30 skipped / 0 failed**（2026-09-24 凌晨实测，`pytest ../test/backend/services/knowevo/ -q`；原始输出 `archive/overnight-2026-09-24/receipts/T1-pytest-raw.txt`：721 passed, 30 skipped, 1 warning in 50.88s） |
 
 ### 5.6 Agent 主配置（真实落库值）
 

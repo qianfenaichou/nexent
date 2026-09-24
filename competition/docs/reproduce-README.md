@@ -107,7 +107,7 @@ uv run python -m services.knowevo.pipeline.ablation --levels A4 --pin on,off --t
 
 # 单测（不依赖真 LLM）
 uv run pytest ../test/backend/services/knowevo/test_ablation.py -q --no-header
-# PG 集成全量（真实库，零回归基线 551 passed）
+# PG 集成全量（真实库，零回归基线 721 passed / 30 skipped；实测见 archive/overnight-2026-09-24/receipts/T1-pytest-raw.txt：721 passed, 30 skipped, 1 warning in 50.88s）
 uv run pytest ../test/backend/services/knowevo/ -q --no-header
 ```
 
@@ -145,7 +145,7 @@ docker exec -i nexent-postgresql psql -U root -d nexent -t -A < validate_ingest.
 - [ ] `bash deploy.sh --defaults --image-source mainland docker` 一键起栈
 - [ ] 租户/管理员/模型注册走通（§3-4）
 - [ ] 智能体 + 4 Skill + 5 自研 MCP 工具双注册可见（§5）
-- [ ] `uv run pytest ../test/backend/services/knowevo/` 全量通过（PG 集成 551）
+- [ ] `uv run pytest ../test/backend/services/knowevo/` 全量通过（PG 集成 **721 passed / 30 skipped**，2026-09-24 凌晨实测）
 - [ ] 消融命令可复跑、断点续跑生效（§6）
 - [ ] 示例问答可回溯 `decision_card_t`/`eval_run_t` 行（真实问答硬要求）
 
