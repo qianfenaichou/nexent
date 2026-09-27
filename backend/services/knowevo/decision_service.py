@@ -381,7 +381,7 @@ class DecisionService:
                      confidence=_as_float(data.get("confidence"), 0.0),
                      level="L2", reason=str(data.get("reason", ""))[:200])
 
-    def route_hit_feedback(self, question: str, route: str,
+    def route_hit_feedback(self, question: str, route: Route,
                            correct: bool) -> None:
         """Record whether the chosen route produced a correct answer (E6).
 

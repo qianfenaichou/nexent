@@ -750,6 +750,7 @@ async def evaluate(testset_path: Path, runs: int = 3, top_k: int = 5,
                    limit: int | None = None, tenant_id: str = DEFAULT_TENANT,
                    lang: str = "zh", build_llm=None,
                    retriever: Retriever | None = None,
+                   corpus_root: str | Path | None = None,
                    on_unexpected: str = "raise") -> dict[str, Any]:
     """Run the E1 baseline over a testset and return the metrics payload.
 
@@ -765,8 +766,9 @@ async def evaluate(testset_path: Path, runs: int = 3, top_k: int = 5,
         questions = questions[:limit]
 
     if retriever is None:
-        logger.info("parsing corpus from %s ...", CORPUS_ROOT)
-        retriever = Retriever.from_documents(parse_corpus(CORPUS_ROOT))
+        corpus_root = Path(corpus_root) if corpus_root else CORPUS_ROOT
+        logger.info("parsing corpus from %s ...", corpus_root)
+        retriever = Retriever.from_documents(parse_corpus(corpus_root))
         logger.info("index built: %d chunks", len(retriever.chunks))
 
     if build_llm is None:
@@ -815,6 +817,10 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="E1 pure-RAG baseline runner")
     parser.add_argument("--testset", default=str(
         CORPUS_ROOT / "testset-v1-seed.json"))
+    # 加性参数（Q2 迁移实测）：指定其他语料根目录（如 competition/corpus-gov）；
+    # 缺省保持 CORPUS_ROOT 不变，不影响既有口径。
+    parser.add_argument("--corpus-root", default=None,
+                        help="corpus directory for BM25 retrieval (default: competition/corpus)")
     parser.add_argument("--runs", type=int, default=3)
     parser.add_argument("--top-k", type=int, default=5)
     parser.add_argument("--limit", type=int, default=None)
@@ -842,6 +848,7 @@ def main(argv=None) -> int:
     metrics = asyncio.run(evaluate(
         Path(args.testset), runs=args.runs, top_k=args.top_k,
         limit=args.limit, tenant_id=args.tenant, lang=args.lang,
+        corpus_root=args.corpus_root,
         on_unexpected=args.on_unexpected))
 
     run_id = None

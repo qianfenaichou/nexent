@@ -24,6 +24,11 @@ Honest reporting rules baked into the CLI:
   without an explicit ``verified``/``corrected`` verdict are treated as
   ``unverified`` and excluded from precision/recall - an unverified row must
   never be counted as correct.
+* Gold rows typed ``UNC`` (unchanged topic, batch2 C-rows) are **in-domain
+  negatives** (2026-09-27 user ruling): kept as ``status="negative"`` rows
+  instead of being silently dropped, they leave the recall denominator (not
+  a detectable change) and feed the precision-side false-positive set - a
+  machine change reported on an unchanged topic is a false positive.
 * Impact analysis is skipped (not faked) when no tenant is given, and any
   changed paragraph that does not match an evidence row is simply absent
   from the affected surface.
@@ -119,7 +124,11 @@ def parse_gold(path: Path) -> list[dict]:
     """Parse a gold seed: JSON list, or the markdown table used by the L9 seed.
 
     A row without an explicit verification verdict becomes ``unverified`` so
-    it can never inflate precision/recall.
+    it can never inflate precision/recall. A row typed ``UNC`` (unchanged
+    topic, batch2 C-rows) becomes an in-domain negative: ``status="negative"``,
+    ``change_type=None`` - kept instead of silently dropped, excluded from the
+    recall denominator by the usual verdict filter, and counted on the
+    false-positive side of the precision axis (2026-09-27 user ruling).
     """
     text = path.read_text(encoding="utf-8")
     if path.suffix.lower() == ".json":
@@ -142,11 +151,16 @@ def parse_gold(path: Path) -> list[dict]:
                 headers = cells
             continue
         row = dict(zip(headers, cells))
-        change_type = _GOLD_TYPE_MAP.get(
-            (row.get("类型") or row.get("change_type") or "").strip().upper()
-        )
-        if change_type is None:
-            continue
+        raw_type = (row.get("类型") or row.get("change_type") or "").strip().upper()
+        change_type = _GOLD_TYPE_MAP.get(raw_type)
+        # 口径（2026-09-27 用户裁决）：类型 UNC = 未变更话题（域内阴性）。
+        # 不再静默丢弃：保留为 status="negative"、change_type=None 的行——
+        # recall 侧被 verified/corrected 过滤器排除（退出 recall 分母，不计为
+        # gold change）；precision 侧进入假阳分母的阴性集（机器把未变更话题
+        # 报成变更即假阳）。依据：guideline_diff_seed_batch2.md 头部 P/R 规则。
+        is_negative = change_type is None and raw_type == "UNC"
+        if change_type is None and not is_negative:
+            continue  # unknown type: neither a gold change nor a declared negative
         anchor = (
             row.get("章节锚点")
             or row.get("anchor")
@@ -154,11 +168,17 @@ def parse_gold(path: Path) -> list[dict]:
             or row.get("领域")
             or ""
         ).strip()
-        status = (
-            row.get("核验结论") or row.get("status") or ""
-        ).strip().lower()
-        if status not in ("verified", "corrected", "unverified"):
-            status = "unverified"
+        if is_negative:
+            # A C-row's 核验结论=verified means "the unchanged claim is
+            # verified", NOT a change verdict - force the negative status so
+            # the row can never enter the recall denominator.
+            status = "negative"
+        else:
+            status = (
+                row.get("核验结论") or row.get("status") or ""
+            ).strip().lower()
+            if status not in ("verified", "corrected", "unverified"):
+                status = "unverified"
         rows.append(
             {
                 "id": (row.get("#") or row.get("id") or str(len(rows) + 1)).strip(),
@@ -204,7 +224,10 @@ def calibrate_loose(machine: list[als.ChangeItem], gold: list[dict]) -> als.Cali
     ``calibrate_pr`` matches anchors exactly; the L9 seed's anchors are
     section titles while the detector emits numbered paths, so this wrapper
     matches on the gold row's domain label as well. The honesty rule is
-    unchanged: unverified rows are excluded from both sides.
+    unchanged: unverified rows are excluded from both sides, and so are
+    in-domain negatives (``status="negative"``, the UNC unchanged topics) -
+    ``unverified_excluded`` counts every verdict-filtered row (unverified +
+    negatives).
     """
     machine_real = [c for c in machine if c.change_type != "UNCHANGED"]
     eligible = [
@@ -306,6 +329,7 @@ async def _run(args: argparse.Namespace) -> int:
     else:
         print("[impact] skipped: no --tenant (nothing was guessed)")
 
+    negative_calibration = None
     if args.gold and not args.impact_only:
         gold_path = Path(args.gold).resolve()
         gold = parse_gold(gold_path)
@@ -313,6 +337,29 @@ async def _run(args: argparse.Namespace) -> int:
         result.topic_calibration = als.calibrate_topic(detect.changes, gold)
         calibration = result.calibration
         topic = result.topic_calibration
+        # 2026-09-27 口径：UNC 行（status="negative"）= 域内阴性，进 precision
+        # 轴的假阳分母（阴性集）。阴性侧用同一 calibrate_topic 匹配器计一遍：
+        # 命中阴性话题的机器分组即裁决下的假阳。注意 negative_matched_groups
+        # 与阳性命中的分组可能相交（同一分组可同时命中变更话题与阴性话题），
+        # 这里只有计数；集合语义的精确分解见 probe_p5 的 h_in_domain_negatives。
+        negatives = [g for g in gold if g.get("status") == "negative"]
+        if negatives:
+            shaped = [dict(g, status="verified") for g in negatives]
+            neg = als.calibrate_topic(detect.changes, shaped)
+            negative_calibration = {
+                "ruling": "UNC = in-domain negative (2026-09-27 user ruling; batch2 P/R rule)",
+                "n_negative_topics": len(negatives),
+                "negative_ids": [g["id"] for g in negatives],
+                "negative_topics_matched": neg.matched_topics,
+                "negative_matched_groups": neg.matched_groups,
+                "machine_groups": neg.machine_groups,
+                "note": (
+                    "machine groups matching an in-domain negative count toward "
+                    "the false-positive side of the precision_lower_bound "
+                    "denominator; negative_matched_groups may overlap the "
+                    "positive-matched groups (counts, not disjoint sets)"
+                ),
+            }
         if topic.gold_total == 0:
             print(
                 f"[calibration] NOT MEASURED: {topic.unverified_excluded}/"
@@ -338,6 +385,14 @@ async def _run(args: argparse.Namespace) -> int:
                 f"machine_items={calibration.machine_total} "
                 "(granularity-mismatched baseline, not the official number)"
             )
+        if negative_calibration:
+            print(
+                f"[calibration] in_domain_negatives={negative_calibration['n_negative_topics']} "
+                f"negative_topics_matched={negative_calibration['negative_topics_matched']} "
+                f"negative_matched_groups={negative_calibration['negative_matched_groups']}/"
+                f"{negative_calibration['machine_groups']} "
+                "(UNC unchanged topics: a machine change report on them is a false positive)"
+            )
 
     if args.tenant and not args.impact_only and not args.no_persist:
         result.persisted = service.persist(
@@ -358,6 +413,8 @@ async def _run(args: argparse.Namespace) -> int:
         "gold_file": str(args.gold) if args.gold else None,
         "mode": "impact-only" if args.impact_only else "full",
     }
+    if negative_calibration:
+        report["in_domain_negatives"] = negative_calibration
     out_path = Path(args.out).resolve()
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(

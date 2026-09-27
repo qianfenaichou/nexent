@@ -16,6 +16,7 @@ import json
 import os
 import sys
 import time
+import typing
 import uuid as uuid_mod
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -58,6 +59,7 @@ from services.knowevo.schemas import (
     EvidenceItem,
     KnowledgeStamp,
     Provenance,
+    Route,
 )
 from services.knowevo.version_pin import VersionClock
 
@@ -221,26 +223,34 @@ class TestRouting:
     def test_signature_failure_escalates_to_rm(self):
         svc = DecisionService()
         q = "二甲双胍是哪一类降糖药？"
-        svc.route_hit_feedback(q, ROUTE_RETRIEVAL, correct=False)
-        svc.route_hit_feedback(q, ROUTE_RETRIEVAL, correct=False)
+        svc.route_hit_feedback(q, Route(route=ROUTE_RETRIEVAL), correct=False)
+        svc.route_hit_feedback(q, Route(route=ROUTE_RETRIEVAL), correct=False)
         route = svc.route(q)
         assert route.level == "L3" and "escalate" in route.reason
 
     def test_single_failure_does_not_escalate(self):
         svc = DecisionService()
         q = "二甲双胍是哪一类降糖药？"
-        svc.route_hit_feedback(q, ROUTE_RETRIEVAL, correct=False)
+        svc.route_hit_feedback(q, Route(route=ROUTE_RETRIEVAL), correct=False)
         assert svc.route(q).route == ROUTE_RETRIEVAL
 
     def test_route_hit_rate_aggregates_feedback(self):
         svc = DecisionService()
-        svc.route_hit_feedback("q1", ROUTE_RETRIEVAL, correct=True)
-        svc.route_hit_feedback("q1", ROUTE_RETRIEVAL, correct=True)
-        svc.route_hit_feedback("q2", ROUTE_BOTH, correct=False)
+        svc.route_hit_feedback("q1", Route(route=ROUTE_RETRIEVAL), correct=True)
+        svc.route_hit_feedback("q1", Route(route=ROUTE_RETRIEVAL), correct=True)
+        svc.route_hit_feedback("q2", Route(route=ROUTE_BOTH), correct=False)
         assert svc.route_hit_rate() == pytest.approx(2 / 3)
 
     def test_route_hit_rate_empty_is_zero(self):
         assert DecisionService().route_hit_rate() == 0.0
+
+    def test_route_hit_feedback_takes_a_route_object(self):
+        # Contract anchor (decision_service.py.md:19): the feedback parameter
+        # is a Route object, not a bare str (drift D5 of the 2026-09-24
+        # contract audit, resolved code-side per "code obeys contract").
+        # get_type_hints resolves the PEP 563 string annotation.
+        hints = typing.get_type_hints(DecisionService.route_hit_feedback)
+        assert hints["route"] is Route
 
     @pytest.mark.asyncio
     async def test_async_router_uses_l2_classification(self):
