@@ -125,7 +125,7 @@ export function OntologyTreePanel({ committedRow }: Props) {
             };
           },
         },
-        behaviors: ["drag-canvas", "zoom-canvas", "collapse-expand"],
+        behaviors: ["drag-canvas", "zoom-canvas", "collapse-expand", "drag-element"],
       });
       // render() is async; a rejected render must surface as an error state
       // instead of leaving a silent blank canvas behind.
