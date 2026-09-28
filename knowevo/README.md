@@ -30,7 +30,7 @@ knowevo/
 │   │       └── gen_synthetic_graph.py.md
 │   ├── database/knowevo_models.py.md ← 12 表 ORM 说明（DDL 见备忘录 10 分册）
 │   └── prompts/                      ← 双语 prompt 模板清单（knowevo_*.yaml 对）
-├── mcp_servers/knowevo_mcp/          ← A2：8 个自研 MCP 工具（FastMCP v4 独立服务）
+├── mcp_servers/knowevo_mcp/          ← A2：自研 MCP 工具（FastMCP 独立服务；SPEC 冻结词表 8 个，已注册 5 个：kg_search / kg_stats / kg_multi_hop / decision_card_render / skill_template_apply，其余 3 个为规划项）
 │   └── SPEC.md
 ├── frontend/features/                ← L5 三面板（knowledgeGraph/decisionCard/assetDashboard）
 │   └── SPEC.md

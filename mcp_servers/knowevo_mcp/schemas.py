@@ -7,6 +7,12 @@ standalone FastMCP server (server.py) and the Local-MCP inner registration
 (tool_collection/mcp/kg_tools.py, T-08 wiring) import from here, so the
 shapes can never drift between the two registration surfaces.
 
+Registered today = 5 tools (kg_search / kg_stats / kg_multi_hop /
+decision_card_render / skill_template_apply — single source of truth:
+KG_MCP_TOOL_NAMES in backend/tool_collection/mcp/kg_tools.py); the frozen
+vocabulary members kg_evolution_trace / ontology_diff / evidence_verify
+remain planned and MUST NOT be claimed as registered in external material.
+
 Every tool returns used_tokens / elapsed_ms so the cost ledger can collect
 from the outermost boundary (SPEC discipline 2).
 """
