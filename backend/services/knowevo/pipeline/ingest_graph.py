@@ -236,6 +236,25 @@ async def _run(args: argparse.Namespace) -> int:
                 record_diagnostics = diag.snapshot()
                 llm_calls_total += diag.llm_calls
             report = await svc.merge_delta([result])
+            if channel == "llm" and not (result.entities or result.edges
+                                         or result.pending):
+                # pitfall #137: a hard-failed LLM call and a legitimately
+                # empty extraction are indistinguishable by the time we get
+                # here (the paced driver returns {} after exhausting its
+                # retries), so an empty LLM span must NOT be written to the
+                # ledger as done - is_extract_done() would then skip it on
+                # every resume and the span would be silently lost.
+                # Leaving it unrecorded keeps it retryable; the trade-off is
+                # that a genuinely empty chunk is re-attempted on each
+                # resume, which shows up here in `errors` (and rc=2).
+                errors.append(
+                    f"empty extraction for span {span.span_hash()} "
+                    "(not recorded; span stays retryable)")
+                logger.warning(
+                    "empty extraction (span=%s, chunk=%s); not recorded, "
+                    "span stays retryable", span.span_hash(),
+                    chunk.get("chunk_idx"))
+                continue
             extracted += 1
             tokens += int(getattr(result, "tokens_spent", 0))
             for key in ("added", "merged", "superseded",
