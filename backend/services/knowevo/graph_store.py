@@ -31,6 +31,7 @@ Design inspired by: graphiti's bi-temporal edges and neighborhood walks
 """
 import uuid
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
@@ -194,9 +195,12 @@ class GraphStore(ABC):
     async def multi_hop(self, tenant_id: str, seeds: list[str],
                         hop_plan: HopPlan,
                         beam: int = 3, depth: int = 3,
-                        as_of: datetime | None = None) -> list[Path]:
+                        as_of: datetime | None = None,
+                        rank: Callable[[Path], float] | None = None) -> list[Path]:
         """Beam walk from the seeds; ``as_of`` pins it to a knowledge
-        version (T-09), None means the current view."""
+        version (T-09), None means the current view. ``rank`` is an
+        optional path -> score retention scorer (higher kept first); None
+        retains the v0 behaviour of keeping the longest paths."""
         ...
 
     @abstractmethod
@@ -514,14 +518,23 @@ class PgJsonbGraphStore(GraphStore):
     async def multi_hop(self, tenant_id: str, seeds: list[str],
                         hop_plan: HopPlan,
                         beam: int = 3, depth: int = 3,
-                        as_of: datetime | None = None) -> list[Path]:
+                        as_of: datetime | None = None,
+                        rank: Callable[[Path], float] | None = None) -> list[Path]:
         """Greedy beam walk: at each depth expand the beam frontier one hop
-        and keep the beam-most paths by length (no cycles). Ranking is
-        lexical in v0 - T-09 layers PPR/embedding scoring on top.
+        and keep the beam-most paths (no cycles). Ranking is lexical in v0;
+        later scoring layers must stay per-hop explainable - the PPR ranker
+        was rejected on exactly those grounds (auditability over elegance).
 
         ``as_of`` (T-09) pins every expansion step to a knowledge-version
         cutoff, so the walk only ever traverses facts valid under that
         version (02-tech-plan 3.2).
+
+        ``rank`` (L1, tech-optimization 2026-09-28 §L1) is an optional
+        path -> score retention scorer, higher kept first; the store stays
+        domain-blind because the caller closes the question into it. None
+        keeps the v0 longest-first retention, which is what the service
+        layer has always re-ranked behind. Whatever the scorer, retention
+        stays per-hop explainable - no opaque PPR scores.
         """
         if not seeds:
             return []
@@ -559,8 +572,13 @@ class PgJsonbGraphStore(GraphStore):
                         edges=p.edges + [edge.id],
                         claims=p.claims + [edge.claim],
                     ))
-            paths = sorted(new_paths, key=lambda p: len(p.entities),
-                           reverse=True)[:beam]
+            # Beam retention (L1): rank lets the caller close the question
+            # into the keep decision; None preserves the v0 longest-first
+            # retention bit for bit (stable sort, same tie order).
+            paths = sorted(
+                new_paths,
+                key=rank if rank is not None else (lambda p: len(p.entities)),
+                reverse=True)[:beam]
             if not expanded:
                 break  # nothing anywhere could take another hop
         return paths

@@ -9,6 +9,8 @@
 
 > **2026-09-17 T-07a 契约偏差回填**：实现为多租户语义给全部方法加了 `tenant_id: str` 为首参（T-03 起全库标准）；`upsert_*` 输入与 `entity_lookup` 返回改用 `dict`/`EntityCard`（自包含 dataclass，避免服务层与 ORM 模型耦合）。方法名、查询行为（现行视图/束搜索/任务归属）不变。见 `nexent/competition/tasks/T-07-brief.md` Evidence 偏差记录。
 
+> **2026-09-28 L1 增量参数回填（含 T-09 漏记补记）**：实现在冻结签名之后追加过**可选尾部参数**，均为加法扩展，方法名、查询行为、返回形状不变：① `neighbors` 与 `multi_hop` 各加 `as_of: datetime | None = None`（T-09 版本钉住，见 `version_pin.py`；当时只写进了实现 docstring，本文件漏记，此处补记）；② `multi_hop` 加 `rank: Callable[[Path], float] | None = None`（L1 beam 保留打分器：路径 → 分数，高者先留；**None = v0 按长度保留，行为逐位不变**；调用方把问题闭包进 `rank`，store 保持域无关，保留决策每跳可解释、不引入 PPR 分数——审计性>理论优雅裁决仍有效）。依据：`competition/docs/tech-optimization-2026-09-28/KnowEvo提分总纲.md` §二 L1 第 2 步。
+
 ```python
 class GraphStore(ABC):
     async def upsert_entities(self, tenant_id: str, ents: list[dict]) -> None: ...

@@ -34,6 +34,7 @@ from services.knowevo.decision_service import (
     HEALTHCARE_DISCLAIMER,
     LOOKUP_RULES,
     PROBE_FAILED,
+    PROPOSITION_MATCH,
     REASONING_LATENCY_BUDGET_MS,
     ROUTER_EXAMPLES,
     VERSION_COMPARE_WORDS,
@@ -686,6 +687,47 @@ class TestPathScoring:
         q = "eGFR 45 时 SGLT2i 仍可起始？"
         assert svc._answerable(strong, q) is True
         assert svc._answerable(weak, q) is False
+
+    def test_sim_defaults_to_lexical_overlap(self):
+        from services.knowevo.graph_store import Path
+        svc = DecisionService()
+        assert svc.sim is _overlap
+        path = Path(entities=["a", "b"],
+                    claims=["eGFR 45 时 SGLT2i 仍可起始"])
+        q = "eGFR 45 时 SGLT2i 是否可以起始？"
+        explicit = DecisionService(sim=_overlap)
+        assert (explicit.score_path(path, q).score.relevance
+                == svc.score_path(path, q).score.relevance)
+        assert explicit._answerable([path], q) == svc._answerable([path], q)
+
+    def test_injected_sim_lifts_paraphrased_match(self):
+        # L1 seam: the question paraphrases the claim (brand/colloquial
+        # aliases), so the lexical default ties both paths at relevance 0
+        # and the injected scorer is what lifts the true answer to the top.
+        from services.knowevo.graph_store import Path
+        q = "吃格华止会不会拉肚子"
+        good = Path(entities=["metformin"], claims=["二甲双胍可引起腹泻"])
+        off = Path(entities=["aspirin"], claims=["阿司匹林抑制血小板聚集"])
+        lexical = DecisionService()
+        assert lexical.score_path(good, q).score.relevance == 0.0
+        assert lexical._answerable([good], q) is False
+        assert (lexical.score_path(good, q).score.total
+                == lexical.score_path(off, q).score.total)
+
+        def alias_sim(question: str, text: str) -> float:
+            for src, dst in (("格华止", "二甲双胍"), ("拉肚子", "腹泻")):
+                question = question.replace(src, dst)
+                text = text.replace(src, dst)
+            return _overlap(question, text)
+
+        semantic = DecisionService(sim=alias_sim)
+        # relevance lands exactly on PROPOSITION_MATCH (6/12 unigram
+        # Jaccard); _answerable passes because the gate is >= — revisit
+        # this fixture before ever moving that threshold.
+        assert semantic.score_path(good, q).score.relevance == PROPOSITION_MATCH
+        assert semantic._answerable([good], q) is True
+        assert (semantic.score_path(good, q).score.total
+                > semantic.score_path(off, q).score.total)
 
 
 # ---------------------------------------------------------------------------

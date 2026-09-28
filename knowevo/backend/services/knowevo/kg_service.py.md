@@ -53,6 +53,8 @@ class KGService:
                     ontology_version: str | None = None) -> KGSearchResult: ...
     async def evolution_trace(self, entity_id: str | None, decision_id: str | None) -> Timeline: ...
 ```
+> **2026-09-28 L2 增量参数回填**：`evolution_trace` 实现在冻结签名之后追加了可选尾部参数 `limit: int = 50`（事件截断上限），加法扩展、方法名与返回形状（`Timeline`）不变。依据：`competition/docs/verification-reports/l2-mcp-shape-deviation-2026-09-28.md`。
+
 
 ## 数据契约
 - `ExtractionResult` = `{entities: [{name, aliases, class_ref, props, tag, evidence_id}], edges: [{src, dst, rel_type, claim, tag, evidence_id}], pending: [...]}`

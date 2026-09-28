@@ -1,15 +1,21 @@
 """
-KnowEvo FastMCP server (T-07b, extended by T-09/T-19/T-20) - graph-query
-and decision-layer tool service.
+KnowEvo FastMCP server (T-07b, extended by T-09/T-19/T-20 and the L2
+tool-surface completion) - graph-query and decision-layer tool service.
 
-Tools delivered so far (SPEC.md freezes 8; kg_multi_hop and
-decision_card_render landed here; skill_template_apply is T-20's additive
-reuse-loop tool):
+Tools delivered (SPEC.md freezes 8; this file registers 8 of the 9-tool
+surface - the frozen 8 minus asset_search, whose backend capability does
+not exist yet, plus skill_template_apply from T-20):
 
     kg_search             lexical entity lookup + 1..2 hop neighborhood
     kg_stats              graph scale numbers
     kg_multi_hop          version-pinned beam walk (B2: every hop constrained
                           to the facts valid at the requested knowledge version)
+    kg_evolution_trace    bi-temporal timeline for an entity or a decision
+                          card (KGService.evolution_trace)
+    ontology_diff         persisted document-version alignment diffs with
+                          change-type counts (AlignmentService.list_diffs)
+    evidence_verify       evidence rows referencing given entities (GIN
+                          reverse lookup, GraphStore.reachable_decisions)
     decision_card_render  question -> evidence-backed decision card (T-19)
     skill_template_apply  mined SKILL.md template -> rendered instance (T-20)
 
@@ -32,6 +38,10 @@ from fastmcp import FastMCP
 
 from mcp_servers.knowevo_mcp.schemas import (
     DecisionCardInput,
+    EvidenceVerifyInput,
+    EvidenceVerifyOutput,
+    KGEvolutionTraceInput,
+    KGEvolutionTraceOutput,
     KGMultiHopInput,
     KGMultiHopOutput,
     KGMultiHopPath,
@@ -39,6 +49,8 @@ from mcp_servers.knowevo_mcp.schemas import (
     KGSearchOutput,
     KGStatsInput,
     KGStatsOutput,
+    OntologyDiffInput,
+    OntologyDiffOutput,
     SkillTemplateApplyInput,
     ToolError,
 )
@@ -72,19 +84,28 @@ _decision_service = None
 # T-20: the skill-template service owns the reuse loop over skill_template_t;
 # same injection shape so tests can supply an in-memory seam.
 _skill_template_service = None
+# L2: the KG service owns the bi-temporal evolution timeline and the
+# alignment service owns the persisted diff ledger; same injection shape.
+_kg_service = None
+_alignment_service = None
 
 
 def configure(tenant_id: str = "", store=None, decision_service=None,
-              skill_template_service=None):
+              skill_template_service=None, kg_service=None,
+              alignment_service=None):
     """Server-level dependency injection (tests / T-08 wiring)."""
     global _graph_store, _default_tenant, _decision_service
-    global _skill_template_service
+    global _skill_template_service, _kg_service, _alignment_service
     _default_tenant = tenant_id
     _graph_store = store
     if decision_service is not None:
         _decision_service = decision_service
     if skill_template_service is not None:
         _skill_template_service = skill_template_service
+    if kg_service is not None:
+        _kg_service = kg_service
+    if alignment_service is not None:
+        _alignment_service = alignment_service
 
 
 def _store():
@@ -193,6 +214,44 @@ def _template_service(tenant_id: str = ""):
         return _skill_template_service
     from services.knowevo.skill_template_service import SkillTemplateService
     return SkillTemplateService(tenant_id=_tenant(tenant_id))
+
+
+def _kg_service_for(store=None, tenant_id: str = ""):
+    """The KG service backing kg_evolution_trace (T-09 query surface).
+
+    Deliberately ``KGService.evolution_trace`` and not a re-implementation:
+    the entity branch needs ``store.list_relations_by_entity`` - the
+    bi-temporal relation list that includes superseded edges, which the
+    GraphStore seams cannot return (``neighbors`` yields the current view
+    or the invalidated set, never both, so no faithful timeline can be
+    assembled from it). That seam lives on kg_service's own PgStore, so
+    the default builds the service with that adapter; a caller-supplied
+    store is used only when it actually carries the seam. Tests inject a
+    fake service through configure() / the handler argument.
+    """
+    if _kg_service is not None:
+        return _kg_service
+    from services.knowevo.kg_service import KGService, PgStore
+
+    graph = store or _store()
+    if not hasattr(graph, "list_relations_by_entity"):
+        graph = PgStore()
+    return KGService(store=graph, tenant_id=_tenant(tenant_id))
+
+
+def _alignment_service_for(tenant_id: str = ""):
+    """The alignment service backing ontology_diff (the diff ledger).
+
+    Read-only use: ``list_diffs`` touches only the session seam - no LLM
+    and no embedding callable - so the default construction is cheap and
+    the tool never spends a token. Tests inject a fake through
+    configure() / the handler argument.
+    """
+    if _alignment_service is not None:
+        return _alignment_service
+    from services.knowevo.alignment_service import AlignmentService
+
+    return AlignmentService(tenant_id=_tenant(tenant_id))
 
 
 def _err(code: str, hint: str) -> dict:
@@ -444,6 +503,97 @@ async def skill_template_apply_handler(inputs: SkillTemplateApplyInput,
                     f"template apply failed: {type(exc).__name__}")
 
 
+async def kg_evolution_trace_handler(inputs: KGEvolutionTraceInput,
+                                     store=None,
+                                     tenant_id: str = "",
+                                     kg_service=None
+                                     ) -> KGEvolutionTraceOutput | dict:
+    """Knowledge-evolution timeline for one entity or one decision card
+    (frozen vocabulary, wrapped over ``KGService.evolution_trace``).
+
+    Returns KGEvolutionTraceOutput on success or a structured error dict
+    on failure (never raises into the MCP runtime). Superseded edges come
+    back on purpose: the tool's value is showing that something evolved,
+    and a current-view-only answer cannot show that.
+    """
+    t0 = time.monotonic()
+    store, tenant = _resolve(store, tenant_id)
+    try:
+        svc = kg_service or _kg_service_for(store, tenant)
+        timeline = await svc.evolution_trace(
+            entity_id=inputs.entity_id, decision_id=inputs.decision_id,
+            limit=inputs.limit)
+        return KGEvolutionTraceOutput(
+            entity_id=timeline.entity_id,
+            decision_id=str(timeline.decision_id)
+            if timeline.decision_id is not None else None,
+            events=[dict(e) for e in timeline.events],
+            truncated=bool(timeline.truncated),
+            valid_view=datetime.now(UTC),
+            used_tokens=0,
+            elapsed_ms=int((time.monotonic() - t0) * 1000),
+        )
+    except Exception as exc:  # noqa: BLE001 - structured error boundary
+        return _err("kg_evolution_trace_failed",
+                    f"evolution trace failed: {type(exc).__name__}")
+
+
+async def ontology_diff_handler(inputs: OntologyDiffInput,
+                                tenant_id: str = "",
+                                alignment_service=None
+                                ) -> OntologyDiffOutput | dict:
+    """Persisted document-version alignment diffs for the tenant (frozen
+    vocabulary, wrapped over ``AlignmentService.list_diffs``).
+
+    Returns OntologyDiffOutput on success or a structured error dict on
+    failure (never raises into the MCP runtime). Read-only by design:
+    detection and persistence stay in the alignment pipeline, the tool
+    only reads the ledger the pipeline wrote.
+    """
+    t0 = time.monotonic()
+    try:
+        svc = alignment_service or _alignment_service_for(tenant_id)
+        diffs = svc.list_diffs(limit=inputs.limit)
+        return OntologyDiffOutput(
+            diffs=[dict(d) for d in diffs], count=len(diffs),
+            used_tokens=0,
+            elapsed_ms=int((time.monotonic() - t0) * 1000),
+        )
+    except Exception as exc:  # noqa: BLE001 - structured error boundary
+        return _err("ontology_diff_failed",
+                    f"diff query failed: {type(exc).__name__}")
+
+
+async def evidence_verify_handler(inputs: EvidenceVerifyInput,
+                                  store=None,
+                                  tenant_id: str = ""
+                                  ) -> EvidenceVerifyOutput | dict:
+    """Evidence rows referencing the given entities (frozen vocabulary,
+    wrapped over ``GraphStore.reachable_decisions`` - the GIN reverse
+    lookup over kg_evidence_t.entity_refs, no traversal).
+
+    Returns EvidenceVerifyOutput on success or a structured error dict on
+    failure (never raises into the MCP runtime). A reverse lookup, not a
+    truthfulness verdict: callers that need a verdict render a decision
+    card instead.
+    """
+    t0 = time.monotonic()
+    store, tenant = _resolve(store, tenant_id)
+    try:
+        rows = await store.reachable_decisions(tenant,
+                                               list(inputs.entity_ids))
+        return EvidenceVerifyOutput(
+            entity_ids=list(inputs.entity_ids),
+            evidence_ids=[str(r) for r in rows],
+            matched=len(rows),
+            used_tokens=0,
+            elapsed_ms=int((time.monotonic() - t0) * 1000),
+        )
+    except Exception as exc:  # noqa: BLE001 - structured error boundary
+        return _err("evidence_verify_failed",
+                    f"evidence reverse lookup failed: {type(exc).__name__}")
+
+
 # ---------------------------------------------------------------------------
 # FastMCP registration (standalone form). Tool signatures ARE the Pydantic
 # models - one field source, no decorator/schema drift (SPEC discipline 1).
@@ -488,6 +638,35 @@ async def decision_card_render(inputs: DecisionCardInput) -> dict:
 async def skill_template_apply(inputs: SkillTemplateApplyInput) -> dict:
     out = await skill_template_apply_handler(inputs)
     return out if isinstance(out, dict) else out.model_dump(mode="json")
+
+
+@mcp.tool(name="kg_evolution_trace", description="Knowledge-evolution "
+          "timeline for one entity or one decision card: bi-temporal "
+          "relation events (superseded edges included on purpose) and the "
+          "card's knowledge stamp, oldest first, with an honest truncated "
+          "flag when the history was cut short.")
+async def kg_evolution_trace(inputs: KGEvolutionTraceInput) -> dict:
+    out = await kg_evolution_trace_handler(inputs)
+    return out.model_dump(mode="json") if not isinstance(out, dict) else out
+
+
+@mcp.tool(name="ontology_diff", description="List persisted "
+          "document-version alignment diffs for the tenant (newest first), "
+          "each with change-type counts - the change ledger that drives "
+          "ontology and graph updates. Read-only: no detection, no LLM.")
+async def ontology_diff(inputs: OntologyDiffInput) -> dict:
+    out = await ontology_diff_handler(inputs)
+    return out.model_dump(mode="json") if not isinstance(out, dict) else out
+
+
+@mcp.tool(name="evidence_verify", description="Verify which evidence rows "
+          "reference the given entities: a reverse lookup over the "
+          "evidence index (no graph traversal). Returns evidence ids and "
+          "a match count - a reference check, not a truthfulness verdict; "
+          "render a decision card when you need a verdict.")
+async def evidence_verify(inputs: EvidenceVerifyInput) -> dict:
+    out = await evidence_verify_handler(inputs)
+    return out.model_dump(mode="json") if not isinstance(out, dict) else out
 
 
 def main() -> None:

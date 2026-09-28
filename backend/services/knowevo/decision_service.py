@@ -236,7 +236,12 @@ class DecisionService:
     tests); ``llm`` is the injected async callable, or None when the caller
     only needs the deterministic parts (routing rules, the version-pinned
     walk, refusal handling, scoring). ``ontology`` is the active snapshot
-    dict and supplies the hop planner's relation vocabulary.
+    dict and supplies the hop planner's relation vocabulary. ``sim`` is an
+    optional (question, text) -> [0,1] relevance scorer for path ranking
+    and early termination; it defaults to the lexical Jaccard ``_overlap``
+    so callers that pass nothing see unchanged behaviour (L1 seam: a
+    semantic scorer plugs in here without touching the frozen multi_hop
+    surface, and must stay per-hop explainable - no opaque PPR scores).
     """
 
     def __init__(self, store: Any = None, llm: Any = None,
@@ -247,7 +252,8 @@ class DecisionService:
                  calibration: dict[str, Any] | list | None = None,
                  version_rows: list[dict[str, Any]] | None = None,
                  max_depth: int = KW_MULTIHOP_MAX_DEPTH,
-                 beam: int = KW_MULTIHOP_BEAM):
+                 beam: int = KW_MULTIHOP_BEAM,
+                 sim: Callable[[str, str], float] | None = None):
         self.store = store
         self.llm = llm
         self.ontology = ontology or {"classes": [], "rel_types": []}
@@ -256,6 +262,13 @@ class DecisionService:
         self.lang = lang
         self.max_depth = max(1, int(max_depth))
         self.beam = max(1, int(beam))
+        # Path-relevance seam (L1, tech-optimization 2026-09-28 §L1):
+        # score_path and _answerable score through this callable; the
+        # lexical default keeps behaviour identical until a semantic
+        # scorer is injected. _contradicts deliberately stays on the
+        # module-level _overlap: proposition identity is a lexical
+        # judgement, not a domain-similarity one.
+        self.sim = sim or _overlap
         self._calibration = calibration
         self._calibration_loaded = calibration is not None
         # Ontology version rows ([{version, created_at}]), the source of a
@@ -734,14 +747,16 @@ class DecisionService:
                    edges: list[EdgeCard] | None = None) -> ScoredPath:
         """Score one path on relevance, evidence richness and conflict.
 
-        A path missing a claim on some edge is flagged ``evidence_missing``:
-        the reasoning-path skill drops evidence-free edges (hallucination
-        guard), so the score must not reward a walk that is merely long.
+        Relevance is the injected ``sim`` scorer (lexical Jaccard by
+        default). A path missing a claim on some edge is flagged
+        ``evidence_missing``: the reasoning-path skill drops evidence-free
+        edges (hallucination guard), so the score must not reward a walk
+        that is merely long.
         """
         edges = edges or []
         claims = [c for c in (path.claims or []) if c]
         hops = max(1, len(path.entities) - 1) if path.entities else 1
-        relevance = _overlap(question, " ".join(claims)) if claims else 0.0
+        relevance = self.sim(question, " ".join(claims)) if claims else 0.0
         richness = len(claims) / hops
         if edges and not any((e.props or {}).get("evidence_id")
                              for e in edges):
@@ -757,13 +772,13 @@ class DecisionService:
 
     def _answerable(self, paths: list[Path], question: str) -> bool:
         """Early-termination test: did the walk reach a claim that covers
-        the question's content words?
+        the question's content words (as judged by the injected ``sim``)?
 
         The threshold is deliberately high - stopping early on a weak match
         loses the second hop that would have made the answer correct, and
         that failure looks like a wrong answer rather than a slow one.
         """
-        return any(_overlap(question, claim) >= PROPOSITION_MATCH
+        return any(self.sim(question, claim) >= PROPOSITION_MATCH
                    for path in paths for claim in (path.claims or []))
 
     async def calibrate_hops(self,

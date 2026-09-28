@@ -1,7 +1,8 @@
 """
 KnowEvo Local-MCP inner registration - kg_search + kg_stats (T-07b),
-kg_multi_hop (T-09), decision_card_render (T-19) and skill_template_apply
-(T-20).
+kg_multi_hop (T-09), decision_card_render (T-19), skill_template_apply
+(T-20) and the L2 completion kg_evolution_trace / ontology_diff /
+evidence_verify (2026-09-28).
 
 This is the second registration surface of the same tool handlers: the
 standalone FastMCP server (mcp_servers/knowevo_mcp/server.py) serves them
@@ -30,12 +31,18 @@ if str(_REPO_ROOT) not in sys.path:
 
 from mcp_servers.knowevo_mcp.schemas import (
     DecisionCardInput,
+    EvidenceVerifyInput,
+    EvidenceVerifyOutput,
+    KGEvolutionTraceInput,
+    KGEvolutionTraceOutput,
     KGMultiHopInput,
     KGMultiHopOutput,
     KGSearchInput,
     KGSearchOutput,
     KGStatsInput,
     KGStatsOutput,
+    OntologyDiffInput,
+    OntologyDiffOutput,
     SkillTemplateApplyInput,
 )
 from mcp_servers.knowevo_mcp.server import (
@@ -43,15 +50,19 @@ from mcp_servers.knowevo_mcp.server import (
 )
 from mcp_servers.knowevo_mcp.server import (
     decision_card_render_handler,
+    evidence_verify_handler,
+    kg_evolution_trace_handler,
     kg_multi_hop_handler,
     kg_search_handler,
     kg_stats_handler,
+    ontology_diff_handler,
     skill_template_apply_handler,
 )
 
 SERVICE_NAME = "knowevo"
 KG_MCP_TOOL_NAMES = (
-    "kg_search", "kg_stats", "kg_multi_hop", "decision_card_render",
+    "kg_search", "kg_stats", "kg_multi_hop", "kg_evolution_trace",
+    "ontology_diff", "evidence_verify", "decision_card_render",
     "skill_template_apply")
 
 # Reuse the standalone app as the mountable unit: the same FastMCP instance
@@ -66,6 +77,9 @@ def tool_schemas() -> dict[str, dict]:
         "kg_search": KGSearchInput.model_json_schema(),
         "kg_stats": KGStatsInput.model_json_schema(),
         "kg_multi_hop": KGMultiHopInput.model_json_schema(),
+        "kg_evolution_trace": KGEvolutionTraceInput.model_json_schema(),
+        "ontology_diff": OntologyDiffInput.model_json_schema(),
+        "evidence_verify": EvidenceVerifyInput.model_json_schema(),
         "decision_card_render": DecisionCardInput.model_json_schema(),
         "skill_template_apply": SkillTemplateApplyInput.model_json_schema(),
     }
@@ -77,6 +91,9 @@ def handlers() -> dict[str, object]:
         "kg_search": kg_search_handler,
         "kg_stats": kg_stats_handler,
         "kg_multi_hop": kg_multi_hop_handler,
+        "kg_evolution_trace": kg_evolution_trace_handler,
+        "ontology_diff": ontology_diff_handler,
+        "evidence_verify": evidence_verify_handler,
         "decision_card_render": decision_card_render_handler,
         "skill_template_apply": skill_template_apply_handler,
     }
@@ -105,12 +122,18 @@ __all__ = [
     "KG_MCP_TOOL_NAMES",
     "SERVICE_NAME",
     "DecisionCardInput",
+    "EvidenceVerifyInput",
+    "EvidenceVerifyOutput",
+    "KGEvolutionTraceInput",
+    "KGEvolutionTraceOutput",
     "KGMultiHopInput",
     "KGMultiHopOutput",
     "KGSearchInput",
     "KGSearchOutput",
     "KGStatsInput",
     "KGStatsOutput",
+    "OntologyDiffInput",
+    "OntologyDiffOutput",
     "SkillTemplateApplyInput",
     "handlers",
     "tool_schemas",

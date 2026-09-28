@@ -18,6 +18,7 @@ import uuid as uuid_mod
 from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
+from typing import ClassVar
 
 _REPO_ROOT = Path(__file__).resolve().parents[4]
 for _p in (str(_REPO_ROOT / "backend"), ):
@@ -107,6 +108,82 @@ class TestContractShape:
         import asyncio
         sub = asyncio.run(store.neighbors(TENANT_A, []))
         assert sub.entities == [] and sub.edges == []
+
+
+class _StubNeighborsStore(PgJsonbGraphStore):
+    """Offline harness for multi_hop: the beam walk only touches
+    ``self.neighbors``, so stubbing it exercises the real retention logic
+    without Postgres (the PG-gated layer cannot protect that code path)."""
+
+    def __init__(self, edges):
+        super().__init__()
+        self._edges = edges
+
+    async def neighbors(self, tenant_id, entity_ids, rel_types=None,
+                        hop=1, valid_view=True, as_of=None):
+        tails = set(entity_ids)
+        return Subgraph(edges=[e for e in self._edges
+                               if e.src in tails or e.dst in tails])
+
+
+def _edge(eid, src, dst, claim):
+    return EdgeCard(id=eid, src=src, dst=dst, rel_type="r", claim=claim)
+
+
+class TestMultiHopBeamRetention:
+    """L1 beam-retention seam: rank is an optional path scorer, None keeps
+    the v0 longest-first retention (which nothing tested before - the
+    store-level walk was PG-gated only).
+
+    Edge-list order matters in the real walk: per-tail candidates are
+    capped at ``beam`` incident edges BEFORE the cycle filter, so e3/e4
+    are listed ahead of e1 to give tail ``a`` two usable forward edges.
+    """
+
+    EDGES: ClassVar[list[EdgeCard]] = [
+        _edge("e3", "a", "i1", "胰岛素禁用于肾功能不全者"),
+        _edge("e4", "a", "i2", "无关填充"),
+        _edge("e2", "s", "m", "胰岛素经肾排泄"),
+        _edge("e1", "s", "a", "用药路径"),
+    ]
+
+    @pytest.mark.asyncio
+    async def test_default_retention_keeps_longest_paths(self):
+        store = _StubNeighborsStore(self.EDGES)
+        paths = await store.multi_hop(TENANT_A, ["s"], HopPlan(),
+                                      beam=2, depth=2)
+        # beam bounds the walk, and the length key keeps the two 3-hop
+        # paths over the dead-end 2-hop survivor
+        assert len(paths) == 2
+        assert [p.entities for p in paths] == [["s", "a", "i1"],
+                                               ["s", "a", "i2"]]
+
+    @pytest.mark.asyncio
+    async def test_injected_rank_keeps_query_relevant_paths(self):
+        store = _StubNeighborsStore(self.EDGES)
+
+        def rank(p: Path) -> float:
+            return 1.0 if "胰岛素" in " ".join(p.claims) else 0.0
+
+        paths = await store.multi_hop(TENANT_A, ["s"], HopPlan(),
+                                      beam=2, depth=2, rank=rank)
+        kept = {tuple(p.entities) for p in paths}
+        # the query-conditioned key flips the v0 preference: the 2-hop
+        # on-topic path survives while the 3-hop irrelevant one is dropped
+        assert ("s", "a", "i1") in kept
+        assert ("s", "m") in kept
+        assert ("s", "a", "i2") not in kept
+
+    @pytest.mark.asyncio
+    async def test_rank_none_equals_length_key(self):
+        store = _StubNeighborsStore(self.EDGES)
+        default_paths = await store.multi_hop(TENANT_A, ["s"], HopPlan(),
+                                              beam=2, depth=3)
+        explicit = await store.multi_hop(TENANT_A, ["s"], HopPlan(),
+                                         beam=2, depth=3,
+                                         rank=lambda p: len(p.entities))
+        assert ([p.entities for p in default_paths]
+                == [p.entities for p in explicit])
 
 
 # ---------------------------------------------------------------------------

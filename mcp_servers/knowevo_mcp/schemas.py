@@ -7,11 +7,15 @@ standalone FastMCP server (server.py) and the Local-MCP inner registration
 (tool_collection/mcp/kg_tools.py, T-08 wiring) import from here, so the
 shapes can never drift between the two registration surfaces.
 
-Registered today = 5 tools (kg_search / kg_stats / kg_multi_hop /
+Registered today = 8 tools (kg_search / kg_stats / kg_multi_hop /
+kg_evolution_trace / ontology_diff / evidence_verify /
 decision_card_render / skill_template_apply — single source of truth:
-KG_MCP_TOOL_NAMES in backend/tool_collection/mcp/kg_tools.py); the frozen
-vocabulary members kg_evolution_trace / ontology_diff / evidence_verify
-remain planned and MUST NOT be claimed as registered in external material.
+KG_MCP_TOOL_NAMES in backend/tool_collection/mcp/kg_tools.py). The frozen
+vocabulary member asset_search remains planned and MUST NOT be claimed as
+registered in external material: no backend retrieval capability over
+doc_asset_t exists in services/knowevo (2026-09-28 audit: only point
+reads by id/asset_no serving other features), and the MCP layer wraps
+existing capabilities, it does not invent them.
 
 Every tool returns used_tokens / elapsed_ms so the cost ledger can collect
 from the outermost boundary (SPEC discipline 2).
@@ -19,7 +23,7 @@ from the outermost boundary (SPEC discipline 2).
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 # ---------------------------------------------------------------------------
 # Shared output shapes (SPEC: EntityCard / EdgeCard)
@@ -150,7 +154,8 @@ class KGMultiHopOutput(BaseModel):
 # ---------------------------------------------------------------------------
 
 class DecisionCardInput(BaseModel):
-    """Input of the decision-card tool (one of the 8 frozen SPEC tools).
+    """Input of the decision-card tool (frozen 8-tool vocabulary; I/O follows the implemented capability,
+    see competition/docs/verification-reports/l2-mcp-shape-deviation-2026-09-28.md).
 
     ``mode`` maps 1:1 onto ``DecisionService.render_card``: ``full``
     carries risks + counterfactual, ``lite`` skips them for
@@ -198,3 +203,125 @@ class SkillTemplateApplyInput(BaseModel):
 
     template_name: str = Field(min_length=1, max_length=64)
     variables: dict[str, str] = Field(default_factory=dict, max_length=16)
+
+
+# ---------------------------------------------------------------------------
+# kg_evolution_trace (frozen vocabulary) - the bi-temporal timeline tool,
+# a thin wrapper over KGService.evolution_trace (services/knowevo/
+# kg_service.py, the T-09 query surface frozen in kg_service.py.md)
+# ---------------------------------------------------------------------------
+
+class KGEvolutionTraceInput(BaseModel):
+    """Input of the evolution-trace tool (frozen 8-tool vocabulary; I/O follows the implemented capability,
+    see competition/docs/verification-reports/l2-mcp-shape-deviation-2026-09-28.md).
+
+    Exactly one target is required: ``entity_id`` yields the bi-temporal
+    relation events touching that entity (superseded edges included on
+    purpose - a timeline that only shows the current view cannot show
+    that anything evolved); ``decision_id`` yields the stored card's
+    knowledge stamp. When both are given the service's documented
+    precedence applies (the decision branch wins, matching
+    ``KGService.evolution_trace``).
+    """
+
+    entity_id: str | None = Field(None, max_length=128)
+    decision_id: str | None = Field(None, max_length=64)
+    limit: int = Field(50, ge=1, le=200)
+
+    @model_validator(mode="after")
+    def _require_one_target(self) -> "KGEvolutionTraceInput":
+        if not self.entity_id and not self.decision_id:
+            raise ValueError("entity_id or decision_id is required: a trace "
+                             "of nothing would be an empty answer pretending "
+                             "to be a query")
+        return self
+
+
+class KGEvolutionTraceOutput(BaseModel):
+    """Timeline rows as the Agent sees them.
+
+    The event dicts are owned by ``KGService.evolution_trace`` (graph
+    events carry src/dst/rel_type/claim/valid_at/invalid_at/contested/
+    evidence_id; the decision event carries question_id/knowledge_stamp/
+    needs_rerun) - re-declaring them here would be a second schema
+    source. ``truncated`` is the honesty flag: True means the limit cut
+    the history short, never a silently clipped provenance chain.
+    """
+
+    entity_id: str | None = None
+    decision_id: str | None = None
+    events: list[dict[str, Any]] = Field(default_factory=list)
+    truncated: bool = False
+    valid_view: datetime
+    used_tokens: int = 0
+    elapsed_ms: int = 0
+
+
+# ---------------------------------------------------------------------------
+# ontology_diff (frozen vocabulary) - the persisted alignment-diff ledger,
+# a thin wrapper over AlignmentService.list_diffs (services/knowevo/
+# alignment_service.py)
+# ---------------------------------------------------------------------------
+
+class OntologyDiffInput(BaseModel):
+    """Input of the ontology-diff tool (frozen 8-tool vocabulary; I/O follows the implemented capability,
+    see competition/docs/verification-reports/l2-mcp-shape-deviation-2026-09-28.md).
+
+    Read-only listing of the persisted document-version diffs
+    (doc_version_diff_t) for the tenant, newest first, each reduced to
+    {diff_id, old_asset_no, new_asset_no, created_at, change_counts}.
+    No LLM and no embedding call happens behind this tool: detect() and
+    the write paths stay in the alignment pipeline, the MCP surface only
+    reads the ledger.
+    """
+
+    limit: int = Field(20, ge=1, le=200)
+
+
+class OntologyDiffOutput(BaseModel):
+    """Diff ledger rows as the Agent sees them.
+
+    The row dicts are owned by ``AlignmentService.list_diffs`` - not
+    re-modeled here, same single-source discipline as the decision-card
+    payload. ``count`` mirrors len(diffs) for callers that count before
+    reading.
+    """
+
+    diffs: list[dict[str, Any]] = Field(default_factory=list)
+    count: int = 0
+    used_tokens: int = 0
+    elapsed_ms: int = 0
+
+
+# ---------------------------------------------------------------------------
+# evidence_verify (frozen vocabulary) - the evidence reverse-lookup tool,
+# a thin wrapper over GraphStore.reachable_decisions (the GIN reverse
+# lookup over kg_evidence_t.entity_refs frozen in graph_store.py.md)
+# ---------------------------------------------------------------------------
+
+class EvidenceVerifyInput(BaseModel):
+    """Input of the evidence-verify tool (frozen 8-tool vocabulary; I/O follows the implemented capability,
+    see competition/docs/verification-reports/l2-mcp-shape-deviation-2026-09-28.md).
+
+    ``entity_ids`` are stable_ids; the cap keeps a hallucinating Agent
+    from fanning a lookup into hundreds of ids (SPEC discipline 3).
+    """
+
+    entity_ids: list[str] = Field(min_length=1, max_length=20)
+
+
+class EvidenceVerifyOutput(BaseModel):
+    """Evidence rows referencing the given entities, as the Agent sees them.
+
+    Honest scope: the ids are kg_evidence_t rows whose entity_refs overlap
+    the input (the same rows the decision layer cites in evidence chains).
+    The tool answers "which evidence references these entities" - it is a
+    reverse lookup, NOT a truthfulness verdict; a caller that needs a
+    verdict renders a decision card instead.
+    """
+
+    entity_ids: list[str] = Field(default_factory=list)
+    evidence_ids: list[str] = Field(default_factory=list)
+    matched: int = 0
+    used_tokens: int = 0
+    elapsed_ms: int = 0
