@@ -112,3 +112,6 @@ competition/deliverables/submission-package/05-代码附件/
 competition/deliverables/submission-package/06-截图/
 competition/deliverables/submission-package/*/*.docx
 competition/deliverables/submission-package/04-MCP与知识库文件实体/*.tar.gz
+
+# 本地竞赛工作区（不随开源仓分发）
+/competition/
