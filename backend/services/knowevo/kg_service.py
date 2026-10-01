@@ -763,7 +763,8 @@ class KGService:
                  ontology_service: Any | None = None,
                  tenant_id: str = "",
                  tau1: float = DEFAULT_TAU1,
-                 tau2: float = DEFAULT_TAU2):
+                 tau2: float = DEFAULT_TAU2,
+                 conflict_observer: Any | None = None):
         self.store = store
         self.llm = llm
         self.ontology = ontology or {"classes": [], "rel_types": []}
@@ -771,6 +772,10 @@ class KGService:
         self.tenant_id = tenant_id
         self.tau1 = tau1
         self.tau2 = tau2
+        # A4 additive seam: optional observer invoked only on the
+        # existing-conflict branch of _merge_edge. Must never change
+        # supersede/contested outcomes; default None = zero behaviour change.
+        self.conflict_observer = conflict_observer
         self._class_keys: dict[str, dict[str, Any]] = {
             _anchor_key(c.get("stable_id") or c.get("name", "")): c
             for c in self.ontology.get("classes", [])
@@ -1237,7 +1242,30 @@ class KGService:
                 # Older and/or lower-authority new claim loses: drop it.
                 await self.store.supersede_relation(self.tenant_id, edge_id)
                 report.superseded += 1
+            self._notify_conflict_observer(existing, values, edge_id)
         return edge_id
+
+    def _notify_conflict_observer(self, existing: dict[str, Any],
+                                  values: dict[str, Any],
+                                  edge_id: Any) -> None:
+        """A4 optional seam: observational only, never affects merge.
+
+        Payload shape is the pair of relation-row projections the adapter
+        expects (``existing`` / ``incoming``). Failures are logged at debug
+        and swallowed so a broken observer cannot flip ingest outcomes.
+        """
+        if self.conflict_observer is None:
+            return
+        try:
+            incoming = dict(values)
+            incoming.setdefault("id", edge_id)
+            self.conflict_observer({
+                "existing": dict(existing),
+                "incoming": incoming,
+                "tenant_id": self.tenant_id,
+            })
+        except Exception:
+            logger.debug("conflict_observer failed", exc_info=True)
 
     async def _edge_business_time(self, evidence_id: Any
                                   ) -> tuple[Any | None, bool]:

@@ -14,6 +14,7 @@ stats. Same gate pattern as test_ontology_service.py (pitfalls #14).
 """
 import os
 import sys
+import asyncio
 import uuid as uuid_mod
 from datetime import UTC, datetime
 from pathlib import Path
@@ -307,3 +308,123 @@ class TestPgGraphStore:
         assert by_name[0].stable_id == "Drug:met"
         by_alias = await store.entity_lookup(tenant, "格华止")
         assert by_alias[0].stable_id == "Drug:met"
+
+
+# ---------------------------------------------------------------------------
+# Layer 1: entity_lookup ES-first seam (L1 step 3, no database)
+# ---------------------------------------------------------------------------
+# The PG ilike path is stubbed so the ES-first orchestration runs offline;
+# the stub records whether the fallback was consulted and what it returned.
+
+class _EntityLookupHarness(PgJsonbGraphStore):
+    def __init__(self, es_client=None, ilike_cards=None):
+        super().__init__(es_client=es_client)
+        self._ilike_cards = list(ilike_cards or [])
+        self.ilike_calls = 0
+
+    async def _entity_lookup_ilike(self, tenant_id, q, top_k):
+        self.ilike_calls += 1
+        return self._ilike_cards[:top_k]
+
+
+class _FakeEsClient:
+    """Synchronous injected client returning canned EntityCards."""
+
+    def __init__(self, hits):
+        self._hits = list(hits)
+        self.calls = 0
+
+    def entity_search(self, tenant_id, query, top_k):
+        self.calls += 1
+        return self._hits[:top_k]
+
+
+class _FakeEsClientAsync:
+    """Async variant - the store must adapt to either form."""
+
+    def __init__(self, hits):
+        self._hits = list(hits)
+        self.calls = 0
+
+    async def entity_search(self, tenant_id, query, top_k):
+        self.calls += 1
+        return self._hits[:top_k]
+
+
+class _BoomEsClient:
+    """Injected client whose every call fails - must degrade to ilike."""
+
+    def __init__(self):
+        self.calls = 0
+
+    def entity_search(self, tenant_id, query, top_k):
+        self.calls += 1
+        raise RuntimeError("ES unreachable")
+
+
+def _card(sid, name, cls="Drug"):
+    return EntityCard(stable_id=sid, name=name, class_ref=cls)
+
+
+class TestEntityLookupESFirst:
+    def test_no_injection_is_bit_for_bit_ilike(self):
+        """es_client=None => PG ilike path only, ES never consulted."""
+        ilike = [_card("Drug:a", "二甲双胍"), _card("Drug:b", "格华止")]
+        store = _EntityLookupHarness(es_client=None, ilike_cards=ilike)
+        res = asyncio.run(store.entity_lookup(TENANT_A, "二甲双胍", top_k=5))
+        assert res == ilike
+        assert store.es_client is None
+        assert store.ilike_calls == 1
+
+    def test_es_hits_first_then_ilike_fill_dedup(self):
+        """ES matches lead; ilike fills remaining slots without dup ids."""
+        es = [_card("ES:1", "二甲双胍"), _card("ES:2", "格华止")]
+        ilike = [_card("ES:2", "格华止"), _card("Drug:c", "降糖药"),
+                 _card("Drug:d", "胰岛素")]
+        es_client = _FakeEsClient(es)
+        store = _EntityLookupHarness(es_client=es_client, ilike_cards=ilike)
+        res = asyncio.run(store.entity_lookup(TENANT_A, "降糖", top_k=5))
+        assert [c.stable_id for c in res] == [
+            "ES:1", "ES:2", "Drug:c", "Drug:d"]
+        # ES ids preserved in order, overlap (ES:2) not duplicated
+        assert res[0].name == "二甲双胍" and res[1].name == "格华止"
+        assert es_client.calls == 1
+        assert store.ilike_calls == 1  # fallback still consulted to fill
+
+    def test_es_exception_falls_back_to_ilike(self):
+        ilike = [_card("Drug:a", "二甲双胍")]
+        es_client = _BoomEsClient()
+        store = _EntityLookupHarness(es_client=es_client, ilike_cards=ilike)
+        res = asyncio.run(store.entity_lookup(TENANT_A, "二甲双胍", top_k=5))
+        assert res == ilike
+        assert es_client.calls == 1  # ES was attempted before failing
+        assert store.ilike_calls == 1
+
+    def test_es_empty_falls_back_to_ilike(self):
+        ilike = [_card("Drug:a", "二甲双胍")]
+        es_client = _FakeEsClient([])
+        store = _EntityLookupHarness(es_client=es_client, ilike_cards=ilike)
+        res = asyncio.run(store.entity_lookup(TENANT_A, "二甲双胍", top_k=5))
+        assert res == ilike
+        assert es_client.calls == 1
+        assert store.ilike_calls == 1
+
+    def test_es_dict_hits_coerced_to_entitycard(self):
+        es = [{"stable_id": "ES:1", "name": "二甲双胍", "class_ref": "Drug"}]
+        es_client = _FakeEsClient(es)
+        store = _EntityLookupHarness(es_client=es_client, ilike_cards=[])
+        res = asyncio.run(store.entity_lookup(TENANT_A, "降糖", top_k=5))
+        assert [c.stable_id for c in res] == ["ES:1"]
+        assert isinstance(res[0], EntityCard)
+        assert es_client.calls == 1
+        # ES returned < top_k, so ilike was consulted to fill (found none)
+        assert store.ilike_calls == 1
+
+    def test_es_async_client_supported(self):
+        es = [_card("ES:1", "二甲双胍")]
+        es_client = _FakeEsClientAsync(es)
+        store = _EntityLookupHarness(es_client=es_client, ilike_cards=[])
+        res = asyncio.run(store.entity_lookup(TENANT_A, "降糖", top_k=5))
+        assert [c.stable_id for c in res] == ["ES:1"]
+        assert es_client.calls == 1
+        assert store.ilike_calls == 1

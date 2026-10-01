@@ -1,0 +1,118 @@
+# =============================================================================
+# Dockerfile.knowevo —— KnowEvo fork 专属主镜像（asset_search 立项 M4 phase A）
+#
+# 用途：在官方 main 镜像基础上带上仓根 mcp_servers/ 包，闭合 knowevo MCP 工具链
+#       的容器内导入链。原因：backend/tool_collection/mcp/kg_tools.py:28 以
+#       parents[3] 推仓根（容器内 /opt，backend 位于 /opt/backend）并执行
+#       `from mcp_servers.knowevo_mcp... import`；而上游 main/Dockerfile 只
+#       COPY backend /opt/backend，不包含仓根 mcp_servers → 导入链断。
+#       服务链：backend/mcp_service.py → tool_collection/mcp/local_mcp_service.py:3
+#       → tool_collection/mcp/kg_tools.py:3（顶层导入，容器入口即触发）。
+#
+# 与上游 deploy/images/dockerfiles/main/Dockerfile 的 diff（仅 2 处，其余逐行一致）：
+#   1. 本文件头注释块（本块）；
+#   2. final 阶段新增一行：COPY mcp_servers /opt/mcp_servers（与 COPY backend 同区）。
+#
+# 侦察说明（2026-09-29 实查）：
+#   - 仓根 mcp_servers/ 仅 4 个 py（knowevo_mcp 包：__init__/schemas/server +
+#     tests 骨架），import 面 = stdlib + fastmcp + pydantic，均已在
+#     backend/pyproject.toml 依赖内（fastmcp>=2.14.2,<3.0），无需额外安装步骤。
+#   - backend/services/knowevo/pipeline/*（eval_e1/eval_v1/diff_guidelines/
+#     build_ontology/mine_skill_templates 等离线评测脚本）引用仓根 competition/
+#     语料与台账，属离线工具链、不在容器服务路径上，本镜像不 COPY competition/。
+#   - knowevo 运行期其余资源均在 backend/ 内（prompts → backend/prompts、
+#     services → backend/services/knowevo），随既有 COPY backend 自带。
+#
+# 构建（context = 仓根，国内镜像源）：
+#   docker build -f deploy/images/dockerfiles/main/Dockerfile.knowevo \
+#     --build-arg MIRROR=https://pypi.tuna.tsinghua.edu.cn/simple \
+#     --build-arg APT_MIRROR=tsinghua \
+#     -t nexent/nexent:knowevo-20260929 .
+#
+# 日期：2026-09-29
+# 依据：competition/docs/tech-optimization-2026-09-28/asset-search-立项-2026-09-28.md
+#       §7-4（用户拍板 2026-09-29：fork 构建专属镜像，卷挂载否——可复现性红线⑦友好）
+#       + §5/M4 镜像接线验收
+# =============================================================================
+
+FROM python:3.11-slim AS base
+ARG MIRROR
+ARG APT_MIRROR
+ARG TARGETARCH
+LABEL authors="nexent"
+
+# Set correct permissions as root
+USER root
+RUN umask 0022
+
+# Configure apt sources based on build argument
+RUN --mount=type=cache,id=nexent-main-apt-cache-${TARGETARCH},target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,id=nexent-main-apt-lists-${TARGETARCH},target=/var/lib/apt/lists,sharing=locked \
+    rm -f /etc/apt/apt.conf.d/docker-clean && \
+    mkdir -p /var/cache/apt/archives /var/lib/apt/lists/partial && \
+    if [ "$APT_MIRROR" = "tsinghua" ]; then \
+        for apt_source in /etc/apt/sources.list /etc/apt/sources.list.d/*.sources /etc/apt/sources.list.d/*.list; do \
+            [ -f "$apt_source" ] || continue; \
+            sed -i \
+                -e 's|https\?://deb.debian.org/debian-security|http://security.debian.org/debian-security|g' \
+                -e 's|https\?://security.debian.org/debian-security|http://security.debian.org/debian-security|g' \
+                -e 's|https\?://deb.debian.org/debian|http://mirrors.tuna.tsinghua.edu.cn/debian|g' \
+                "$apt_source"; \
+        done; \
+    fi && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+        curl \
+        postgresql-client \
+        fontconfig \
+        fonts-noto-cjk && \
+    fc-cache -f
+
+FROM base AS builder
+ARG MIRROR
+ARG TARGETARCH
+ENV TIKTOKEN_CACHE_DIR=/opt/tiktoken-cache
+
+RUN --mount=type=cache,id=nexent-main-pip-${TARGETARCH},target=/root/.cache/pip,sharing=locked \
+    pip install uv $(test -n "$MIRROR" && echo "-i $MIRROR")
+WORKDIR /opt/backend
+
+# Layer 0: install base dependencies
+COPY backend/pyproject.toml /opt/backend/pyproject.toml
+RUN --mount=type=cache,id=nexent-main-uv-${TARGETARCH},target=/root/.cache/uv,sharing=locked \
+    uv sync --link-mode copy $(test -n "$MIRROR" && echo "-i $MIRROR")
+RUN mkdir -p "$TIKTOKEN_CACHE_DIR" && \
+    /opt/backend/.venv/bin/python -c "import tiktoken; tiktoken.get_encoding('cl100k_base')"
+# Layer 1: install sdk in link mode
+COPY sdk /opt/sdk
+RUN --mount=type=cache,id=nexent-main-uv-${TARGETARCH},target=/root/.cache/uv,sharing=locked \
+    uv pip install --link-mode copy "/opt/sdk[performance]" $(test -n "$MIRROR" && echo "-i $MIRROR")
+
+FROM base AS final
+
+ENV VIRTUAL_ENV=/opt/backend/.venv
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+ENV TIKTOKEN_CACHE_DIR=/opt/tiktoken-cache
+WORKDIR /opt/backend
+
+COPY --from=builder /opt/backend/.venv /opt/backend/.venv
+COPY --from=builder /opt/sdk /opt/sdk
+COPY --from=builder /opt/tiktoken-cache /opt/tiktoken-cache
+
+# Layer 2: copy backend code
+COPY backend /opt/backend
+# KnowEvo diff: repo-root mcp_servers package required by
+# backend/tool_collection/mcp/kg_tools.py (repo root resolved as /opt)
+COPY mcp_servers /opt/mcp_servers
+COPY VERSION /opt/nexent/VERSION
+COPY deploy/common/run-sql-migrations.sh deploy/common/start-backend.sh /opt/nexent/scripts/
+RUN chmod +x /opt/nexent/scripts/run-sql-migrations.sh /opt/nexent/scripts/start-backend.sh
+
+# Create SSH key directory for Terminal tool
+RUN mkdir -p /opt/ssh-keys
+VOLUME ["/opt/ssh-keys"]
+
+WORKDIR /opt
+
+# Expose the service port
+EXPOSE 5010

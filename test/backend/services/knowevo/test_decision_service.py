@@ -867,6 +867,52 @@ class TestEvidenceAssembly:
             "an unresolvable source stays empty so the panel can fall back "
             "to its label; a guessed or stringified-none source is worse")
 
+    @pytest.mark.asyncio
+    async def test_kg_items_carry_the_edge_evidence_id(self):
+        """Chain entries must be attributable back to their kg_evidence_t row.
+
+        The edge in hand at assembly time already carries
+        ``props.evidence_id`` - the entry publishes it (stringified) so a
+        card reader can re-join the exact evidence row deterministically
+        instead of re-joining by claim text (which only matched 24/70 in
+        the L4 spike). An edge that names no row yields None: an entry
+        without a row never invents one.
+        """
+        from services.knowevo.graph_store import Path
+        from services.knowevo.schemas import PathSet
+
+        svc = DecisionService(tenant_id=TENANT)
+        svc._evidence_sources = lambda ids: {}  # DB-free stand-in
+        linked = Path(entities=["a", "b"], claims=["c"])
+        bare = Path(entities=["b", "c"], claims=["d"])
+        pset = PathSet(
+            paths=[linked, bare], version_pinned=True,
+            claims_by_path={id(linked): ["c"], id(bare): ["d"]},
+            edges_by_path={
+                id(linked): [EdgeCard(
+                    id="e1", src="a", dst="b", rel_type="r", claim="c",
+                    props={"evidence_id": "ev-1"})],
+                id(bare): [EdgeCard(
+                    id="e2", src="b", dst="c", rel_type="r", claim="d",
+                    props={})],
+            })
+        chain = await svc.assemble_evidence(pset)
+        by_claim = {i.claim: i for i in chain.items}
+        assert by_claim["c"].evidence_id == "ev-1"
+        assert by_claim["d"].evidence_id is None, (
+            "an edge without an evidence row must leave the id None, not "
+            "invent a placeholder")
+
+    @pytest.mark.asyncio
+    async def test_doc_channel_items_have_no_evidence_id(self):
+        """Doc passages are not kg rows - their entry id stays None."""
+        svc = DecisionService()
+        chain = await svc.assemble_evidence(
+            [], [DocHit(doc_id="d1", doc_title="指南2024版",
+                        span_text="SGLT2i 可用于 eGFR≥30 的患者")])
+        assert chain.items[0].source_channel == CHANNEL_DOC
+        assert chain.items[0].evidence_id is None
+
 
 # ---------------------------------------------------------------------------
 # Decision card (02-tech-plan 3.3)
@@ -1023,6 +1069,51 @@ class TestDecisionCard:
         prov = card.candidates[0].evidence_chain[0].provenance
         assert (prov.doc, prov.span, prov.kg_path) == ("", "", [])
         assert "None" not in json.dumps(card.to_payload(), ensure_ascii=False)
+
+    @pytest.mark.asyncio
+    async def test_matched_llm_item_inherits_evidence_id(self):
+        """evidence_id is an assembly fact, exactly like doc/span.
+
+        The card prompt never carries it, so the model cannot echo one: a
+        claim the chain knows inherits the chain's row id, and the payload
+        publishes it (the deterministic hook for card-level attribution).
+        """
+        llm = FakeLLM(replies={"决策卡": CARD_JSON})
+        chain = _chain_with_claim()
+        chain.items[0].evidence_id = "ev-9"
+        svc = DecisionService(llm=llm, tenant_id=TENANT)
+        card = await svc.render_card("q", chain)
+        item = card.candidates[0].evidence_chain[0]
+        assert item.evidence_id == "ev-9", (
+            "a matched claim takes its row id from the assembled chain")
+        entry = card.to_payload()["candidates"][0]["evidence_chain"][0]
+        assert entry["evidence_id"] == "ev-9"
+
+    @pytest.mark.asyncio
+    async def test_unmatched_llm_item_keeps_evidence_id_none(self):
+        """No chain match means no row - an explicit None in the payload.
+
+        An evidence_id the LLM itself emits is model output, not
+        provenance: it is dropped the same way an echoed span is. The key
+        must still be present (explicit None beats a missing key for
+        downstream readers)."""
+        llm = FakeLLM(replies={"决策卡": """{
+          "candidates": [{"option": "猜一个",
+            "evidence_chain": [{
+              "claim": "链上没有的命题",
+              "provenance": {"doc": null, "span": null,
+                             "kg_path": [], "version_pinned": false},
+              "tag": "EXTRACTED", "source_channel": "kg",
+              "evidence_id": "ev-fake"}],
+            "risks": []}],
+          "decision": "RECOMMEND"}"""})
+        svc = DecisionService(llm=llm, tenant_id=TENANT)
+        card = await svc.render_card("q", _chain_with_claim())
+        entry = card.to_payload()["candidates"][0]["evidence_chain"][0]
+        assert "evidence_id" in entry
+        assert entry["evidence_id"] is None, (
+            "the model's own evidence_id is not provenance and must not "
+            "survive the rebuild")
 
     @pytest.mark.asyncio
     async def test_markdown_fenced_json_is_accepted(self):
@@ -1348,6 +1439,34 @@ class TestPayloadSerialization:
         assert payload["candidates"][0]["evidence_chain"][0]["claim"] == "c"
         assert payload["candidates"][0]["evidence_chain"][0]["provenance"][
             "doc"] == "d"
+
+    def test_evidence_item_serializes_evidence_id(self):
+        from services.knowevo.schemas import Candidate
+        card = DecisionCard(candidates=[Candidate(
+            option="x", evidence_chain=[EvidenceItem(
+                claim="c", provenance=Provenance(doc="d"),
+                evidence_id="ev-1")])])
+        entry = card.to_payload()["candidates"][0]["evidence_chain"][0]
+        assert entry["evidence_id"] == "ev-1"
+        default_card = DecisionCard(candidates=[Candidate(
+            option="y", evidence_chain=[EvidenceItem(claim="c2")])])
+        default_entry = default_card.to_payload()[
+            "candidates"][0]["evidence_chain"][0]
+        assert "evidence_id" in default_entry
+        assert default_entry["evidence_id"] is None
+
+    def test_entry_shape_is_frozen_keys_plus_evidence_id(self):
+        """Pin the payload entry shape: the memo 04-K3 §3 frozen keys plus
+        the additive extensions the implementation grew (contested first,
+        then evidence_id - 2026-09-29 L4 prerequisite, contract backfilled
+        in decision_service.py.md). Removing or renaming a key fails here
+        before it breaks a downstream reader."""
+        from services.knowevo.schemas import Candidate
+        card = DecisionCard(candidates=[Candidate(
+            option="x", evidence_chain=[EvidenceItem(claim="c")])])
+        entry = card.to_payload()["candidates"][0]["evidence_chain"][0]
+        assert set(entry) == {"claim", "provenance", "tag",
+                              "source_channel", "contested", "evidence_id"}
 
     def test_uuid_value_is_stringified(self):
         card = DecisionCard(candidates=[])

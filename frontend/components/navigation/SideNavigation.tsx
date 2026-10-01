@@ -20,6 +20,8 @@ import {
   Layers,
   LineChart,
   Network,
+  History,
+  LayoutGrid,
 } from "lucide-react";
 import type { MenuProps } from "antd";
 import { useAuthorizationContext } from "@/components/providers/AuthorizationProvider";
@@ -184,6 +186,28 @@ const ROUTE_CONFIG: RouteConfig[] = [
     Icon: Layers,
     labelKey: "sidebar.skillTemplate",
     order: 15,
+    parentKey: "/resource-space",
+  },
+  {
+    // KnowEvo evolution board (L10). Visible only when the role holds
+    // VISIBILITY.LEFT_NAV_MENU /evolutionBoard (seeded in
+    // deploy/sql/migrations/v2.5.5_kw_013_l10_nav_rbac.sql).
+    // Read-only: timeline + three-color diff.
+    path: "/evolutionBoard",
+    Icon: History,
+    labelKey: "sidebar.evolutionBoard",
+    order: 16,
+    parentKey: "/resource-space",
+  },
+  {
+    // KnowEvo skill gallery (L10). Visible only when the role holds
+    // VISIBILITY.LEFT_NAV_MENU /skillGallery (seeded in
+    // deploy/sql/migrations/v2.5.5_kw_013_l10_nav_rbac.sql).
+    // Does NOT replace /skillTemplate (table panel stays).
+    path: "/skillGallery",
+    Icon: LayoutGrid,
+    labelKey: "sidebar.skillGallery",
+    order: 17,
     parentKey: "/resource-space",
   },
   // Management menus

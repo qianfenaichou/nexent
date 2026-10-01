@@ -9,10 +9,9 @@ server (mcp_servers/knowevo_mcp/server.py) and the Local-MCP inner
 registration (backend/tool_collection/mcp/kg_tools.py). Pitfall #27 was
 exactly this pair drifting apart, so the same dual-registration
 assertions as the earlier tools apply here, plus the frozen-vocabulary
-accounting: the SPEC.md 8-tool list is covered except asset_search,
-whose backend capability does not exist yet (2026-09-28 audit: no
-doc_asset retrieval in services/knowevo) - the gap is pinned by a test
-so it cannot silently grow or be claimed closed.
+accounting: the SPEC.md 8-tool list is fully covered since 2026-09-29,
+when asset_search closed the last gap (asset-search charter M1/M3; the
+2026-09-28 gap pin retired into the closure assertion below).
 
 Layer 1 (always runs): schema source, guardrails, handler behaviour over
 in-memory seams (real KGService where its store seam is injectable),
@@ -161,21 +160,23 @@ REL_SUPERSEDED = {"id": "e2", "src": "Drug:a", "dst": "Drug:c",
 # ---------------------------------------------------------------------------
 
 class TestL2Registration:
-    def test_tool_names_cover_frozen_eight_minus_asset_search(self):
+    def test_tool_names_cover_frozen_vocabulary(self):
         from tool_collection.mcp.kg_tools import KG_MCP_TOOL_NAMES
 
-        assert set(KG_MCP_TOOL_NAMES) == (FROZEN_EIGHT - {"asset_search"}
+        assert set(KG_MCP_TOOL_NAMES) == (FROZEN_EIGHT
                                           | {"skill_template_apply"})
-        assert len(KG_MCP_TOOL_NAMES) == 8
+        assert len(KG_MCP_TOOL_NAMES) == 9
 
-    def test_frozen_vocabulary_gap_is_exactly_asset_search(self):
-        # The one frozen member still missing is asset_search - no backend
-        # capability exists (no doc_asset retrieval in services/knowevo).
-        # This pin keeps the gap explicit: it must not silently grow, and
-        # the tool must not be claimed registered until it exists.
+    def test_frozen_vocabulary_gap_closed(self):
+        # 2026-09-29 M3 closure: the asset_search backend capability
+        # (DocAssetService, asset-search charter M1) and its MCP wrapper (M3)
+        # landed; the former gap pin
+        # test_frozen_vocabulary_gap_is_exactly_asset_search (2026-09-28)
+        # retires into this closure assertion (charter M3).
         from tool_collection.mcp.kg_tools import KG_MCP_TOOL_NAMES
 
-        assert FROZEN_EIGHT - set(KG_MCP_TOOL_NAMES) == {"asset_search"}
+        assert FROZEN_EIGHT - set(KG_MCP_TOOL_NAMES) == set()
+        assert "asset_search" in KG_MCP_TOOL_NAMES
 
     def test_handlers_map_matches_tool_names(self):
         from tool_collection.mcp.kg_tools import KG_MCP_TOOL_NAMES, handlers
@@ -206,7 +207,7 @@ class TestL2Registration:
 
         assert handlers()[name] is getattr(srv, f"{name}_handler")
 
-    def test_fastmcp_app_advertises_all_eight(self):
+    def test_fastmcp_app_advertises_all_nine(self):
         from tool_collection.mcp.kg_tools import KG_MCP_TOOL_NAMES
 
         from mcp_servers.knowevo_mcp.server import mcp
@@ -214,10 +215,10 @@ class TestL2Registration:
         names = {t.name for t in mcp._tool_manager._tools.values()}
         assert set(KG_MCP_TOOL_NAMES) <= names
 
-    def test_standalone_app_tool_count_is_eight(self):
+    def test_standalone_app_tool_count_is_nine(self):
         from mcp_servers.knowevo_mcp.server import mcp
 
-        assert len(mcp._tool_manager._tools) == 8
+        assert len(mcp._tool_manager._tools) == 9
 
 
 # ---------------------------------------------------------------------------

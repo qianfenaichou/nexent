@@ -305,6 +305,40 @@ class DocHit:
 
 
 @dataclass
+class AssetHit:
+    """One retrieval-path asset hit (from asset_search / DocAssetService).
+
+    ``score`` is the ES hybrid relevance normalized to 0-1 against the
+    returned set (top hit = 1.0); the PG ilike fallback has no relevance
+    signal and scores 0.0. ``why`` keeps every hit auditable (the
+    "every bundle auditable" ruling, asset-search charter §7-3):
+
+    - ES path: ``{"es_score_raw": <raw>, "matched": "title+metadata",
+      "filters_applied": {...}, "parse_gate": "processed"}`` - the raw
+      pre-normalization score survives here, so the normalization is
+      reversible on paper;
+    - PG path: ``{"matched": "title ilike", "ranked_by":
+      "authority_level asc, created_at desc", "es_score_raw": None,
+      "filters_applied": {...}}``.
+
+    ``parse_quality`` is surfaced for audit only - no quality threshold is
+    invented (the charter defines none); the single parse gate is
+    ``parse_status == "processed"``.
+    """
+    id: str
+    asset_no: str
+    title: str
+    modality: str
+    doc_type: str
+    authority_level: int
+    score: float
+    why: dict[str, Any]
+    parse_status: str | None = None
+    parse_quality: float | None = None
+    superseded: bool = False
+
+
+@dataclass
 class PathScore:
     """Beam-search score for one candidate path.
 
@@ -349,13 +383,19 @@ class EvidenceItem:
 
     ``source_channel`` is one of CHANNEL_*; ``contested`` marks a
     cross-channel or cross-document contradiction that was surfaced rather
-    than silently resolved.
+    than silently resolved. ``evidence_id`` is the kg_evidence_t row the
+    proposition rides on (stringified UUID), resolved from the edge's
+    ``props.evidence_id`` at assembly time and backfilled onto LLM-built
+    items whose claim matches the chain; doc-channel items and edges that
+    name no row stay None - an entry without a row never invents one
+    (additive payload extension, 2026-09-29 L4 attribution prerequisite).
     """
     claim: str = ""
     provenance: Provenance = field(default_factory=Provenance)
     tag: str = TAG_EXTRACTED
     source_channel: str = CHANNEL_KG
     contested: bool = False
+    evidence_id: str | None = None
 
 
 @dataclass
@@ -630,6 +670,7 @@ class EvidenceItemModel(BaseModel):
     tag: str = TAG_EXTRACTED
     source_channel: str = CHANNEL_KG
     contested: bool = False
+    evidence_id: str | None = None
 
 
 class CounterfactualModel(BaseModel):

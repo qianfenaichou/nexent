@@ -253,7 +253,8 @@ class DecisionService:
                  version_rows: list[dict[str, Any]] | None = None,
                  max_depth: int = KW_MULTIHOP_MAX_DEPTH,
                  beam: int = KW_MULTIHOP_BEAM,
-                 sim: Callable[[str, str], float] | None = None):
+                 sim: Callable[[str, str], float] | None = None,
+                 conflict_reconciler: Callable[..., Any] | None = None):
         self.store = store
         self.llm = llm
         self.ontology = ontology or {"classes": [], "rel_types": []}
@@ -269,6 +270,9 @@ class DecisionService:
         # module-level _overlap: proposition identity is a lexical
         # judgement, not a domain-similarity one.
         self.sim = sim or _overlap
+        # A4 H2 additive seam: optional (facts, clock) -> ReconcileResult.
+        # Default None leaves card.conflict_adjudications LLM-only.
+        self.conflict_reconciler = conflict_reconciler
         self._calibration = calibration
         self._calibration_loaded = calibration is not None
         # Ontology version rows ([{version, created_at}]), the source of a
@@ -923,6 +927,12 @@ class DecisionService:
                 edge = edges[idx] if idx < len(edges) else None
                 contested = bool(edge is not None and edge.contested)
                 doc, span = _edge_source(edge, sources)
+                # The row the edge rides on: the edge dict is in hand here,
+                # so the entry can carry a deterministic join key to
+                # kg_evidence_t instead of leaving callers to re-join by
+                # claim text. No edge, no row, no id - never invented.
+                ev = ((edge.props or {}).get("evidence_id")
+                      if edge is not None else None)
                 chain.items.append(EvidenceItem(
                     claim=claim,
                     provenance=Provenance(
@@ -932,7 +942,8 @@ class DecisionService:
                         version_pinned=pinned),
                     tag=TAG_EXTRACTED,
                     source_channel=CHANNEL_KG,
-                    contested=contested))
+                    contested=contested,
+                    evidence_id=str(ev) if ev is not None else None))
                 if contested:
                     chain.contested = True
 
@@ -965,6 +976,9 @@ class DecisionService:
                           mode: str = "full",
                           question_id: str = "",
                           clock: VersionClock | None = None,
+                          conflict_records: list[ConflictAdjudication]
+                          | None = None,
+                          conflict_facts: list[Any] | None = None,
                           ) -> DecisionCard:
         """Render the card; refuse deterministically when evidence is empty.
 
@@ -973,6 +987,17 @@ class DecisionService:
         candidate instead, and the K4 X-type questions exist precisely to
         check that the system knows its own boundary: no evidence in means
         no candidates out, full stop.
+
+        A4 additive seams (default None = frozen behaviour untouched):
+        - ``conflict_records``: precomputed kernel adjudications merged into
+          ``card.conflict_adjudications`` before the LLM path runs.
+        - ``conflict_facts`` + ``self.conflict_reconciler`` (H2): when both
+          are set and ``conflict_records`` is None, call
+          ``conflict_reconciler(facts, clock)`` and project each record via
+          ``to_wire()``. Exceptions are logged and swallowed so a broken
+          reconciler cannot flip card outcomes.
+        Records are deduped by ``conflict_id`` so an LLM echo of the same
+        adjudication cannot double-count; kernel entries are added first.
         """
         clock = clock or resolve_version_clock(None)
         card = DecisionCard(
@@ -984,6 +1009,32 @@ class DecisionService:
                 ontology_version=clock.ontology_version,
                 kg_cutoff=clock.as_of.isoformat(),
                 clock_source=clock.source))
+        merged = list(conflict_records or [])
+        if (not merged and self.conflict_reconciler is not None
+                and conflict_facts):
+            try:
+                result = self.conflict_reconciler(conflict_facts, clock)
+                recs = getattr(result, "records", result) or []
+                for rec in recs:
+                    if hasattr(rec, "to_wire"):
+                        wire = rec.to_wire()
+                        merged.append(ConflictAdjudication(
+                            conflict_id=str(wire.get("conflict_id", "")),
+                            type=str(wire.get("type", "")),
+                            resolution=str(wire.get("resolution", ""))))
+                    elif isinstance(rec, ConflictAdjudication):
+                        merged.append(rec)
+            except Exception:
+                logger.debug("conflict_reconciler failed", exc_info=True)
+        if merged:
+            seen = set()
+            for rec in merged:
+                if not isinstance(rec, ConflictAdjudication):
+                    continue
+                if rec.conflict_id in seen:
+                    continue
+                seen.add(rec.conflict_id)
+                card.conflict_adjudications.append(rec)
         if mode == "lite":
             card.uncertainty_notes.append("lite 模式：跳过风险与反事实区")
 
@@ -1061,10 +1112,17 @@ class DecisionService:
             card.decision = DECISION_INSUFFICIENT
         card.uncertainty_notes.extend(
             str(n) for n in (data.get("uncertainty_notes") or []))
+        # A4 seam: pre-seeded kernel records win on conflict_id collision;
+        # LLM echoes of the same adjudication must not double-count.
+        _seen_adj = {a.conflict_id for a in card.conflict_adjudications}
         for adj in data.get("conflict_adjudications") or []:
             if isinstance(adj, dict):
+                cid = str(adj.get("conflict_id", ""))
+                if cid in _seen_adj:
+                    continue
+                _seen_adj.add(cid)
                 card.conflict_adjudications.append(ConflictAdjudication(
-                    conflict_id=str(adj.get("conflict_id", "")),
+                    conflict_id=cid,
                     type=str(adj.get("type", "")),
                     resolution=str(adj.get("resolution", ""))))
 
@@ -1505,11 +1563,13 @@ def _backfill_provenance(items: list[EvidenceItem],
                          assembled: list[EvidenceItem]) -> None:
     """Give LLM-built items the provenance the assembled chain already has.
 
-    The card prompt shows claims and walks but no doc/span (only assembly
-    resolves those), so those fields come back from the model as guesses -
-    nulls or placeholders. The chain is the authority: an item whose claim
-    matches one of its entries inherits the missing doc/span/kg_path. An
-    unmatched item keeps what it has, cleaned, rather than borrowing a
+    The card prompt shows claims and walks but no doc/span/evidence row (only
+    assembly resolves those), so those fields come back from the model as
+    guesses - nulls or placeholders. The chain is the authority: an item whose
+    claim matches one of its entries inherits the missing doc/span/kg_path and
+    the row id the matched entry rides on (``evidence_id`` - the deterministic
+    join key to kg_evidence_t; the model's own echo of it is never trusted).
+    An unmatched item keeps what it has, cleaned, rather than borrowing a
     source it cannot claim.
     """
     pool = list(assembled)
@@ -1526,6 +1586,8 @@ def _backfill_provenance(items: list[EvidenceItem],
             item.provenance.span = match.provenance.span
         if not item.provenance.kg_path:
             item.provenance.kg_path = list(match.provenance.kg_path)
+        if not item.evidence_id:
+            item.evidence_id = match.evidence_id
 
 
 def _build_candidates(cand: dict[str, Any],

@@ -2159,6 +2159,8 @@
   "decisionCard.asOfClear": "Clear",
   "decisionCard.stamp.clock": "Clock",
   "sidebar.skillTemplate": "Skill Templates",
+  "sidebar.evolutionBoard": "Evolution Board",
+  "sidebar.skillGallery": "Skill Gallery",
   "sidebar.agentMarket": "Agent Market",
   "sidebar.agentRepository": "Agent Repository",
   "sidebar.agentDev": "Agent Development",

@@ -15,7 +15,7 @@ knowevo/
 │   ├── apps/                         ← L1-L4 HTTP 边界（Nexent 分层铁律：apps 只做解析/鉴权）
 │   │   ├── knowledge_graph_app.py.md
 │   │   └── asset_app.py.md
-│   ├── services/knowevo/             ← 全部业务逻辑（06 层核心）
+│   ├── services/knowevo/             ← 全部业务逻辑（06 层核心；实存 23 份契约，2026-10-01 补登）
 │   │   ├── ontology_service.py.md    （K1 本体流水线）
 │   │   ├── kg_service.py.md          （K2 图谱+GraphStore 抽象）
 │   │   ├── graph_store.py.md         （A1 存储适配器）
@@ -30,7 +30,7 @@ knowevo/
 │   │       └── gen_synthetic_graph.py.md
 │   ├── database/knowevo_models.py.md ← 12 表 ORM 说明（DDL 见备忘录 10 分册）
 │   └── prompts/                      ← 双语 prompt 模板清单（knowevo_*.yaml 对）
-├── mcp_servers/knowevo_mcp/          ← A2：自研 MCP 工具（FastMCP 独立服务；SPEC 冻结词表 8 个，已注册 5 个：kg_search / kg_stats / kg_multi_hop / decision_card_render / skill_template_apply，其余 3 个为规划项）
+├── mcp_servers/knowevo_mcp/          ← A2：自研 MCP 工具（FastMCP 独立服务；SPEC 冻结词表 8 个（全量已注册）+ 冻结外 skill_template_apply，对外口径 9 个：kg_search / asset_search / kg_stats / kg_multi_hop / kg_evolution_trace / ontology_diff / evidence_verify / decision_card_render / skill_template_apply）
 │   └── SPEC.md
 ├── frontend/features/                ← L5 三面板（knowledgeGraph/decisionCard/assetDashboard）
 │   └── SPEC.md

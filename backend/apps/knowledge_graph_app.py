@@ -8,14 +8,14 @@ request body, so the service layer stays free of request context.
 """
 import logging
 import time
+from dataclasses import asdict as dataclass_asdict
 from datetime import datetime
 from typing import Annotated
 from uuid import UUID
 
+from database.role_permission_db import check_role_permission
 from fastapi import APIRouter, Header, HTTPException, Query
 from pydantic import BaseModel, Field
-
-from database.role_permission_db import check_role_permission
 from services.knowevo.ontology_service import OntologyService
 from utils.auth_utils import get_current_user_context
 
@@ -412,6 +412,128 @@ async def list_skill_templates(
             status_code=502,
             detail="skill template store unavailable") from exc
     return {"templates": rows, "count": len(rows)}
+
+
+def _evolution_service(tenant_id: str):
+    """Read-only EvolutionService for the L10 evolution-board routes.
+
+    Same lazy-import discipline as _skill_template_service: the service
+    opens a DB session pool on first use, which must not happen at
+    app-import time. Read-only by design - this boundary exposes
+    timeline / round_detail only; round lifecycle writes stay in the
+    pipeline and MCP consumers.
+    """
+    from services.knowevo.evolution_service import EvolutionService
+
+    return EvolutionService(tenant_id=tenant_id)
+
+
+@router.get("/evolution/timeline")
+async def list_evolution_rounds(
+    since: str | None = Query(None),
+    authorization: str | None = Header(None),
+):
+    """Read-only evolution-round timeline for the L10 board.
+
+    Newest-first RoundSummary rows. The frontend accepts either a bare
+    list or {rounds: []}; we return the wrapped shape to match
+    /skill-template/list and /alignment/diff/list. A store failure is a
+    502, never a fake empty timeline (PENDING_WIRING honesty rule).
+    """
+    _, tenant_id, _ = _require_workbench_context(authorization)
+    since_dt = None
+    if since:
+        try:
+            since_dt = datetime.fromisoformat(since)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=400,
+                detail="since must be ISO-8601") from exc
+    svc = _evolution_service(tenant_id)
+    try:
+        rows = await svc.timeline(tenant_id, since=since_dt)
+    except Exception as exc:
+        logger.warning("evolution timeline failed: %s", exc)
+        raise HTTPException(
+            status_code=502,
+            detail="evolution ledger unavailable") from exc
+    payload = [dataclass_asdict(r) for r in rows]
+    return {"rounds": payload, "count": len(payload)}
+
+
+@router.get("/evolution/rounds/{round_id}")
+async def get_evolution_round(
+    round_id: str,
+    authorization: str | None = Header(None),
+):
+    """Full report of one evolution round (read-only).
+
+    Tenant gate (P0): round_detail loads by id alone, so the route must
+    refuse a round that belongs to another tenant (defence in depth on
+    top of the workbench permission check).
+    """
+    _, tenant_id, _ = _require_workbench_context(authorization)
+    svc = _evolution_service(tenant_id)
+    try:
+        report = await svc.round_detail(round_id)
+    except KeyError as exc:
+        raise HTTPException(
+            status_code=404, detail="evolution round not found") from exc
+    except Exception as exc:
+        logger.warning("evolution round detail failed: %s", exc)
+        raise HTTPException(
+            status_code=502,
+            detail="evolution ledger unavailable") from exc
+    if str(report.tenant_id) != str(tenant_id):
+        raise HTTPException(
+            status_code=403,
+            detail="evolution round belongs to another tenant")
+    return dataclass_asdict(report)
+
+
+class SkillTemplateApplyRequest(BaseModel):
+    """Body of POST /skill-template/apply (L10 skillGallery).
+
+    Field name is ``name`` (frontend contract, PENDING_WIRING W5), not
+    the MCP tool's ``template_name``. Values are stringified by the
+    service and merged over the template defaults; unknown {placeholders}
+    survive untouched.
+    """
+    name: str = Field(min_length=1, max_length=64)
+    variables: dict[str, str] = Field(default_factory=dict)
+
+
+@router.post("/skill-template/apply")
+async def apply_skill_template(
+    request: SkillTemplateApplyRequest,
+    authorization: str | None = Header(None),
+):
+    """Instantiate a mined SKILL.md template (write path: reuse_count+1).
+
+    This is the HTTP twin of the MCP skill_template_apply tool. Honesty
+    contract (PENDING_WIRING): a failure here must surface as HTTP error
+    so the gallery falls back to local render WITHOUT claiming a server
+    apply; this route never fabricates a reuse_count on the error path
+    and never calls record_reuse_outcome (outcome is unknown at apply).
+    """
+    _, tenant_id, _ = _require_workbench_context(authorization)
+    svc = _skill_template_service(tenant_id)
+    try:
+        result = await svc.apply_template(request.name, variables=request.variables)
+    except KeyError as exc:
+        if "template not found" in str(exc):
+            raise HTTPException(
+                status_code=404,
+                detail=f"skill template not found: {request.name}") from exc
+        raise HTTPException(
+            status_code=502,
+            detail="skill template store unavailable") from exc
+    except Exception as exc:
+        logger.warning("skill template apply failed: %s", exc)
+        raise HTTPException(
+            status_code=502,
+            detail="skill template store unavailable") from exc
+    return result
 
 
 # ── alignment (T-21) ──────────────────────────────────────────────────

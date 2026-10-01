@@ -19,6 +19,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from consts.const import KW_AUTO_ACCEPT_LINE
+from services.knowevo.conformal import DEFAULT_ALPHA, conformal_accept_line
 
 logger = logging.getLogger(__name__)
 
@@ -625,6 +626,53 @@ class OntologyService:
             else:
                 manual.append(p)
         return auto, manual
+
+    async def resolve_auto_accept_line(self, tenant_id: str,
+                                       alpha: float = DEFAULT_ALPHA
+                                       ) -> tuple[float, dict[str, Any]]:
+        """Calibration-aware auto-accept line (L3 conformal, 2026-09-28).
+
+        Calibrates on the confidence scores of human-REJECTED proposals of
+        this tenant (the "bad" class): the one-sided split-conformal
+        quantile (conformal.py) guarantees P(a rejected-class proposal
+        scores above the line) <= alpha under exchangeability, replacing
+        the picked fixed line with a distribution-free one. Falls back to
+        the fixed AUTO_ACCEPT_LINE when the calibration class is too small
+        for a finite guarantee - the math self-guards (k > n) instead of
+        pretending precision, and the returned metadata says which method
+        produced the line so callers never mix the two silently.
+
+        Wiring note: the line must be consumed with a STRICTLY-above
+        comparison (ties only stay conservative under ``>``);
+        ``auto_accept`` currently compares with ``>=`` - adjust it before
+        ever feeding this line through. cf. ``kg_service.calibrate_thresholds``
+        (a two-class ROC scan for entity merging - a different problem,
+        kept separate on purpose). ``n_calibration`` counts usable
+        (non-NULL) calibration scores, not raw rejected rows.
+        """
+        from database.knowevo_db import OntologyChangeProposal, _get_db_session
+        with _get_db_session() as session:
+            rows = session.query(OntologyChangeProposal.confidence).filter(
+                OntologyChangeProposal.tenant_id == tenant_id,
+                OntologyChangeProposal.status == "rejected",
+            ).all()
+        bad = [float(r[0]) for r in rows if r[0] is not None]
+        line = conformal_accept_line(bad, alpha=alpha)
+        if line is None:
+            return AUTO_ACCEPT_LINE, {
+                "method": "fixed_fallback",
+                "n_calibration": len(bad),
+                "alpha": alpha,
+                "reason": "calibration class too small for a finite "
+                          "conformal guarantee",
+            }
+        return line, {
+            "method": "conformal",
+            "n_calibration": len(bad),
+            "alpha": alpha,
+            "guarantee": "P(rejected-class proposal scores above the line) "
+                         "<= alpha",
+        }
 
     # ── Stage 6: versioning ──────────────────────────────────────────
 

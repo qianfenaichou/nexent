@@ -7,6 +7,8 @@
 
 ## 接口冻结（函数签名）
 
+> **2026-09-28 L3 增量方法回填**：实现在冻结方法之后新增公共方法 `resolve_auto_accept_line(tenant_id, alpha=DEFAULT_ALPHA) -> tuple[float, dict]`（L3 conformal 自适应接收阈值）：从 `ontology_change_proposal_t` 读本租户人工 rejected 提案置信度作 bad 类校准集，经 `conformal.py`（stdlib-only 单侧 split-conformal）求分位数线——可交换性下保证 P(rejected 类提案越线) ≤ α；校准类太小（k>n 数学自守）→ 诚实回退固定线 `AUTO_ACCEPT_LINE`，返回 meta 标明 `method`（conformal/fixed_fallback）+ `n_calibration` + `alpha`。**调用注意**：该线必须配合严格大于（`>`）比较消费（ties 仅在 `>` 下保持保守）；现有 `auto_accept` 用 `>=`，接入前须先调整。`auto_accept`/`AUTO_ACCEPT_LINE` 本体零改动、无生产调用方 → 默认行为零变化。依据：`competition/docs/tech-optimization-2026-09-28/KnowEvo提分总纲.md` §二 L3。
+
 ```python
 class OntologyService:
     # ── 阶段0: 种子 ─────────────────────────────────────────

@@ -269,6 +269,10 @@ async def _run(args: argparse.Namespace) -> int:
                             spans_total, extracted, skipped)
 
     wall_seconds = round(time.monotonic() - started, 3)
+    # Ingestion complete: entities/relations are in PG (kg_service.merge_delta
+    # -> store.insert_entity at kg_service.py). Best-effort ES projection now,
+    # OUTSIDE the timed window - never part of the run's wall_seconds.
+    _es_upsert_best_effort(tenant, str(run_id))
     report = {
         "run_id": str(run_id),
         "tenant_id": tenant,
@@ -289,6 +293,26 @@ async def _run(args: argparse.Namespace) -> int:
     print(json.dumps(report, ensure_ascii=False, indent=2))
     _append_cost_ledger_row(report)
     return 2 if errors else 0
+
+
+def _es_upsert_best_effort(tenant_id: str, run_id: str) -> None:
+    """T-08 follow-up: after a run's entities landed in PG, best-effort
+    reconcile them into the production ES entity index.
+
+    Failure isolation is the contract: any error (sync not armed, ES
+    unreachable, bulk rejected, import failure) is a debug log and the
+    ingest result is untouched - PG stays the graph of record, same
+    philosophy as the graph store's ES-first fallback.
+    """
+    try:
+        from services.knowevo.es_index_writer import sync_tenant_entities
+        outcome = sync_tenant_entities(tenant_id)
+        if outcome is not None:
+            logger.info("es entity reconcile finished (run=%s): %s",
+                        run_id, outcome)
+    except Exception as e:  # noqa: BLE001 - isolation is the contract
+        logger.debug("es entity reconcile skipped, ingest unaffected "
+                     "(run=%s): %s", run_id, e)
 
 
 def _append_cost_ledger_row(report: dict) -> None:

@@ -1,21 +1,21 @@
 """
 KnowEvo MCP tool schemas (T-07b) - the single schema source.
 
-The 8-tool vocabulary is frozen in knowevo/mcp_servers/knowevo_mcp/SPEC.md;
-T-07b delivers kg_search + kg_stats (the graph-query pair). Both the
-standalone FastMCP server (server.py) and the Local-MCP inner registration
-(tool_collection/mcp/kg_tools.py, T-08 wiring) import from here, so the
-shapes can never drift between the two registration surfaces.
+The frozen 8-tool vocabulary lives in knowevo/mcp_servers/knowevo_mcp/
+SPEC.md; T-07b delivered kg_search + kg_stats (the graph-query pair). Both
+the standalone FastMCP server (server.py) and the Local-MCP inner
+registration (tool_collection/mcp/kg_tools.py, T-08 wiring) import from
+here, so the shapes can never drift between the two registration surfaces.
 
-Registered today = 8 tools (kg_search / kg_stats / kg_multi_hop /
+Registered today = 9 tools (kg_search / kg_stats / kg_multi_hop /
 kg_evolution_trace / ontology_diff / evidence_verify /
-decision_card_render / skill_template_apply — single source of truth:
-KG_MCP_TOOL_NAMES in backend/tool_collection/mcp/kg_tools.py). The frozen
-vocabulary member asset_search remains planned and MUST NOT be claimed as
-registered in external material: no backend retrieval capability over
-doc_asset_t exists in services/knowevo (2026-09-28 audit: only point
-reads by id/asset_no serving other features), and the MCP layer wraps
-existing capabilities, it does not invent them.
+decision_card_render / skill_template_apply / asset_search - single
+source of truth: KG_MCP_TOOL_NAMES in backend/tool_collection/mcp/
+kg_tools.py). asset_search closed the last frozen-vocabulary gap on
+2026-09-29 (asset-search charter M1/M3: DocAssetService.search_assets +
+this wrapper; the I/O follows the landed capability, deviation from the
+memo-10 §1 sketch registered in competition/docs/verification-reports/
+asset-search-shape-deviation-2026-09-29.md).
 
 Every tool returns used_tokens / elapsed_ms so the cost ledger can collect
 from the outermost boundary (SPEC discipline 2).
@@ -203,6 +203,67 @@ class SkillTemplateApplyInput(BaseModel):
 
     template_name: str = Field(min_length=1, max_length=64)
     variables: dict[str, str] = Field(default_factory=dict, max_length=16)
+
+
+# ---------------------------------------------------------------------------
+# asset_search (frozen vocabulary; closed 2026-09-29 by the asset-search
+# charter M1/M3) - the registered-asset retrieval tool, a wrapper over
+# DocAssetService.search_assets (services/knowevo/doc_asset_service.py)
+# ---------------------------------------------------------------------------
+
+class AssetCard(BaseModel):
+    """One registered-asset hit as the Agent sees it.
+
+    Mirrors the service layer's ``AssetHit`` 1:1 - re-declaring a different
+    shape would be a second schema source (SPEC discipline 1). ``score``
+    is the ES hybrid relevance normalized to 0-1 (top = 1.0); the PG ilike
+    fallback scores 0.0 (no relevance signal). ``why`` is the auditable
+    hit reason (raw ES score / PG ranking rule / applied filters); the
+    parse gate (parse_status == processed) is applied uniformly on both
+    backend paths and no parse-quality threshold is invented -
+    parse_quality is surfaced for audit only.
+    """
+
+    id: str
+    asset_no: str
+    title: str
+    modality: str
+    doc_type: str
+    authority_level: int
+    score: float
+    why: dict[str, Any] = Field(default_factory=dict)
+    parse_status: str | None = None
+    parse_quality: float | None = None
+    superseded: bool = False
+
+
+class AssetSearchInput(BaseModel):
+    """Input of the asset-search tool (frozen 8-tool vocabulary; I/O
+    follows the implemented capability, see competition/docs/
+    verification-reports/asset-search-shape-deviation-2026-09-29.md).
+
+    ``modality`` / ``doc_type`` are exact-match filters and
+    ``authority_min`` a floor on the 1..4 authority ladder
+    (1 national std, 2 guideline, 3 label, 4 popular science).
+    ``include_superseded`` folds replaced versions by default - a search
+    that surfaces both a drug label and the label that replaced it serves
+    the caller stale facts unless it asked for the lineage. The query and
+    limit bounds are the hard guardrails (SPEC discipline 3).
+    """
+
+    query: str = Field(min_length=1, max_length=200)
+    modality: str | None = Field(None, max_length=12)
+    doc_type: str | None = Field(None, max_length=24)
+    authority_min: int | None = Field(None, ge=1, le=4)
+    include_superseded: bool = False
+    limit: int = Field(5, ge=1, le=20)
+
+
+class AssetSearchOutput(BaseModel):
+    assets: list[AssetCard] = Field(default_factory=list)
+    valid_view: datetime
+    used_tokens: int = 0
+    elapsed_ms: int = 0
 
 
 # ---------------------------------------------------------------------------

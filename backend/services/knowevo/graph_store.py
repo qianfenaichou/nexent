@@ -29,11 +29,15 @@ to post-filtering (see DecisionService._store_supports_as_of).
 Design inspired by: graphiti's bi-temporal edges and neighborhood walks
 (attribution per 03-development-plan 4.2).
 """
+from __future__ import annotations
+
+import inspect
+import logging
 import uuid
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from database.knowevo_db import (
@@ -47,6 +51,8 @@ from database.knowevo_db import (
 )
 from sqlalchemy import insert, select
 from sqlalchemy import tuple_ as sa_tuple
+
+logger = logging.getLogger(__name__)
 
 # Default number of rows per batched statement (K below). 1000 is a balance:
 # large enough to amortise per-statement overhead, small enough that a single
@@ -95,6 +101,40 @@ def current_view_predicate(model, as_of, *, range_form: bool):
     if range_form:
         return valid_range_contains(model, as_of=as_of)
     return valid_now(model, as_of=as_of)
+
+
+async def _maybe_await(value):
+    """Await a coroutine, pass a plain value through.
+
+    The injected ES client (L1 step 3) may be either a synchronous HTTP
+    wrapper (e.g. NativeIngestClient) or an async one; this lets
+    ``entity_lookup`` accept both without the store taking a stance.
+    """
+    if inspect.isawaitable(value):
+        return await value
+    return value
+
+
+def _as_entity_card(hit: Any) -> EntityCard | None:
+    """Best-effort coercion of an ES hit to an EntityCard.
+
+    The injected ``es_client.entity_search`` is expected to return
+    ``EntityCard`` already, but we accept a dict carrying at least
+    ``stable_id`` + ``name`` so a thin client can hand back raw source
+    docs without importing the dataclass. Anything else is dropped (the
+    store never invents an entity from an unparseable hit).
+    """
+    if isinstance(hit, EntityCard):
+        return hit
+    if isinstance(hit, dict) and "stable_id" in hit and "name" in hit:
+        return EntityCard(
+            stable_id=hit["stable_id"],
+            name=hit["name"],
+            class_ref=hit.get("class_ref", "Unknown"),
+            props=dict(hit.get("props") or {}),
+            aliases=list(hit.get("aliases") or []),
+        )
+    return None
 
 # ---------------------------------------------------------------------------
 # Result shapes (contract graph_store.py.md: Subgraph / Path / HopPlan).
@@ -253,7 +293,13 @@ def _relation_to_card(row) -> EdgeCard:
 class PgJsonbGraphStore(GraphStore):
     """Default adapter: PG JSONB tables with GIN alias index and the
     (valid_at, invalid_at) b-tree. One hop is one query - the service
-    layer loops for multi-hop so beam scoring can prune between hops."""
+    layer loops for multi-hop so beam scoring can prune between hops.
+
+    ``es_client`` (L1 step 3) is an optional injector for an ES-first
+    entity lookup. It is None by default, in which case ``entity_lookup``
+    reproduces the original PG-only ilike behaviour bit for bit. The seam
+    shape (``entity_lookup`` signature + EntityCard return) is final.
+    """
 
     #: When True, the read path filters the current view with the half-open
     #: range-containment predicate instead of the boolean one, so the GiST
@@ -263,6 +309,22 @@ class PgJsonbGraphStore(GraphStore):
     #: confirming the planner picks ``ix_kr_valid_range``. Registered as a
     #: wiring item in the session-B receipt rather than flipped blind.
     use_range_predicate: bool = False
+
+    def __init__(self, es_client: Any = None,
+                 use_range_predicate: bool = False,
+                 batch_size: int | None = None):
+        """Construct the PG adapter.
+
+        ``es_client`` wires the optional ES-first lookup: an object exposing
+        ``entity_search(tenant_id, query, top_k) -> list[EntityCard]``
+        (synchronous or coroutine; the store adapts). When None, entity
+        lookup is PG-only and unchanged. ``batch_size`` keeps the existing
+        ``_batch_size_for`` default when unset (we deliberately do NOT store
+        None, which ``_batch_size_for`` would reject)."""
+        self.es_client = es_client
+        self.use_range_predicate = use_range_predicate
+        if batch_size is not None:
+            self.batch_size = batch_size
 
     # ── upserts (idempotent reruns) ────────────────────────────────────
 
@@ -620,15 +682,56 @@ class PgJsonbGraphStore(GraphStore):
 
     async def entity_lookup(self, tenant_id: str, query: str,
                             top_k: int = 5) -> list[EntityCard]:
-        """Lexical name lookup with alias fallback (PG GIN).
+        """Entity lookup: ES hybrid search first, PG ilike (name + alias)
+        fallback - read path only.
 
-        ES redundancy index (name+summary in Elasticsearch) is NOT wired
-        yet - T-08 owns the ES write path and the switch to the ES-first
-        lookup; until then this is the slow-but-complete PG path. The seam
-        shape (method + return type) is final, matching graph_store.py.md."""
+        Contract (graph_store.py.md): the seam shape (method + return type)
+        is final; this is a read-path enhancement, not a signature change.
+        When an ``es_client`` is injected, its ``entity_search`` returns
+        ``EntityCard`` hits already ranked by ES hybrid score (descending);
+        the store returns those ES matches first and fills any remaining
+        slots with PG ilike matches, never re-ranking or folding the ES
+        score into an opaque aggregate - so the only ES ordering signal is
+        the relative order of the ES-matched entities. If no client is
+        injected, the client errors, or it returns nothing, the method
+        degrades bit-for-bit to the original PG-only ilike lookup (including
+        the alias fallback). No PPR / random-walk score is ever introduced -
+        ordering stays per-entity explainable (auditability > elegance)."""
         q = query.strip()
         if not q:
             return []
+        if self.es_client is not None:
+            try:
+                raw = await _maybe_await(
+                    self.es_client.entity_search(tenant_id, q, top_k))
+                es_hits = [c for c in (_as_entity_card(h) for h in (raw or []))
+                           if c is not None]
+                if es_hits:
+                    filled: list[EntityCard] = list(es_hits)
+                    es_ids = {c.stable_id for c in filled}
+                    if len(filled) < top_k:
+                        for c in await self._entity_lookup_ilike(
+                                tenant_id, q, top_k):
+                            if c.stable_id not in es_ids:
+                                filled.append(c)
+                                es_ids.add(c.stable_id)
+                                if len(filled) >= top_k:
+                                    break
+                    return filled[:top_k]
+            except Exception:  # silent ES -> ilike fallback by contract (debug-logged for triage)
+                logger.debug("entity_lookup ES-first failed; falling back to ilike",
+                             exc_info=True)
+        return await self._entity_lookup_ilike(tenant_id, q, top_k)
+
+    async def _entity_lookup_ilike(self, tenant_id: str, q: str,
+                                   top_k: int) -> list[EntityCard]:
+        """Original PG-only lexical lookup (name ilike + alias fallback).
+
+        Extracted from ``entity_lookup`` so the ES-first branch can reuse it
+        as the fallback and offline tests can stub it without a database.
+        Behaviour is identical to the pre-L1-step-3 implementation; when no
+        ``es_client`` is injected, ``entity_lookup`` calls this and nothing
+        else, guaranteeing the default path is unchanged."""
         cards: list[EntityCard] = []
         with _get_db_session() as session:
             rows = (
@@ -641,15 +744,17 @@ class PgJsonbGraphStore(GraphStore):
             )
             cards = [_entity_to_card(r) for r in rows]
             if len(cards) < top_k:
+                seen = {c.stable_id for c in cards}
                 for r in session.query(KgEntity).filter(
                         KgEntity.tenant_id == tenant_id,
                         KgEntity.status == "active"):
-                    if _entity_to_card(r).stable_id in {c.stable_id
-                                                        for c in cards}:
+                    card = _entity_to_card(r)
+                    if card.stable_id in seen:
                         continue
                     for a in (r.aliases or []):
                         if isinstance(a, dict) and q in a.get("alias", ""):
-                            cards.append(_entity_to_card(r))
+                            cards.append(card)
+                            seen.add(card.stable_id)
                             break
                     if len(cards) >= top_k:
                         break
@@ -674,3 +779,284 @@ class PgJsonbGraphStore(GraphStore):
                 out["pending"] = session.query(KgPendingEntity).filter(
                     KgPendingEntity.tenant_id == tenant_id).count()
         return out
+
+# ---------------------------------------------------------------------------
+# In-memory adapter + factory (A1 pluggable backend evidence)
+# ---------------------------------------------------------------------------
+
+def _window_contains(valid_at: datetime | None, invalid_at: datetime | None,
+                     as_of: datetime | None) -> bool:
+    """Half-open [valid_at, invalid_at) containment, matching valid_now().
+
+    ``as_of=None`` means the current view (evaluate at now), same as the PG
+    ``valid_now`` default.
+    """
+    if as_of is None:
+        as_of = datetime.now(timezone.utc)
+    if valid_at is not None and valid_at > as_of:
+        return False
+    return not (invalid_at is not None and invalid_at <= as_of)
+
+
+class MemoryGraphStore(GraphStore):
+    """Pure in-memory GraphStore adapter.
+
+    Same frozen method set and result shapes as ``PgJsonbGraphStore``; used
+    as the second backend behind ``KW_GRAPH_STORE_BACKEND`` so the seam is
+    demonstrably swappable. Not a production store - no durability, no
+    indexes, no concurrency guarantees beyond a single event loop.
+    """
+
+    def __init__(self) -> None:
+        # tenant -> stable_id -> entity row dict
+        self._entities: dict[str, dict[str, dict[str, Any]]] = {}
+        # tenant -> list of relation row dicts
+        self._relations: dict[str, list[dict[str, Any]]] = {}
+        # tenant -> list of (decision_id, entity_refs)
+        self._evidence: dict[str, list[tuple[uuid.UUID, list[str]]]] = {}
+
+    def register_evidence_refs(self, tenant_id: str, decision_id: uuid.UUID,
+                               entity_ids: list[str]) -> None:
+        """Test/demo helper: attach decision evidence entity refs (not on ABC)."""
+        self._evidence.setdefault(tenant_id, []).append(
+            (decision_id, list(entity_ids)))
+
+    async def upsert_entities(self, tenant_id: str,
+                              ents: list[dict[str, Any]]) -> None:
+        bucket = self._entities.setdefault(tenant_id, {})
+        for e in ents:
+            sid = e["stable_id"]
+            cur = bucket.get(sid)
+            if cur is None:
+                bucket[sid] = {
+                    "stable_id": sid,
+                    "name": e.get("name", sid),
+                    "class_ref": e.get("class_ref") or "Unknown",
+                    "props": dict(e.get("props") or {}),
+                    "aliases": list(e.get("aliases") or []),
+                    "status": e.get("status") or "active",
+                    "valid_at": e.get("valid_at"),
+                    "invalid_at": None,
+                }
+            else:
+                merged = dict(cur["props"])
+                merged.update(e.get("props") or {})
+                cur["props"] = merged
+                for a in (e.get("aliases") or []):
+                    if a not in cur["aliases"]:
+                        cur["aliases"].append(a)
+
+    async def upsert_relations(self, tenant_id: str,
+                               rels: list[dict[str, Any]]) -> None:
+        rows = self._relations.setdefault(tenant_id, [])
+        for r in rels:
+            key = (r["src"], r["dst"], r["rel_type"])
+            claim = r.get("claim", "")
+            current = next(
+                (x for x in rows
+                 if (x["src"], x["dst"], x["rel_type"]) == key
+                 and x.get("invalid_at") is None),
+                None,
+            )
+            if current is not None and current["claim"] == claim:
+                continue
+            rows.append({
+                "id": uuid.uuid4(),
+                "src": r["src"], "dst": r["dst"],
+                "rel_type": r["rel_type"], "claim": claim,
+                "props": dict(r.get("props") or {}),
+                "contested": bool(r.get("contested", False)),
+                "valid_at": r.get("valid_at"),
+                "invalid_at": None,
+            })
+
+    def _entity_card(self, row: dict[str, Any]) -> EntityCard:
+        return EntityCard(
+            stable_id=row["stable_id"],
+            name=row["name"],
+            class_ref=row["class_ref"],
+            props=dict(row["props"] or {}),
+            aliases=list(row["aliases"] or []),
+        )
+
+    def _edge_card(self, row: dict[str, Any]) -> EdgeCard:
+        return EdgeCard(
+            id=row["id"],
+            src=row["src"], dst=row["dst"],
+            rel_type=row["rel_type"], claim=row["claim"],
+            props=dict(row["props"] or {}),
+            contested=bool(row.get("contested", False)),
+            valid_at=row.get("valid_at"),
+            invalid_at=row.get("invalid_at"),
+        )
+
+    async def neighbors(self, tenant_id: str, entity_ids: list[str],
+                        rel_types: list[str] | None = None,
+                        hop: int = 1,
+                        valid_view: bool = True,
+                        as_of: datetime | None = None) -> Subgraph:
+        if not entity_ids:
+            return Subgraph()
+        ents = self._entities.get(tenant_id, {})
+        rels = self._relations.get(tenant_id, [])
+        wanted = set(entity_ids)
+        seen_e: dict[str, EntityCard] = {}
+        seen_r: dict[Any, EdgeCard] = {}
+        frontier = set(entity_ids)
+        for _ in range(max(1, hop)):
+            nxt: set[str] = set()
+            for rel in rels:
+                if rel_types is not None and rel["rel_type"] not in rel_types:
+                    continue
+                if valid_view and not _window_contains(
+                        rel.get("valid_at"), rel.get("invalid_at"), as_of):
+                    continue
+                touches = rel["src"] in frontier or rel["dst"] in frontier
+                if not touches:
+                    continue
+                if rel["id"] not in seen_r:
+                    seen_r[rel["id"]] = self._edge_card(rel)
+                for sid in (rel["src"], rel["dst"]):
+                    erow = ents.get(sid)
+                    if erow is not None and sid not in seen_e:
+                        seen_e[sid] = self._entity_card(erow)
+                    nxt.add(sid)
+            frontier |= nxt
+            # seeds themselves always included
+            for sid in wanted:
+                erow = ents.get(sid)
+                if erow is not None:
+                    seen_e[sid] = self._entity_card(erow)
+        return Subgraph(entities=list(seen_e.values()),
+                        edges=list(seen_r.values()))
+
+    async def multi_hop(self, tenant_id: str, seeds: list[str],
+                        hop_plan: HopPlan,
+                        beam: int = 3, depth: int = 3,
+                        as_of: datetime | None = None,
+                        rank: Callable[[Path], float] | None = None) -> list[Path]:
+        # Same greedy beam algorithm as the PG adapter (via self.neighbors).
+        if not seeds:
+            return []
+        depth = min(depth, 3)
+        beam = max(1, min(beam, 5))
+        paths: list[Path] = [Path(entities=[s]) for s in seeds]
+        for _ in range(depth):
+            tails = [p.entities[-1] for p in paths]
+            sub = await self.neighbors(
+                tenant_id, tails,
+                rel_types=hop_plan.rel_types,
+                hop=1, valid_view=True, as_of=as_of)
+            by_entity: dict[str, list[EdgeCard]] = {}
+            for e in sub.edges:
+                by_entity.setdefault(e.src, []).append(e)
+                by_entity.setdefault(e.dst, []).append(e)
+            new_paths: list[Path] = []
+            expanded = False
+            for p in paths:
+                tail = p.entities[-1]
+                candidates = by_entity.get(tail, [])
+                hop_edges = [e for e in candidates[:beam]
+                             if (e.dst if e.src == tail else e.src)
+                             not in p.entities]
+                if not hop_edges:
+                    new_paths.append(p)
+                    continue
+                expanded = True
+                for edge in hop_edges[:beam]:
+                    nxt = edge.dst if edge.src == tail else edge.src
+                    new_paths.append(Path(
+                        entities=p.entities + [nxt],
+                        edges=p.edges + [edge.id],
+                        claims=p.claims + [edge.claim],
+                    ))
+            paths = sorted(
+                new_paths,
+                key=rank if rank is not None else (lambda p: len(p.entities)),
+                reverse=True)[:beam]
+            if not expanded:
+                break
+        return paths
+
+    async def supersede(self, tenant_id: str, edge_ids: list[uuid.UUID],
+                        invalid_at: datetime, reason: str) -> None:
+        for rel in self._relations.get(tenant_id, []):
+            if rel["id"] in edge_ids and rel.get("invalid_at") is None:
+                rel["invalid_at"] = invalid_at
+                props = dict(rel.get("props") or {})
+                props["supersede_reason"] = reason
+                rel["props"] = props
+
+    async def reachable_decisions(self, tenant_id: str,
+                                  entity_ids: list[str]) -> list[uuid.UUID]:
+        if not entity_ids:
+            return []
+        wanted = set(entity_ids)
+        out: list[uuid.UUID] = []
+        for decision_id, refs in self._evidence.get(tenant_id, []):
+            if wanted.intersection(refs):
+                out.append(decision_id)
+        return out
+
+    async def entity_lookup(self, tenant_id: str, query: str,
+                            top_k: int = 5) -> list[EntityCard]:
+        q = query.strip()
+        if not q:
+            return []
+        cards: list[EntityCard] = []
+        seen: set[str] = set()
+        for row in self._entities.get(tenant_id, {}).values():
+            if row.get("status") != "active":
+                continue
+            if q in row.get("name", ""):
+                cards.append(self._entity_card(row))
+                seen.add(row["stable_id"])
+            if len(cards) >= top_k:
+                return cards[:top_k]
+        for row in self._entities.get(tenant_id, {}).values():
+            if row.get("status") != "active" or row["stable_id"] in seen:
+                continue
+            if any(q in (a or "") for a in (row.get("aliases") or [])):
+                cards.append(self._entity_card(row))
+                seen.add(row["stable_id"])
+            if len(cards) >= top_k:
+                break
+        return cards[:top_k]
+
+    async def stats(self, tenant_id: str, scope: str) -> dict:
+        ents = self._entities.get(tenant_id, {})
+        rels = self._relations.get(tenant_id, [])
+        out = {
+            "tenant_id": str(tenant_id),
+            "scope": scope,
+            "entities": len(ents),
+            "edges_total": len(rels),
+            "edges_valid": sum(1 for r in rels if r.get("invalid_at") is None),
+        }
+        if scope == "full":
+            out["pending"] = 0
+        return out
+
+
+_MEMORY_BACKENDS = frozenset({"memory", "mem", "in_memory", "inmemory"})
+_PG_BACKENDS = frozenset({"pg_jsonb", "pg", "postgres", "postgresql"})
+
+
+def make_graph_store(backend: str | None = None, **kwargs: Any) -> GraphStore:
+    """Construct a GraphStore adapter by name.
+
+    ``backend`` defaults to ``KW_GRAPH_STORE_BACKEND`` (const.py / env,
+    default ``pg_jsonb``). Unknown names raise ``ValueError`` so a typo in
+    deployment config fails loudly instead of silently binding the wrong
+    adapter. ``kwargs`` are forwarded to the adapter constructor.
+    """
+    resolved = backend
+    if resolved is None:
+        from consts.const import KW_GRAPH_STORE_BACKEND
+        resolved = KW_GRAPH_STORE_BACKEND
+    name = str(resolved).strip().lower()
+    if name in _PG_BACKENDS:
+        return PgJsonbGraphStore(**kwargs)
+    if name in _MEMORY_BACKENDS:
+        return MemoryGraphStore(**kwargs)
+    raise ValueError(f"unknown graph store backend: {backend!r}")

@@ -1,8 +1,9 @@
 """
 KnowEvo Local-MCP inner registration - kg_search + kg_stats (T-07b),
 kg_multi_hop (T-09), decision_card_render (T-19), skill_template_apply
-(T-20) and the L2 completion kg_evolution_trace / ontology_diff /
-evidence_verify (2026-09-28).
+(T-20), the L2 completion kg_evolution_trace / ontology_diff /
+evidence_verify (2026-09-28) and asset_search (asset-search charter M3,
+2026-09-29 - the frozen-vocabulary surface is now 9/9 registered).
 
 This is the second registration surface of the same tool handlers: the
 standalone FastMCP server (mcp_servers/knowevo_mcp/server.py) serves them
@@ -30,6 +31,8 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from mcp_servers.knowevo_mcp.schemas import (
+    AssetSearchInput,
+    AssetSearchOutput,
     DecisionCardInput,
     EvidenceVerifyInput,
     EvidenceVerifyOutput,
@@ -46,9 +49,7 @@ from mcp_servers.knowevo_mcp.schemas import (
     SkillTemplateApplyInput,
 )
 from mcp_servers.knowevo_mcp.server import (
-    configure as knowevo_configure,
-)
-from mcp_servers.knowevo_mcp.server import (
+    asset_search_handler,
     decision_card_render_handler,
     evidence_verify_handler,
     kg_evolution_trace_handler,
@@ -58,12 +59,15 @@ from mcp_servers.knowevo_mcp.server import (
     ontology_diff_handler,
     skill_template_apply_handler,
 )
+from mcp_servers.knowevo_mcp.server import (
+    configure as knowevo_configure,
+)
 
 SERVICE_NAME = "knowevo"
 KG_MCP_TOOL_NAMES = (
-    "kg_search", "kg_stats", "kg_multi_hop", "kg_evolution_trace",
-    "ontology_diff", "evidence_verify", "decision_card_render",
-    "skill_template_apply")
+    "kg_search", "asset_search", "kg_stats", "kg_multi_hop",
+    "kg_evolution_trace", "ontology_diff", "evidence_verify",
+    "decision_card_render", "skill_template_apply")
 
 # Reuse the standalone app as the mountable unit: the same FastMCP instance
 # can be mounted into local_mcp_service.py via ``local_mcp_service.mount``,
@@ -75,6 +79,7 @@ def tool_schemas() -> dict[str, dict]:
     """Schema manifest for registration docs / tests (no server needed)."""
     return {
         "kg_search": KGSearchInput.model_json_schema(),
+        "asset_search": AssetSearchInput.model_json_schema(),
         "kg_stats": KGStatsInput.model_json_schema(),
         "kg_multi_hop": KGMultiHopInput.model_json_schema(),
         "kg_evolution_trace": KGEvolutionTraceInput.model_json_schema(),
@@ -89,6 +94,7 @@ def handlers() -> dict[str, object]:
     """Handler map for direct invocation without an MCP runtime."""
     return {
         "kg_search": kg_search_handler,
+        "asset_search": asset_search_handler,
         "kg_stats": kg_stats_handler,
         "kg_multi_hop": kg_multi_hop_handler,
         "kg_evolution_trace": kg_evolution_trace_handler,
@@ -121,6 +127,8 @@ def wire(tenant_id: str = "") -> FastMCP:
 __all__ = [
     "KG_MCP_TOOL_NAMES",
     "SERVICE_NAME",
+    "AssetSearchInput",
+    "AssetSearchOutput",
     "DecisionCardInput",
     "EvidenceVerifyInput",
     "EvidenceVerifyOutput",
