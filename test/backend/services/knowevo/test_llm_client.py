@@ -1,4 +1,4 @@
-"""Unit tests for services/knowevo/llm_client.py (T-08 wiring).
+"""Unit tests for services/knowevo/llm_client.py (wiring).
 
 Layer 1 (always runs): tier resolution, tenant default fallback, the
 unconfigured error path, and the injected-``llm`` callable contract.
@@ -47,7 +47,7 @@ FAKE_MODELS = {
         "model_type": "chat",
         "base_url": "https://api.example.com/v1",
         "api_key": "sk-t1",
-        # R20 review P2-2: the cap must be declared, otherwise both the
+        # R20 review the cap must be declared, otherwise both the
         # extract (None) and non-extract (configured) assertions below are
         # vacuous - config.get("max_output_tokens") would be None for both.
         "max_output_tokens": 8192,
@@ -192,7 +192,7 @@ def test_extract_kind_disables_thinking(monkeypatch):
         llm_client.TIER_MID, temperature=0.0, kind="extract")
     assert model.kwargs["extra_body"] == _NO_THINK
     # No client-level cap for extraction. Fixture model 222 declares 8192
-    # (r20 review P2-2), so this assertion is discriminating - and cleanup
+    # (r20 review), so this assertion is discriminating - and cleanup
     # only: the generate() path never forwarded this attribute, the wire cap
     # that truncated the JSON was the provider default (see llm_client note).
     assert model.kwargs["max_output_tokens"] is None
@@ -227,7 +227,7 @@ def test_other_kinds_send_no_provider_extras(monkeypatch):
             llm_client.TIER_MID, temperature=0.0, kind=kind)
         assert model.kwargs["extra_body"] is None, kind
         # Fixture model 222 declares 8192, so this pins the non-card branch
-        # to the configured cap (r20 review P2-2): only the thinking-disabled
+        # to the configured cap (r20 review): only the thinking-disabled
         # branch may blank it.
         assert model.kwargs["max_output_tokens"] == 8192, kind
         FakeOpenAIModel.last_generate_kwargs = None
@@ -236,7 +236,7 @@ def test_other_kinds_send_no_provider_extras(monkeypatch):
 
 
 def test_card_chain_kinds_disable_thinking(monkeypatch):
-    """pitfalls #59: the card chain burned the output cap into reasoning.
+    """: the card chain burned the output cap into reasoning.
 
     e8-paired.log recorded 24x empty content for the ablation card/hop kinds
     (finish_reason=length rt=8192, and stop rt=3921 with empty content)
@@ -294,7 +294,7 @@ def test_call_with_usage_routes_extract_to_thinking_disabled_client(monkeypatch)
     text, usage = asyncio.run(
         router.call_with_usage("prompt", kind="extract"))
     assert text.startswith("ok:")
-    # Core counters keep their meaning. The r21 P1-4 observability keys are
+    # Core counters keep their meaning. The observability keys are
     # additive: this fake reports neither a provider payload nor tokens, so
     # they are honestly 0 / None (never fabricated).
     assert usage["input_tokens"] == 0
@@ -312,7 +312,7 @@ def await_llm(callable_, prompt, **kwargs):
 
 
 # ---------------------------------------------------------------------------
-# r21 P1-4 observability (pitfalls #52/#55 沉淀机制): finish_reason +
+# observability : finish_reason +
 # reasoning_tokens surfaced per call, and the kind x empty-body counter.
 # Everything below is scripted - no provider is ever contacted.
 # ---------------------------------------------------------------------------
@@ -391,7 +391,7 @@ def _install_scripted_model(monkeypatch, *, content, finish_reason, reasoning):
 
 
 def test_usage_carries_finish_reason_and_int_reasoning_tokens(monkeypatch):
-    """P1-4 ①③: caller reads this call's finish_reason + reasoning_tokens."""
+    """①③: caller reads this call's finish_reason + reasoning_tokens."""
     llm_client = _install_scripted_model(
         monkeypatch, content='{"entities": []}',
         finish_reason="length", reasoning=8192)
@@ -409,7 +409,7 @@ def test_usage_carries_finish_reason_and_int_reasoning_tokens(monkeypatch):
 
 
 def test_reasoning_tokens_zero_when_provider_omits_them(monkeypatch):
-    """P1-4 ①: an unreported reasoning split is 0, never fabricated."""
+    """①: an unreported reasoning split is 0, never fabricated."""
     llm_client = _install_scripted_model(
         monkeypatch, content="body", finish_reason="stop", reasoning=None)
     router = llm_client.LlmRouter(tenant_id=TENANT_A)
@@ -421,7 +421,7 @@ def test_reasoning_tokens_zero_when_provider_omits_them(monkeypatch):
 
 
 def test_empty_content_counter_is_per_kind(monkeypatch):
-    """P1-4 ②: empty body bumps empty_content; non-empty only bumps calls."""
+    """②: empty body bumps empty_content; non-empty only bumps calls."""
     llm_client = _install_scripted_model(
         monkeypatch, content="   ", finish_reason="length", reasoning=8192)
     router = llm_client.LlmRouter(tenant_id=TENANT_A)
@@ -441,7 +441,7 @@ def test_empty_content_counter_is_per_kind(monkeypatch):
 
 
 def test_empty_content_emits_structured_event(monkeypatch, caplog):
-    """P1-4 ②: every empty body logs event=llm_empty_content with the fields."""
+    """②: every empty body logs event=llm_empty_content with the fields."""
     llm_client = _install_scripted_model(
         monkeypatch, content="", finish_reason="length", reasoning=8192)
     router = llm_client.LlmRouter(tenant_id=TENANT_A)
@@ -460,7 +460,7 @@ def test_empty_content_emits_structured_event(monkeypatch, caplog):
 
 
 def test_additive_keys_do_not_change_extract_wire_or_cache(monkeypatch):
-    """P1-4 ④: extract still disables thinking and caches per kind-class."""
+    """④: extract still disables thinking and caches per kind-class."""
     llm_client = _install_scripted_model(
         monkeypatch, content="body", finish_reason="stop", reasoning=None)
     router = llm_client.LlmRouter(tenant_id=TENANT_A)
@@ -478,7 +478,7 @@ def test_additive_keys_do_not_change_extract_wire_or_cache(monkeypatch):
 
 
 def test_last_usage_exposes_most_recent_call_diagnostics(monkeypatch):
-    """T-24 read surface: last_usage() mirrors the last call's usage dict
+    """read surface: last_usage mirrors the last call's usage dict
     while __call__ keeps its frozen ``-> str`` contract."""
     llm_client = _install_scripted_model(
         monkeypatch, content="body", finish_reason="length", reasoning=8192)

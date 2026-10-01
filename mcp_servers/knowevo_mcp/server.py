@@ -1,9 +1,9 @@
 """
-KnowEvo FastMCP server (T-07b, extended by T-09/T-19/T-20, the L2
+KnowEvo FastMCP server (extended by, the L2
 tool-surface completion and the asset_search closure) - graph-query,
 decision-layer and asset-retrieval tool service.
 
-Tools delivered (SPEC.md freezes 8 + T-20's additive skill_template_apply;
+Tools delivered (SPEC.md freezes 8 + 's additive skill_template_apply;
 9/9 registered since 2026-09-29, when asset_search closed the last frozen
 gap per the asset-search charter M3 (competition/docs/
 tech-optimization-2026-09-28/, asset-search-立项-2026-09-28.md):
@@ -22,8 +22,8 @@ tech-optimization-2026-09-28/, asset-search-立项-2026-09-28.md):
                           change-type counts (AlignmentService.list_diffs)
     evidence_verify       evidence rows referencing given entities (GIN
                           reverse lookup, GraphStore.reachable_decisions)
-    decision_card_render  question -> evidence-backed decision card (T-19)
-    skill_template_apply  mined SKILL.md template -> rendered instance (T-20)
+    decision_card_render question -> evidence-backed decision card 
+    skill_template_apply mined SKILL.md template -> rendered instance 
 
 Standalone form: ``python -m mcp_servers.knowevo_mcp.server`` serves a
 FastMCP app that tools are registered on. The Local-MCP inner form
@@ -89,10 +89,10 @@ mcp = FastMCP(SERVICE_NAME)
 # store through the module-level hook below.
 _graph_store = None
 _default_tenant = ""
-# T-09: the decision service is what owns the pinned beam walk, so the
+# the decision service is what owns the pinned beam walk, so the
 # multi-hop handler delegates to it. Same injection shape as the store.
 _decision_service = None
-# T-20: the skill-template service owns the reuse loop over skill_template_t;
+# the skill-template service owns the reuse loop over skill_template_t;
 # same injection shape so tests can supply an in-memory seam.
 _skill_template_service = None
 # L2: the KG service owns the bi-temporal evolution timeline and the
@@ -103,7 +103,7 @@ _alignment_service = None
 # asset_search retrieval capability over doc_asset_t; same injection shape
 # so tests can supply an in-memory seam.
 _asset_service = None
-# T-08 fusion phase 2 (2026-09-30): optional AssetRawListClient seam for
+# fusion phase 2 (2026-09-30): optional AssetRawListClient seam for
 # the asset_search RRF branch. None keeps today's search_assets path.
 _asset_raw_client = None
 
@@ -112,7 +112,7 @@ def configure(tenant_id: str = "", store=None, decision_service=None,
               skill_template_service=None, kg_service=None,
               alignment_service=None, asset_service=None,
               asset_raw_client=None):
-    """Server-level dependency injection (tests / T-08 wiring)."""
+    """Server-level dependency injection (tests / wiring)."""
     global _graph_store, _default_tenant, _decision_service
     global _skill_template_service, _kg_service, _alignment_service
     global _asset_service, _asset_raw_client
@@ -212,7 +212,7 @@ def _resolve(store=None, tenant_id: str = ""):
 
 
 def _card_service(store=None, tenant_id: str = ""):
-    """An LLM-bound decision service for card rendering (T-19).
+    """An LLM-bound decision service for card rendering.
 
     Deliberately not the ``_service()`` instance the walk tool uses: the
     card render needs the three-tier LLM chain (KW_LLM_*, 02-tech-plan
@@ -237,7 +237,7 @@ def _card_service(store=None, tenant_id: str = ""):
 
 
 def _template_service(tenant_id: str = ""):
-    """The skill-template service for this request scope (T-20).
+    """The skill-template service for this request scope.
 
     Deliberately LLM-free: apply only renders the stored body_md and
     bumps the reuse counter - induction (the LLM channel) lives in the
@@ -250,7 +250,7 @@ def _template_service(tenant_id: str = ""):
 
 
 def _kg_service_for(store=None, tenant_id: str = ""):
-    """The KG service backing kg_evolution_trace (T-09 query surface).
+    """The KG service backing kg_evolution_trace (query surface).
 
     Deliberately ``KGService.evolution_trace`` and not a re-implementation:
     the entity branch needs ``store.list_relations_by_entity`` - the
@@ -463,7 +463,7 @@ async def kg_multi_hop_handler(inputs: KGMultiHopInput,
                                store=None,
                                tenant_id: str = "",
                                service=None) -> KGMultiHopOutput | dict:
-    """Version-pinned beam walk over the knowledge graph (T-09, B2).
+    """Version-pinned beam walk over the knowledge graph (B2).
 
     Returns KGMultiHopOutput on success or a structured error dict on
     failure (never raises into the MCP runtime). ``version_valid=False``
@@ -531,7 +531,7 @@ async def _card_evidence(svc, tenant: str, inputs: DecisionCardInput):
     itself; a store without that seam (or an empty graph) yields no
     seeds, the walk returns an empty PathSet and the chain stays empty -
     which render_card turns into the deterministic INSUFFICIENT_EVIDENCE
-    refusal without a single LLM call (T-09 honest degradation, kept
+    refusal without a single LLM call (honest degradation, kept
     intact here). The document channel is not wired in production yet
     (the ES write path is upstream-owned), so the card is assembled from
     the graph channel only - claimed as such, not silently narrowed.
@@ -551,14 +551,14 @@ async def decision_card_render_handler(inputs: DecisionCardInput,
                                        store=None,
                                        tenant_id: str = "",
                                        service=None) -> dict:
-    """Question -> decision card (T-19): seeds -> pinned walk -> evidence
+    """Question -> decision card : seeds -> pinned walk -> evidence
     chain -> rendered card, persisted to decision_card_t.
 
     Returns the card payload dict (``DecisionCardContract`` shape plus
     ``persisted``/``card_id``) or a structured error dict - never raises
     into the MCP runtime. An evidence-backed question with no LLM wired
     answers ``llm_unavailable`` rather than rendering a card it cannot
-    ground; an evidence-free question keeps the T-09 refusal contract
+    ground; an evidence-free question keeps the refusal contract
     (INSUFFICIENT_EVIDENCE, zero LLM calls) and still persists, so the
     rerun ledger (needs_rerun) sees the refusal.
     """
@@ -602,7 +602,7 @@ async def decision_card_render_handler(inputs: DecisionCardInput,
 async def skill_template_apply_handler(inputs: SkillTemplateApplyInput,
                                        tenant_id: str = "",
                                        service=None) -> dict:
-    """Instantiate a mined SKILL.md template (T-20): render the stored
+    """Instantiate a mined SKILL.md template : render the stored
     body_md with the merged variables and bump the template's reuse_count
     (both done by ``SkillTemplateService.apply_template``).
 
@@ -731,7 +731,7 @@ async def evidence_verify_handler(inputs: EvidenceVerifyInput,
 
 
 def _asset_raw_client_for():
-    """Optional AssetRawListClient seam (T-08 fusion phase 2).
+    """Optional AssetRawListClient seam (fusion phase 2).
 
     Injected via configure() or resolved from the env-gated factory.
     ``None`` means "no fusion adapter" and the handler keeps today's
@@ -761,7 +761,7 @@ def _asset_output(hits, t0: float) -> AssetSearchOutput:
 
 async def _asset_search_fused(inputs: AssetSearchInput, svc, tenant: str,
                               raw_client) -> list | None:
-    """T-08 asset fusion attempt; ``None`` means "fall back to today".
+    """asset fusion attempt; ``None`` means "fall back to today".
 
     When the ignition gate is open (>= 2 non-empty routes - L6-M2
     anti-theatre rule) the fused ``AssetHit.id`` order reorders the
@@ -769,7 +769,7 @@ async def _asset_search_fused(inputs: AssetSearchInput, svc, tenant: str,
     ``search_assets`` (parse gate / supersede fold / filters stay single
     source - A2); fused ids that the service did not return are dropped.
     No overlap or a closed gate returns None so the caller reproduces
-    the pre-T-08 path bit for bit. Exceptions propagate to the handler's
+    the pre-path bit for bit. Exceptions propagate to the handler's
     try/except which falls back.
     """
     from services.knowevo.asset_fusion import fused_asset_hits
@@ -813,7 +813,7 @@ async def asset_search_handler(inputs: AssetSearchInput,
     ``why`` (raw ES score or the PG ranking rule) - no score is
     fabricated where no relevance signal exists.
 
-    T-08 fusion phase 2 (2026-09-30): when the asset raw-list adapter is
+    fusion phase 2 (2026-09-30): when the asset raw-list adapter is
     configured AND the RRF ignition gate is open (>= 2 non-empty routes
     over the ``AssetHit.id`` space), the fused order reorders
     ``search_assets`` hits. With only one route live (today's dense slot

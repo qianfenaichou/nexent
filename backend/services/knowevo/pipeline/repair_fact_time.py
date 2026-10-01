@@ -1,6 +1,6 @@
-"""One-shot idempotent fact-time backfill (T-18b D1) - three phases.
+"""One-shot idempotent fact-time backfill - three phases.
 
-The D1 hole: ``kg_relation_t.valid_at`` was never written explicitly, so
+The hole: ``kg_relation_t.valid_at`` was never written explicitly, so
 every fact inherited the ingest wall clock (``server_default=now()``).
 Ontology versions carry a ``created_at`` on that same clock, which made the
 version-pinning predicate ``valid_at <= t_v`` constant true - pinned
@@ -281,7 +281,7 @@ def _print_counts(label: str, counts: dict[str, int]) -> None:
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
-        description="Backfill fact business time (T-18b D1; one-shot, "
+        description="Backfill fact business time (; one-shot, "
                     "idempotent, three phases)")
     parser.add_argument("--dry-run", action="store_true", default=True,
                         help="report only, write nothing (default)")

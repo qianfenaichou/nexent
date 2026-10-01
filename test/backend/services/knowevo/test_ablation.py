@@ -1,4 +1,4 @@
-"""Unit tests for services/knowevo/pipeline/ablation.py (T-22).
+"""Unit tests for services/knowevo/pipeline/ablation.py.
 
 Orchestration with fakes only (no network, no LLM, no real database):
   * four-level config routing and eval_run_t config capture,
@@ -386,10 +386,10 @@ class TestEvalRunPersist:
                    "config": {"ablation_level": "A3_multihop",
                               "pin": "n/a"}}
         run_id = eval_e1.persist_eval_run(metrics, "hash123", "tenant-1",
-                                          task_ref="T-22")
+                                          task_ref="")
         assert run_id == "row-1"
         assert captured["config"]["ablation_level"] == "A3_multihop"
-        assert captured["task_ref"] == "T-22"
+        assert captured["task_ref"] == ""
         assert captured["testset_hash"] == "hash123"
         # details/runs never reach the column
         assert "details" not in captured["metrics"]

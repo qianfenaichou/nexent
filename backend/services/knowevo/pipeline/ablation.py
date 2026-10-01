@@ -1,10 +1,10 @@
-"""E2 ablation runner (T-22): A1-A4 four-level x question-type matrix plus
+"""E2 ablation runner : A1-A4 four-level x question-type matrix plus
 the E8 version-pin on/off arms.
 
 02-technical-plan 3.5: the same testset, the same generation model and
 prompt, four escalating configurations -
 
-    A1_pure_rag   document retrieval only (the T-10a-2 baseline, reused
+    A1_pure_rag document retrieval only (the baseline, reused
                   unchanged via ``eval_e1.run_question``)
     A2_graph      + kg_search (1-hop neighbourhood): the graph channel is
                   fused into the retrieval context through
@@ -38,7 +38,7 @@ narrowed to the key facts carried by the arm's gold); F/M/X golds are
 edition-free and pass through unchanged. Headline A4 runs (single pin)
 use the standard rubric so the cross table stays comparable with A1-A3.
 
-Honesty contract (iron rule 6, inherited from T-18c):
+Honesty contract (iron rule 6, inherited from)
   * acc / n_judged are always reported together; platform faults stay out
     of the denominator, runner errors (count_fail) stay IN it;
   * a question-type cell with zero judged runs is reported
@@ -104,10 +104,10 @@ from services.knowevo.pipeline.eval_v1 import (
 from services.knowevo.seed_terms import MAX_SEED_LOOKUPS, extract_seed_terms
 from services.knowevo.version_pin import resolve_version_clock
 
-# T-26: seed extraction moved to a service module so the production
+# seed extraction moved to a service module so the production
 # decision-card entry and this harness share one implementation. It is
 # re-exported here (still readable as ``ablation.extract_seed_terms`` /
-# ``ablation.MAX_SEED_LOOKUPS``) so every existing caller and the T-22
+# ``ablation.MAX_SEED_LOOKUPS``) so every existing caller and the 
 # evaluation semantics are unchanged.
 __all__ = ["MAX_SEED_LOOKUPS", "extract_seed_terms"]
 
@@ -132,25 +132,25 @@ SEED_TOP_K = 3
 
 # E8 default pin cutoff. The corpus carries two guideline editions
 # (guide-2020 published_at=2021-04-01, guide-2024 published_at=2025-01-01,
-# both T-18b-backfilled and traceable to registry license_note); a named
+# both -backfilled and traceable to registry license_note); a named
 # snapshot "as of 2024-06-01" sits between them, so pinning cuts exactly
 # the 2024-edition graph facts. Overridable via --pin-as-of; the resolved
 # clock (source, instant) is recorded in every report row.
 DEFAULT_PIN_AS_OF = "2024-06-01"
 
-# D1 gate instants (T-18b discriminative check, run through the version_pin
+# gate instants (discriminative check, run through the version_pin
 # predicate itself before any ablation arm fires).
 D1_CLOCKS = (("t_v_2022_01_01", datetime(2022, 1, 1, tzinfo=UTC)),
              ("t_v_2024_06_01", datetime(2024, 6, 1, tzinfo=UTC)),
              ("t_v_2025_06_01", datetime(2025, 6, 1, tzinfo=UTC)))
 
-TASK_REF = "T-22"
+TASK_REF = ""
 
 # Question-type axis of the cross table (mirrors eval_e1.summarize).
 QTYPES = ("F", "M", "V", "X")
 
 E8_CAVEAT = (
-    "数据现实一律以 report['data_reality'] 为准——它每次运行实测（D1 判别性"
+    "数据现实一律以 report['data_reality'] 为准——它每次运行实测（判别性"
     "计数 + 构建租户图谱规模），本字段因此**不复述任何会过期的快照数字**"
     "（r21 修正：此前这里硬编码了 2026-09-19 的\u201c图谱为空\u201d快照，"
     "与同一份 JSON 里 data_reality 的实测值自相矛盾）。\n"
@@ -172,8 +172,8 @@ E8_CAVEAT = (
 
 # ``extract_seed_terms`` / ``MAX_SEED_LOOKUPS`` are imported from
 # services.knowevo.seed_terms (single implementation shared with the
-# production decision-card entry - T-26). The function consumed below is
-# byte-for-byte the one the T-22 evaluation has always used, so the E8/A4
+# production decision-card entry). The function consumed below is
+# byte-for-byte the one the evaluation has always used, so the E8/A4
 # semantics are unchanged.
 
 
@@ -725,14 +725,14 @@ async def run_level(level: str, questions: list[dict[str, Any]], *,
 
 
 # ---------------------------------------------------------------------------
-# D1 gate + data-reality checks (run through the version_pin predicate)
+# gate + data-reality checks (run through the version_pin predicate)
 # ---------------------------------------------------------------------------
 
 def d1_check(tenant_id: str | None = None) -> dict[str, Any]:
-    """T-18b discriminative counts through the version_pin predicate.
+    """discriminative counts through the version_pin predicate.
 
     The acceptance gate: the pinned-predicate fact count must differ
-    between the two t_v instants (0 != 1 today). Equal counts mean D1 is
+    between the two t_v instants (0 != 1 today). Equal counts mean is
     broken and the caller must stop before running E8.
     """
     from database.knowevo_db import KgRelation, _get_db_session
@@ -992,7 +992,7 @@ async def _dry_run(plan, questions, *, retriever, store, tenant_id,
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
-        description="E2 ablation runner (T-22): A1-A4 + E8 pin on/off")
+        description="E2 ablation runner : A1-A4 + E8 pin on/off")
     parser.add_argument("--testset", default=str(
         CORPUS_ROOT / "testset-v1-seed.json"))
     parser.add_argument("--levels", default="A1,A2,A3,A4",
@@ -1123,7 +1123,7 @@ def main(argv=None) -> int:
             continue
         pending.append((level, pin, prev))
 
-    # D1 gate + data reality (runs even on resume; cheap counts).
+    # gate + data reality (runs even on resume; cheap counts).
     try:
         d1 = d1_check()
         presence = graph_presence(args.tenant)
@@ -1137,10 +1137,10 @@ def main(argv=None) -> int:
             report["partial"] = True
             report["resume"] = _resume_command(args, levels, pins)
             report["notes"].append(
-                "D1 前置校验失败：两个 t_v 下纳入事实数相同，E8 无效，已停止。")
+                "前置校验失败：两个 t_v 下纳入事实数相同，E8 无效，已停止。")
             _write_report(out_path, report)
-            logger.error("D1 gate FAILED: t_v counts identical (%s) - "
-                         "fix T-18b before running E8", d1)
+            logger.error("gate FAILED: t_v counts identical (%s) - "
+                         "fix before running E8", d1)
             return 3
     except Exception as exc:  # noqa: BLE001 - DB down is reportable, not fatal
         report["data_reality"] = {"error": str(exc)[:300]}

@@ -1,19 +1,19 @@
-"""Deterministic seed-term extraction shared by both KnowEvo chains (T-26).
+"""Deterministic seed-term extraction shared by both KnowEvo chains.
 
 The evaluation harness (``pipeline/ablation.py``) and the production
 decision-card entry (``apps/knowledge_graph_app.py``) must seed the graph
 walk the same way, or the two surfaces answer differently for the same
-question - which is exactly the divergence T-26 diagnosed (the panel
+question - which is exactly the divergence diagnosed (the panel
 structurally refused every sentence-length question while the ablation ran
 fine). The function therefore lives here, in one place, and
-``pipeline/ablation.py`` re-exports it so the T-22 evaluation semantics and
+``pipeline/ablation.py`` re-exports it so the evaluation semantics and
 its existing imports are byte-for-byte unchanged.
 
 Why the splitter looks the way it does: ``PgJsonbGraphStore.entity_lookup``
 matches ``KgEntity.name ILIKE '%query%'``, so a term only finds an entity
 when it is a substring of an entity name. ASCII words and CJK runs are the
 deterministic, model-free approximation of that. It is deliberately crude
-(pitfall #47's CJK-segmentation family): the word windows can produce
+the word windows can produce
 fragments such as ``双胍是``, so seed *relevance* is bounded by this
 heuristic and must be measured, never assumed.
 """

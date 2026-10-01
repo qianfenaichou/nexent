@@ -1,5 +1,5 @@
 """
-KnowEvo A1 graph-store seam (T-07a): the single access surface for graph
+KnowEvo A1 graph-store seam : the single access surface for graph
 queries - neighbors, multi-hop, supersede, impact scope, lookup and stats.
 
 Callers (kg_service, decision_service) import only this module and never
@@ -14,14 +14,14 @@ algorithm source: memo 09-A1 (02-technical-plan 2.6). The PoC benchmark
 probes (P1 multi-hop p95 < 1.5s @ 20k/30k, P2 supersede p95 < 200ms) run
 against the synthetic graph in pipeline/gen_synthetic_graph.py.
 
-T-09 seam extension (recorded here because the frozen contract says seam
+seam extension (recorded here because the frozen contract says seam
 changes are documented in one place): ``neighbors`` and ``multi_hop`` take
 an optional ``as_of`` keyword, and ``EdgeCard`` carries ``valid_at`` /
 ``invalid_at``. Together they are what version-pinned traversal walks on -
 every hop is evaluated at a knowledge version's cutoff t_v instead of
 now() (02-tech-plan 3.2, literature gap B2). Both extensions are additive:
 the parameters default to None and reproduce the previous behaviour
-exactly, so no existing caller changes, and the T-07 suite passing
+exactly, so no existing caller changes, and the suite passing
 unchanged is the compatibility evidence. An adapter that cannot honour a
 cutoff may ignore it; callers detect support via ``inspect`` and fall back
 to post-filtering (see DecisionService._store_supports_as_of).
@@ -157,7 +157,7 @@ class EdgeCard:
 
     ``valid_at``/``invalid_at`` are the bi-temporal business-time window.
     They are carried into query output because version-pinned traversal
-    (T-09, 02-tech-plan 3.2) must test each edge against a version cutoff
+    (02-tech-plan 3.2) must test each edge against a version cutoff
     t_v; without the window on the card the predicate would have to issue
     a second query per edge. Both default to None to stay backward
     compatible with hand-built fixtures (the columns are NOT NULL
@@ -195,7 +195,7 @@ class HopPlan:
 @dataclass
 class Path:
     """One beam walk from a seed: alternating entity/edge ids plus the
-    aggregated claims, for evidence-chain assembly (T-09)."""
+    aggregated claims, for evidence-chain assembly."""
     entities: list[str] = field(default_factory=list)
     edges: list[Any] = field(default_factory=list)
     claims: list[str] = field(default_factory=list)
@@ -223,7 +223,7 @@ class GraphStore(ABC):
                         as_of: datetime | None = None) -> Subgraph:
         """Neighborhood of the given entities.
 
-        ``valid_view=True`` returns the current view; ``as_of`` (T-09)
+        ``valid_view=True`` returns the current view; ``as_of`` 
         evaluates that view at a knowledge-version cutoff t_v instead of
         now(), which is what version-pinned traversal walks on. Adapters
         that cannot honour a cutoff may ignore it, but the parameter is
@@ -238,7 +238,7 @@ class GraphStore(ABC):
                         as_of: datetime | None = None,
                         rank: Callable[[Path], float] | None = None) -> list[Path]:
         """Beam walk from the seeds; ``as_of`` pins it to a knowledge
-        version (T-09), None means the current view. ``rank`` is an
+        version, None means the current view. ``rank`` is an
         optional path -> score retention scorer (higher kept first); None
         retains the v0 behaviour of keeping the longest paths."""
         ...
@@ -333,7 +333,7 @@ class PgJsonbGraphStore(GraphStore):
         """Insert-or-update by (tenant_id, stable_id). Existing rows get
         props merged (incoming keys win) and aliases appended.
 
-        T-18b D1: an explicit ``valid_at`` in the entity dict is honoured on
+        an explicit ``valid_at`` in the entity dict is honoured on
         insert (business time); the bi-temporal window of an existing row is
         still never touched here (supersede is the service layer's job).
 
@@ -434,7 +434,7 @@ class PgJsonbGraphStore(GraphStore):
         is a no-op (idempotent rerun); a different claim inserts a new row
         (conflict resolution is the service layer's job, not the store's).
 
-        T-18b D1: an explicit ``valid_at`` in the relation dict is honoured
+        an explicit ``valid_at`` in the relation dict is honoured
         on insert, so a fact's business time is the source document's
         publication date rather than the ingest wall clock.
 
@@ -511,7 +511,7 @@ class PgJsonbGraphStore(GraphStore):
                         as_of: datetime | None = None) -> Subgraph:
         """Neighborhood as of a knowledge version, or the current view.
 
-        ``as_of`` (T-09 version pinning) is an optional keyword extension:
+        ``as_of`` (version pinning) is an optional keyword extension
         when given, both the edge and entity predicates are evaluated at
         that instant instead of now(), so the walk runs inside G_v - the
         subgraph of facts valid under that knowledge version
@@ -555,7 +555,7 @@ class PgJsonbGraphStore(GraphStore):
                 # whose two endpoints are both seeds (a-b when the caller
                 # seeded {a, b}) is incident to the frontier and belongs in
                 # the neighborhood. Judging it by "is an endpoint unseen"
-                # dropped exactly those edges - pitfall #32.
+                # dropped exactly those edges -.
                 if card.id not in seen_edges:
                     seen_edges.add(card.id)
                     edges.append(card)
@@ -587,7 +587,7 @@ class PgJsonbGraphStore(GraphStore):
         later scoring layers must stay per-hop explainable - the PPR ranker
         was rejected on exactly those grounds (auditability over elegance).
 
-        ``as_of`` (T-09) pins every expansion step to a knowledge-version
+        ``as_of`` pins every expansion step to a knowledge-version
         cutoff, so the walk only ever traverses facts valid under that
         version (02-tech-plan 3.2).
 

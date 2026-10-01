@@ -1,5 +1,5 @@
 """
-Unit and integration tests for services/knowevo/graph_store.py (T-07a).
+Unit and integration tests for services/knowevo/graph_store.py.
 
 Layer 1 (always runs): contract-shape tests that need no database - the
 GraphStore ABC exposes the frozen method set, the dataclass vocabulary
@@ -10,7 +10,7 @@ shape. These lock the seam contract itself.
 Layer 2 (RUN_POSTGRES_INTEGRATION=1): real-Postgres run of the adapter -
 current vs historical view after supersede, idempotent upserts, tenant
 isolation, multi-hop beam walk, reachable_decisions via evidence refs, and
-stats. Same gate pattern as test_ontology_service.py (pitfalls #14).
+stats. Same gate pattern as test_ontology_service.py.
 """
 import os
 import sys

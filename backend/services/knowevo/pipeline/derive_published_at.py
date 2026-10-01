@@ -1,6 +1,6 @@
-"""Derive registry.csv ``published_at`` (business publication date) - T-18b D1.
+"""Derive registry.csv ``published_at`` (business publication date) -.
 
-The D1 hole: every ``kg_relation_t.valid_at`` was the ingest wall clock
+The hole: every ``kg_relation_t.valid_at`` was the ingest wall clock
 (``server_default=now()``), so a fact's business time was indistinguishable
 from the ontology version's ``created_at`` and version pinning could not
 separate anything. ``valid_at`` must become the *source document's*
@@ -17,7 +17,7 @@ so the mapping is auditable):
   R2 journal_issue   license_note cites a journal issue
                      ("中华糖尿病杂志2021;13(4)") -> YYYY-MM-01: the issue
                      month is the publication month. (guide-2020 -> the
-                     2021;13(4) issue -> 2021-04-01, per the T-18b brief.)
+                     2021;13(4) issue -> 2021-04-01, per the brief.)
   R3 doc_number_year license_note carries a government document number
                      ("国卫办医函〔2016〕1315号") -> YYYY-01-01: the year is
                      documented, the exact day is not, and a January 1

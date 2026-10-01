@@ -13,7 +13,7 @@ three frozen layers are:
 Every candidate produces one ``ConflictAdjudicationRecord``: traceable and
 replayable (deterministic conflict_id + replay_key). The record's
 ``to_wire()`` matches the frozen ``schemas.ConflictAdjudication`` triple
-(conflict_id / type / resolution) so a later T-08 wiring step can backfill
+(conflict_id / type / resolution) so a later wiring step can backfill
 decision-card ``conflict_adjudications`` without reshaping the payload.
 
 Window convention matches ``graph_store`` / migration kw_011: half-open

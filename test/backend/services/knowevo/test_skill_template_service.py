@@ -1,5 +1,5 @@
 """
-Unit tests for services/knowevo/skill_template_service.py (T-20) and the
+Unit tests for services/knowevo/skill_template_service.py and the
 mining pipeline guard around it - deterministic pattern induction from
 decision cards, the template candidate contract, upsert (INSERT/UPDATE
 only), apply/instantiate rendering, reuse statistics, and the pipeline's
@@ -483,7 +483,7 @@ class TestHelpers:
     def test_pg_store_exposes_full_seam(self):
         # The real store must implement every operation the service calls;
         # a missing method otherwise only explodes at real-run time (as the
-        # list_all gap did during the first T-20 mining run).
+        # list_all gap did during the first mining run).
         for method in ("list_cards", "list_cards_all_tenants", "get_by_name",
                        "list_all", "insert", "update"):
             assert callable(getattr(PgSkillTemplateStore, method, None)), \
@@ -491,7 +491,7 @@ class TestHelpers:
 
 
 # ---------------------------------------------------------------------------
-# Pipeline GuardedLLM: the honesty guard (pitfalls #38/#39 discipline)
+# Pipeline GuardedLLM: the honesty guard 
 # ---------------------------------------------------------------------------
 
 class TestGuardedLLM:

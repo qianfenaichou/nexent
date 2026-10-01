@@ -1,13 +1,13 @@
 """
-KnowEvo evaluation scaffolding v1 (T-10a): testset validator + pass^k
+KnowEvo evaluation scaffolding v1 : testset validator + pass^k
 aggregation + judge/expand prompt rendering.
 
-K4 protocol (02-technical-plan 6): 120-question four-type testset, five-
+protocol (02-technical-plan 6): 120-question four-type testset, five-
 tuple LLM-as-judge rubric, pass^2 as the headline metric (each question
 run 3x, share judged PASS >= 2), trace completeness, p95 latency/tokens.
 
-This task delivers the v1 seed testset (E0 20 questions upgraded to the K4
-shape, corpus/testset-v1-seed.json) plus the tooling that T-10a-2/3 and E1
+This task delivers the v1 seed testset (E0 20 questions upgraded to the 
+shape, corpus/testset-v1-seed.json) plus the tooling that /3 and E1
 build on:
 
   validate_testset  json-schema shape checks (type enum, rubric weights,
@@ -17,7 +17,7 @@ build on:
   render_expand     seed->variants expansion prompt (bilingual YAML pair)
 
 No LLM call and no database in v0: the judge/expand prompts render here
-and the real tier routing is a T-08 wiring concern. Evidence shape matches
+and the real tier routing is a wiring concern. Evidence shape matches
         eval_run_t.metrics keys (acc/pass2/pass3/...). The pass^k scorer logic is
         rewritten from tau-bench (arXiv:2406.12045, which proposes the pass^k
         metric); tau2-bench is arXiv:2506.07982 - "Design inspired by
@@ -33,7 +33,7 @@ from typing import Any
 
 PROMPT_DIR = Path(__file__).resolve().parents[3] / "prompts"
 
-# T-28 additive: default testset for the validate CLI. The repo-root
+# additive: default testset for the validate CLI. The repo-root
 # competition corpus holds the frozen v1 seed; without this default the
 # ``--validate`` flag required an explicit ``--testset`` and the seed path
 # was duplicated in every caller. Resolved from this file's location (same
@@ -41,7 +41,7 @@ PROMPT_DIR = Path(__file__).resolve().parents[3] / "prompts"
 CORPUS_ROOT = Path(__file__).resolve().parents[4] / "competition" / "corpus"
 DEFAULT_TESTSET_PATH = CORPUS_ROOT / "testset-v1-seed.json"
 
-# K4 6.1: four types and their target counts in the full 120 set.
+# four types and their target counts in the full 120 set.
 TYPE_TARGETS = {"F": 35, "M": 45, "V": 20, "X": 20}
 VALID_TYPES = set(TYPE_TARGETS)
 
@@ -78,7 +78,7 @@ def validate_testset(data: dict[str, Any]) -> list[str]:
     """Shape-check one testset document; return a list of violations.
 
     Checks the frozen template (knowevo/eval/testset-template.json) plus
-    the K4 semantic rules: type enum, id prefix matches type, V questions
+    the semantic rules: type enum, id prefix matches type, V questions
     carry dual gold labels, rubric has key_facts + weights summing to 1,
     evidence_origin present. An empty list means the testset is valid.
     """
@@ -115,7 +115,7 @@ def validate_testset(data: dict[str, Any]) -> list[str]:
             errors.append(f"{loc}: rubric.weights must sum to 1.0")
         if abs(float(weights.get("key_facts", 0)) - 0.6) > 1e-6:
             errors.append(f"{loc}: rubric.weights.key_facts must be 0.6")
-        # evidence_origin (K4 1.2-4 anti-overfitting isolation)
+        # evidence_origin (1.2-4 anti-overfitting isolation)
         eo = q.get("evidence_origin")
         if not isinstance(eo, dict) or "blind_set_ratio" not in eo:
             errors.append(f"{loc}: missing evidence_origin.blind_set_ratio")
@@ -123,10 +123,10 @@ def validate_testset(data: dict[str, Any]) -> list[str]:
 
 
 def validate_testset_file(path: str | Path) -> list[str]:
-    """Validate the testset JSON document at ``path`` (T-28 additive).
+    """Validate the testset JSON document at ``path`` (additive).
 
     Thin loader over :func:`validate_testset` so callers (and the CLI)
-    can validate an alternative testset - e.g. the T-28 discriminating
+    can validate an alternative testset - e.g. the discriminating
     set ``testset-discriminating-v1.json`` - by path without changing
     the data-level contract. Unknown extra fields on questions (such as
     the discriminating set's ``discriminating`` / ``probe_evidence``)
@@ -140,7 +140,7 @@ def passk_aggregate(runs: list[dict[str, Any]]) -> dict[str, float]:
     """pass^k over per-question runs.
 
     ``runs`` is a list of {question_id, pass: 0|1} (3 runs per question for
-    the K4 6.2 protocol). Returns {acc, pass2, pass3, n_questions,
+    the 6.2 protocol). Returns {acc, pass2, pass3, n_questions,
     n_runs} - acc is the share of runs judged PASS, pass2/pass3 are the
     share of questions with >=2 / 3 PASS runs.
     """
@@ -169,7 +169,7 @@ def wilson_interval(successes: int, trials: int, z: float = 1.96
                     ) -> dict[str, float | None]:
     """Wilson score interval on a proportion (95% by default).
 
-    T-22 additive: the sample-size discipline (02-technical-plan 6.2)
+    additive: the sample-size discipline (02-technical-plan 6.2)
     reports confidence intervals alongside pass^k instead of claiming a
     5pp effect a 20-question seed set cannot resolve. Returns
     ``{"lo": None, "hi": None}`` for an empty sample rather than a fake
@@ -190,7 +190,7 @@ def cross_table(level_metrics: dict[str, dict[str, Any]]
                 ) -> dict[str, dict[str, Any]]:
     """by_type x by_level matrix over per-level ``summarize`` payloads.
 
-    T-22 additive: the direct evidence that version pinning helps V
+    additive: the direct evidence that version pinning helps V
     questions without regressing F ones. Every (type, level) cell is
     present - a zero-judged cell carries ``insufficient_data: true`` with
     ``acc: null`` instead of silently disappearing (the same honesty rule
@@ -224,7 +224,7 @@ def render_expand(lang: str = "en", **variables: Any) -> tuple[str, str]:
 
 
 def _testset_hash(data: dict[str, Any]) -> str:
-    """Deterministic hash over question content (K4: hash-frozen testset).
+    """Deterministic hash over question content (hash-frozen testset).
 
     Leading underscore: pytest's default collection (``python_functions =
     test*``) would otherwise pick up a module-level ``testset_hash`` as a

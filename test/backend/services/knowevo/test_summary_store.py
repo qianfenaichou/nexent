@@ -14,12 +14,12 @@ community) key overwrites instead of appending, versions and tenants are
 isolated, load order is deterministic, and session failures propagate
 (never swallowed). Skeletons are built by the REAL kernel
 (cluster_greedy_modularity + skeleton_summary) so the expected values are
-kernel outputs, not hand-derived constants (pitfalls #150).
+kernel outputs, not hand-derived constants.
 
 Layer 2 (RUN_POSTGRES_INTEGRATION=1): real-Postgres run - JSONB round
 trip through the actual column types, overwrite idempotency on real rows,
 version/tenant coexistence, and the ck_kgs_llm_gate CHECK constraint.
-Same gate pattern as test_graph_store.py (pitfalls #14); throwaway
+Same gate pattern as test_graph_store.py; throwaway
 tenants are cleaned up in finally blocks.
 """
 import os
@@ -239,7 +239,7 @@ class TestKw012MigrationFile:
         assert "COMMIT;" in sql
         # WHY header comes first (kw_001/kw_011 convention)
         assert sql.lstrip().startswith("--")
-        # pitfall #129 family lesson must be documented in the header
+        # family lesson must be documented in the header
         assert "#129" in sql
 
     def test_self_contained_no_upstream_modification(self):
@@ -404,7 +404,7 @@ class TestSaveLoadRoundTrip:
             assert rec.llm_gate_passed is True
 
     async def test_loaded_records_feed_global_route_seam(self):
-        """The T-08 consumption shape: rebuild kernel Communities from the
+        """The consumption shape: rebuild kernel Communities from the
         loaded records and feed score_communities / entities_from_hits."""
         store, _ = _fake_store()
         await store.save_summaries(TENANT_A, VERSION_1, _kernel_records())
@@ -502,12 +502,12 @@ class TestStoreValidationAndErrors:
         with pytest.raises(ValueError, match=str(VERSION_REF_MAX_LEN)):
             await store.save_summaries(TENANT_A, "v" * (VERSION_REF_MAX_LEN + 1),
                                        _kernel_records())
-        # P2-2: load side shares the same fail-fast width check
+        # load side shares the same fail-fast width check
         with pytest.raises(ValueError, match=str(VERSION_REF_MAX_LEN)):
             await store.load_summaries(TENANT_A, "v" * (VERSION_REF_MAX_LEN + 1))
 
     async def test_load_rejects_size_member_mismatch(self):
-        """P2-7: skeleton_json.size vs len(member_stable_ids) is a corrupt row."""
+        """skeleton_json.size vs len(member_stable_ids) is a corrupt row."""
         store, factory = _fake_store()
         records = _kernel_records()
         await store.save_summaries(TENANT_A, VERSION_1, records)

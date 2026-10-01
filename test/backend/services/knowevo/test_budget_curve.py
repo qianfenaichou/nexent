@@ -21,7 +21,7 @@ Seams under test (public interface only):
 
 Expected literals are hand-computed from the worked examples below (unit
 costs, integer budgets) or recorded from an actual run first and pinned
-afterwards (pitfalls #150: never back-fill expected values from mental
+afterwards (never back-fill expected values from mental
 simulation).
 """
 import math

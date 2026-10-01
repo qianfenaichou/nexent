@@ -1,4 +1,4 @@
-// KnowEvo ontology workbench API client (T-05b). Thin wrapper over
+// KnowEvo ontology workbench API client. Thin wrapper over
 // fetchWithAuth; every error surfaces as ApiError so pages can message.
 import { ApiError } from "./api";
 import { fetchWithAuth } from "@/lib/auth";

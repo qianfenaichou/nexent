@@ -1,5 +1,5 @@
 """
-Tests for the skill_template_apply MCP tool (T-20): dual registration,
+Tests for the skill_template_apply MCP tool : dual registration,
 input guardrails, the apply/reuse honesty contract and structured errors.
 
 The tool surface has two registration forms - the standalone FastMCP server
@@ -88,7 +88,7 @@ def _seed_row(name="reasoning_decision-general", reuse_count=0,
 
 
 # ---------------------------------------------------------------------------
-# Dual registration (pitfall #27 discipline, extended to the 5th tool)
+# Dual registration 
 # ---------------------------------------------------------------------------
 
 class TestDualRegistration:

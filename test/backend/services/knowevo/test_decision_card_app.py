@@ -1,5 +1,5 @@
 """
-Tests for the T-19 decision-card production surfaces: the HTTP route
+Tests for the decision-card production surfaces: the HTTP route
 (POST /api/knowevo/decision/card in apps/knowledge_graph_app.py) and the
 MCP tool decision_card_render (mcp_servers/knowevo_mcp, dual-registered
 through tool_collection/mcp/kg_tools.py).
@@ -7,7 +7,7 @@ through tool_collection/mcp/kg_tools.py).
 Layer 1 (always runs): input guardrails, dual registration with a single
 schema source, the card pipeline through both surfaces with a fake store
 plus a fake LLM, the INSUFFICIENT_EVIDENCE refusal with zero LLM calls
-(T-09 honest-degradation contract must survive exposure), the honest
+(honest-degradation contract must survive exposure), the honest
 error mapping (a broken store is an error, not a fake refusal), tenant
 from session only, the 403 gate, and the persist seam.
 
@@ -223,7 +223,7 @@ class TestDualRegistration:
         assert set(tool_schemas()) == set(KG_MCP_TOOL_NAMES)
 
     def test_local_and_standalone_share_one_schema_object(self):
-        # Single schema source (SPEC discipline 1 / pitfall #27).
+        # Single schema source (SPEC discipline 1 /).
         from mcp_servers.knowevo_mcp.schemas import DecisionCardInput as std
 
         from tool_collection.mcp.kg_tools import DecisionCardInput as local
@@ -267,7 +267,7 @@ class TestDecisionCardMCPHandler:
         assert out["decision"] == DECISION_INSUFFICIENT
         assert out["candidates"] == []
         assert llm.calls == [], (
-            "the T-09 refusal contract: no evidence means no LLM call, "
+            "the refusal contract: no evidence means no LLM call, "
             "the exposure layer must not regress it")
         assert out["disclaimer"], "healthcare cards always carry it"
         assert len(saved) == 1 and out["persisted"] is True
@@ -436,7 +436,7 @@ class TestDecisionCardHTTPRoute:
         """An explicit ``as_of`` must land on the walk, not just the body.
 
         ``ontology_version`` pins a committed ontology version; ``as_of``
-        pins the facts' own business time (the T-18b entry), which is what a
+        pins the facts' own business time (the entry), which is what a
         2020-era vs 2024-era comparison needs. The failure this guards
         against is the quiet one: a request field that is accepted but never
         forwarded would still render a card - just an unpinned one claiming
@@ -539,7 +539,7 @@ class TestDecisionCardHTTPRoute:
 
 
 # ---------------------------------------------------------------------------
-# T-26: seed collection (whole sentence must still seed the graph)
+# seed collection (whole sentence must still seed the graph)
 # ---------------------------------------------------------------------------
 
 
@@ -600,7 +600,7 @@ class SentenceStore:
 
 
 class TestDecisionSeedCollection:
-    """T-26 phenomenon 1: a sentence question must still seed the graph.
+    """phenomenon 1: a sentence question must still seed the graph.
 
     The bug: the route handed the WHOLE question to ``entity_lookup``
     (``name ILIKE '%<sentence>%'``), so sentence-length questions produced
@@ -654,12 +654,12 @@ class TestDecisionSeedCollection:
 
 
 # ---------------------------------------------------------------------------
-# T-26: explicit as_of evidence (the clock itself must be monotone)
+# explicit as_of evidence (the clock itself must be monotone)
 # ---------------------------------------------------------------------------
 
 
 class TestExplicitClockEvidence:
-    """T-26 phenomenon 2: the explicit clock must not lose evidence.
+    """phenomenon 2: the explicit clock must not lose evidence.
 
     The bug was not the clock - the cutoff resolves and reaches the store -
     but the hop-plan filter, which could silently empty the walk for the
@@ -687,7 +687,7 @@ class TestExplicitClockEvidence:
         assert at_cutoff, "this fixture has evidence at that clock"
         assert at_cutoff == now, (
             "a later explicit clock cannot lose evidence the current view "
-            "still has (the T-26 monotonicity violation)")
+            "still has (the monotonicity violation)")
 
     def test_old_clock_differs_from_new_clock(self):
         store = SentenceStore()
@@ -705,7 +705,7 @@ class TestExplicitClockEvidence:
 
         The production route supplies no relation vocabulary, so every type
         the planner proposes is unverifiable; trusting one turned "the plan
-        guessed wrong" into "the knowledge does not exist" (T-26).
+        guessed wrong" into "the knowledge does not exist".
         ``ScriptedCardLLM`` answers ``hop_plan`` with ``["treats"]``, which
         matches neither fixture edge - if it were applied as a filter the
         walk would be empty.
@@ -726,7 +726,7 @@ class TestExplicitClockEvidence:
         assert resp["decision"] == DECISION_RECOMMEND
         assert llm.calls == ["decision_card"], (
             "an unverifiable hop plan is not consulted at all; trusting it "
-            "is what produced T-26's empty evidence")
+            "is what produced 's empty evidence")
 
 
 # ---------------------------------------------------------------------------
@@ -800,10 +800,10 @@ class TestPostgresDecisionCardPersistence:
 
 
 class TestSkillTemplateListHttp:
-    """T-20 pending-wiring closure: GET /api/knowevo/skill-template/list.
+    """pending-wiring closure: GET /api/knowevo/skill-template/list.
 
     The /skillTemplate panel shipped against this contract with the route
-    deliberately unwired (the T-20 brief authorized no HTTP surface);
+    deliberately unwired (the brief authorized no HTTP surface);
     these tests pin the read-only listing behavior at this boundary.
     """
 

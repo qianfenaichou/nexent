@@ -48,7 +48,7 @@ class FakeCore:
 
     ``accurate_search`` / ``semantic_search`` must never be called: the
     platform weighted query targets KB ``title``/``content`` fields the
-    asset index does not carry (pitfall #170 family), and there is no
+    asset index does not carry, and there is no
     dense route this round.
     """
 

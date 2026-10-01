@@ -1,5 +1,5 @@
 """
-Unit tests for services/knowevo/decision_service.py (T-09) and the
+Unit tests for services/knowevo/decision_service.py and the
 version-pinned walk it drives - routing, beam search with a fake store,
 evidence-chain fusion, decision-card rendering, calibration, refusal.
 
@@ -193,7 +193,7 @@ class TestRouting:
         assert route.level == "L1" and route.confidence == 1.0
 
     def test_every_lookup_rule_has_a_pattern_and_a_name(self):
-        assert len(LOOKUP_RULES) == 6, "memo 04-K3 freezes six rules"
+        assert len(LOOKUP_RULES) == 6, "memo 04-freezes six rules"
         for rule in LOOKUP_RULES:
             assert rule["name"] and rule["pattern"]
 
@@ -247,7 +247,7 @@ class TestRouting:
 
     def test_route_hit_feedback_takes_a_route_object(self):
         # Contract anchor (decision_service.py.md:19): the feedback parameter
-        # is a Route object, not a bare str (drift D5 of the 2026-09-24
+        # is a Route object, not a bare str (drift of the 2026-09-24
         # contract audit, resolved code-side per "code obeys contract").
         # get_type_hints resolves the PEP 563 string annotation.
         hints = typing.get_type_hints(DecisionService.route_hit_feedback)
@@ -431,9 +431,9 @@ class TestVersionPinnedWalk:
         longest = max((len(p.entities) for p in result.paths), default=0)
         # Equality, not an upper bound: a clamp to 3 must actually reach 4
         # entities on a three-edge chain. "<= max+1" is satisfied by a walk
-        # that returns nothing at all - the pitfall #24 defect class where a
+        # that returns nothing at all - defect class where a
         # vacuous pass looks like a green test. This also locks the beam's
-        # early-stop behaviour (pitfall #33).
+        # early-stop behaviour.
         assert longest == svc.max_depth + 1
 
     @pytest.mark.asyncio
@@ -1232,7 +1232,7 @@ class TestCalibration:
         assert svc.calibrate(0.95) == 0.88
 
     def test_k4_ten_bucket_table_is_what_the_lookup_expects(self):
-        """The table shape K4 4.1 specifies: ten tenth-width buckets.
+        """The table shape 4.1 specifies: ten tenth-width buckets.
 
         Pinned as a positive case so the bucket contract is exercised by a
         real curve rather than only by two hand-written rows.
@@ -1456,7 +1456,7 @@ class TestPayloadSerialization:
         assert default_entry["evidence_id"] is None
 
     def test_entry_shape_is_frozen_keys_plus_evidence_id(self):
-        """Pin the payload entry shape: the memo 04-K3 §3 frozen keys plus
+        """Pin the payload entry shape: the memo 04-frozen keys plus
         the additive extensions the implementation grew (contested first,
         then evidence_id - 2026-09-29 L4 prerequisite, contract backfilled
         in decision_service.py.md). Removing or renaming a key fails here
@@ -1488,7 +1488,7 @@ def _read_card(card_id, tenant):
 
     knowevo_db.get_by_id returns only the primary key (it is a existence
     helper, not a reader), and the ORM rows must be projected inside the
-    session block (pitfall #26).
+    session block.
     """
     from database.knowevo_db import DecisionCard as Row
     from database.knowevo_db import _get_db_session

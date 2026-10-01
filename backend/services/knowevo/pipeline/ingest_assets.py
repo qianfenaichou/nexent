@@ -1,5 +1,5 @@
 """
-ingest_assets CLI (T-02) - thin wrapper over services/knowevo/ingest_service.
+ingest_assets CLI - thin wrapper over services/knowevo/ingest_service.
 
 Per the pipeline/ contract: argument parsing, progress output, cost-ledger
 row, exit code only. All behavior lives in ingest_service.py and is covered
@@ -7,13 +7,13 @@ by test/backend/services/knowevo/test_ingest_assets.py.
 
 Usage (from backend/):
     python -m services.knowevo.pipeline.ingest_assets \
-        --registry ../competition/corpus/registry.csv [--dry-run] \
+        --registry ../registry.csv [--dry-run] \
         [--tenant <uuid>] [--index kw-medical-b1] [--base-url http://localhost:3000]
 
 Stages: registry parse -> doc_asset_t registration (idempotent) ->
 supersede_of lineage -> native upload/process per file -> parse quality
 write-back -> ingest_manifest.json. Index creation is skipped when no
-embedding model is registered (T-01 leftover: tokenrouter has no embedding
+embedding model is registered (leftover: tokenrouter has no embedding
 access) - reported honestly, exit code 2 (resumable), per the brief's
 degradation clause.
 

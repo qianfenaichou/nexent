@@ -1,7 +1,7 @@
 "use client";
 
 // Card gallery over mined skill templates + one-click instantiate modal.
-// Tail states stay split (loading / error / empty / grid) per pitfall #71.
+// Tail states stay split (loading / error / empty / grid) per.
 // Keyboard: "/" focuses the filter field (WCAG 2.2 AA reachability).
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";

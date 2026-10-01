@@ -1,11 +1,11 @@
 """
-Unit tests for mcp_servers/knowevo_mcp (T-07b): kg_search + kg_stats.
+Unit tests for mcp_servers/knowevo_mcp : kg_search + kg_stats.
 
 Layer 1 (always runs): schema guardrails (hop > 2, top_k > 20 rejected by
 pydantic), handler behaviour against a fake GraphStore (empty graph, found
 entities + edges, stats scopes), and the structured output shape
 (used_tokens / elapsed_ms present). No database and no network: the store
-is a fake mirroring the GraphStore contract from T-07a.
+is a fake mirroring the GraphStore contract from.
 
 Layer 2 (RUN_POSTGRES_INTEGRATION=1): the FastMCP tool registration wiring
 against the real PgJsonbGraphStore - configure() + handler round-trip.
@@ -40,7 +40,7 @@ TENANT_A = "11111111-1111-1111-1111-111111111111"
 
 
 # ---------------------------------------------------------------------------
-# Fake GraphStore (mirrors the T-07a contract)
+# Fake GraphStore (mirrors the contract)
 # ---------------------------------------------------------------------------
 
 class FakeGraphStore:
@@ -216,7 +216,7 @@ class TestStructuredErrors:
 
 
 # ---------------------------------------------------------------------------
-# T-27: request-scoped tenant resolution
+# request-scoped tenant resolution
 # ---------------------------------------------------------------------------
 
 class RecordingStore(FakeGraphStore):
@@ -250,7 +250,7 @@ def srv():
 
 class TestRequestScopedTenant:
     """The shared MCP service mounts this app once for every tenant, so the
-    tenant must come from the caller's Authorization header (T-27)."""
+    tenant must come from the caller's Authorization header."""
 
     def test_explicit_arg_wins(self, monkeypatch, srv):
         monkeypatch.setattr(srv, "_request_tenant", lambda: "req-tenant")

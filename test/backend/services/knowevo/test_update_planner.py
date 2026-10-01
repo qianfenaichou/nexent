@@ -5,7 +5,7 @@ Spec anchors: workspace archive doc
 ``competition/docs/tech-optimization-2026-09-28/KnowEvo提分总纲.md`` §L7.
 
 Semantics pinned here (every asserted float literal was verified by actually
-running the implementation first - pitfalls #150: never back-fill expected
+running the implementation first - : never back-fill expected
 values from mental simulation):
 
 - VOI_i = p_change_i * impact_i; greedy walk in VOI-descending order, ties
@@ -66,7 +66,7 @@ class TestGreedyOrderAndSelectionCondition:
         assert plan.residual_expected_loss == 1.0
         assert plan.cost_selected == 5.0
         assert plan.cost_total == 15.0
-        # 1 - 1/9, literal run-verified (pitfalls #150)
+        # 1 - 1/9, literal run-verified 
         assert plan.quality_retention_rate == 0.8888888888888888
         assert plan.cost_saving_rate is None
 

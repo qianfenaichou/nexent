@@ -1,4 +1,4 @@
-"""Production ES write path for knowevo ingestion (T-08 follow-up).
+"""Production ES write path for knowevo ingestion (follow-up).
 
 PG is the graph of record; this module is the *projection* that makes the
 entity acceptance index real: after an ingest run lands entities in
@@ -85,7 +85,7 @@ def entity_mapping(ik_enabled: bool = False) -> dict[str, Any]:
     ``name``/``aliases.alias`` are the BM25 search surface, everything else
     is keyword, ``props`` is ``enabled: false`` (pass-through only - the
     dynamic mapper would otherwise guess numeric/date sub-fields and blow
-    up shards, pitfall #153 family). No ``embedding`` field: there is no
+    up shards, family). No ``embedding`` field: there is no
     dense write-back to index vectors for (see module docstring).
     """
     return {

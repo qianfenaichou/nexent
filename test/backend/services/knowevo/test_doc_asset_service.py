@@ -332,7 +332,7 @@ class TestSearchAssetsESFirst:
             "ES already covers the page: no fallback consultation")
 
     def test_es_negative_scores_all_zero_not_kept_raw(self):
-        """P2-1: max_raw <= 0 must wipe to 0.0; negative raw scores must
+        """max_raw <= 0 must wipe to 0.0; negative raw scores must
         never survive normalization (contract: max<=0 -> all 0.0)."""
         es = _FakeEs([_es_hit("A", "说明书甲", score=-2.0, authority_level=3),
                       _es_hit("B", "说明书乙", score=-1.0, authority_level=1)])
@@ -344,7 +344,7 @@ class TestSearchAssetsESFirst:
         assert res[1].why["es_score_raw"] == -2.0
 
     def test_escape_like_literals_wildcards(self):
-        """P2-11: user query is text, not a SQL LIKE pattern."""
+        """A user query is text, not a SQL LIKE pattern."""
         from backend.services.knowevo.doc_asset_service import _escape_like
         assert _escape_like("100%") == "100\\%"
         assert _escape_like("a_b") == "a\\_b"

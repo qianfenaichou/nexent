@@ -2,7 +2,7 @@
 
 // Evolution board (L10): timeline + three-color node-level version compare.
 // Route (pending wiring): /evolutionBoard.
-// Honesty (workorder D6 / red line #6):
+// Honesty (workorder / red line #6)
 //   - no HTTP route for rounds  -> Alert=pending-wiring (never fake rows)
 //   - route OK + empty list     -> empty state
 //   - 403                       -> forbidden (tenant / RBAC), not "empty"

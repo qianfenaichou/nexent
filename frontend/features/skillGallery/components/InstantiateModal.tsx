@@ -40,7 +40,7 @@ export function InstantiateModal({
     if (!template) return [] as string[];
     const keys = new Set<string>();
     for (const k of Object.keys(template.variables ?? {})) keys.add(k);
-    // Canonical injection points every template must expose (T-20).
+    // Canonical injection points every template must expose.
     for (const k of [
       "domain",
       "task_type",

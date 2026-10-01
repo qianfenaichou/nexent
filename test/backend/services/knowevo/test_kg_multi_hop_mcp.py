@@ -1,5 +1,5 @@
 """
-Tests for the kg_multi_hop MCP tool (T-09): dual registration, input
+Tests for the kg_multi_hop MCP tool : dual registration, input
 guardrails, version-pinned output shape and structured errors.
 
 The tool surface has two registration forms - the standalone FastMCP server
@@ -75,7 +75,7 @@ class FakeStore:
 class TestDualRegistration:
     def test_tool_names_include_multi_hop(self):
         from tool_collection.mcp.kg_tools import KG_MCP_TOOL_NAMES
-        # T-19 added decision_card_render to the vocabulary; the walk trio
+        # added decision_card_render to the vocabulary; the walk trio
         # stays a required subset rather than an exact equality so the
         # manifest can grow additively.
         assert {"kg_search", "kg_stats", "kg_multi_hop"} <= set(
@@ -92,7 +92,7 @@ class TestDualRegistration:
     def test_local_and_standalone_share_one_schema_object(self):
         # Single schema source (SPEC discipline 1): the same class object
         # must be reachable from both registration surfaces, otherwise the
-        # two copies drift (pitfall #27).
+        # two copies drift.
         from mcp_servers.knowevo_mcp.schemas import KGMultiHopInput as std
 
         from tool_collection.mcp.kg_tools import KGMultiHopInput as local

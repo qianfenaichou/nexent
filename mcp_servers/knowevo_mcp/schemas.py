@@ -1,10 +1,10 @@
 """
-KnowEvo MCP tool schemas (T-07b) - the single schema source.
+KnowEvo MCP tool schemas - the single schema source.
 
 The frozen 8-tool vocabulary lives in knowevo/mcp_servers/knowevo_mcp/
-SPEC.md; T-07b delivered kg_search + kg_stats (the graph-query pair). Both
+SPEC.md; delivered kg_search + kg_stats (the graph-query pair). Both
 the standalone FastMCP server (server.py) and the Local-MCP inner
-registration (tool_collection/mcp/kg_tools.py, T-08 wiring) import from
+registration (tool_collection/mcp/kg_tools.py, wiring) import from
 here, so the shapes can never drift between the two registration surfaces.
 
 Registered today = 9 tools (kg_search / kg_stats / kg_multi_hop /
@@ -99,7 +99,7 @@ class ToolError(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# kg_multi_hop (T-09) - the reasoning-path tool, version-pinned
+# kg_multi_hop - the reasoning-path tool, version-pinned
 # ---------------------------------------------------------------------------
 
 class HopStep(BaseModel):
@@ -150,7 +150,7 @@ class KGMultiHopOutput(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# decision_card_render (T-19) - the decision-card production tool
+# decision_card_render - the decision-card production tool
 # ---------------------------------------------------------------------------
 
 class DecisionCardInput(BaseModel):
@@ -177,12 +177,12 @@ class DecisionCardInput(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# skill_template_apply (T-20, additive 9th tool beyond the frozen 8) -
+# skill_template_apply (additive 9th tool beyond the frozen 8) -
 # instantiate a mined SKILL.md template from skill_template_t
 # ---------------------------------------------------------------------------
 
 class SkillTemplateApplyInput(BaseModel):
-    """Input of the skill-template apply tool (T-20).
+    """Input of the skill-template apply tool.
 
     ``template_name`` bound mirrors the skill_template_t.name column
     (String(64), unique per tenant) so an impossible name is rejected by
@@ -269,7 +269,7 @@ class AssetSearchOutput(BaseModel):
 # ---------------------------------------------------------------------------
 # kg_evolution_trace (frozen vocabulary) - the bi-temporal timeline tool,
 # a thin wrapper over KGService.evolution_trace (services/knowevo/
-# kg_service.py, the T-09 query surface frozen in kg_service.py.md)
+# kg_service.py, the query surface frozen in kg_service.py.md)
 # ---------------------------------------------------------------------------
 
 class KGEvolutionTraceInput(BaseModel):

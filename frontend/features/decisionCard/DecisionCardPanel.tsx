@@ -1,6 +1,6 @@
 "use client";
 
-// Decision-card panel (T-19): question in -> card out. Route:
+// Decision-card panel : question in -> card out. Route
 // /decisionCard. All contract sections stay visible: candidates with
 // expandable evidence chains, EXTRACTED/INFERRED tags, the knowledge
 // version stamp with the version_pinned flag, conflict adjudications,
@@ -90,7 +90,7 @@ export default function DecisionCardPanel() {
   // Render failure (5xx / llm_unavailable / network) must surface as a
   // persistent inline state, not only a vanishing toast, so the user can
   // tell "generation failed" apart from "no card yet" and retry directly
-  // (error/empty dichotomy, pitfall #71). This is distinct from the
+  // (error/empty dichotomy). This is distinct from the
   // INSUFFICIENT_EVIDENCE business state, which is rendered normally.
   const [renderError, setRenderError] = useState(false);
 

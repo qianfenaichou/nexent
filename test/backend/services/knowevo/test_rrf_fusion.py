@@ -8,7 +8,7 @@ rrf_fusion.py.md. Formula is Cormack et al. 2009 reciprocal rank fusion:
 
 with 1-based ranks. Expected values below are derived from THAT formula
 (independent rational arithmetic), never from mental simulation of the
-implementation (pitfalls #150).
+implementation.
 
 Seams under test (public only):
   * fuse(three_lists, k=...)          - the fusion kernel
@@ -189,7 +189,7 @@ class TestIdExtraction:
         assert ids_of(fuse([[{"id": "a", "stable_id": "b"}]])) == ["a"]
 
     def test_id_none_falls_back_to_stable_id_mapping(self):
-        """P2-6: id=None is unset, not a bad id -> fall back (object path parity)."""
+        """id=None is unset, not a bad id -> fall back (object path parity)."""
         assert ids_of(fuse([[{"id": None, "stable_id": "ok"}]])) == ["ok"]
 
     def test_id_none_falls_back_to_stable_id_object(self):

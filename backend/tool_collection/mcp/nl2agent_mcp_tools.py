@@ -6,11 +6,10 @@ import re
 import unicodedata
 from typing import Any, Literal
 
+from consts.exceptions import UnauthorizedError
 from fastmcp.server.dependencies import get_http_request
 from nexent.core.agents.agent_model import ToolConfig
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
-
-from consts.exceptions import UnauthorizedError
 from utils.auth_utils import get_current_user_id
 
 logger = logging.getLogger(__name__)

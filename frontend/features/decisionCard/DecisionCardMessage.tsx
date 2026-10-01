@@ -1,6 +1,6 @@
 "use client";
 
-// Compact decision-card renderer for the chat stream (T-19): mounted by
+// Compact decision-card renderer for the chat stream : mounted by
 // the `case "data"` branch in thread.tsx when a part with
 // name="decision-card" arrives. The full-featured surface is the
 // /decisionCard panel; this inline card keeps the same sections visible

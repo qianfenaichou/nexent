@@ -3,7 +3,7 @@
 Why this module exists (2026-09-23, session B · algorithm-optimization work order
 §3.2 / review-feedback §5.3 C-1..C-4)
 --------------------------------------------------------------------------
-The T-21 topic-level calibrator (:func:`alignment_service.calibrate_topic`)
+The topic-level calibrator (:func:`alignment_service.calibrate_topic`)
 matches a gold topic to a machine group when they share at least
 ``min_shared_tokens`` *discriminative* tokens, where discriminative means
 ``df(token) <= max(3, 0.05 * n_groups)``. On the real 691-item run that rule
@@ -32,7 +32,7 @@ What this module does instead
 1. **Provenance hygiene** -- group tokens come from ``section_anchor`` always,
    and from ``points`` only when the point is content-bearing
    (``source == "llm"``). Group *keys* are unchanged, so the machine side is
-   still comparable with T-21's 517 groups.
+   still comparable with 's 517 groups.
 2. **Continuous similarity** -- an idf-weighted cosine replaces the
    "count of shared tokens >= k" step function. There is no cliff to fall off:
    similarity degrades smoothly.
@@ -57,7 +57,7 @@ What this module does instead
 
 Estimand discipline (work order §3.2, mandatory)
 ------------------------------------------------
-``alignment_precision_pooled`` is **not** the same quantity as T-21's
+``alignment_precision_pooled`` is **not** the same quantity as 's
 ``64/517``. That number is a *relatedness rate* whose denominator is every
 machine group and which carries no false-positive count. These two must never be
 placed side by side as if they measured the same thing.
@@ -190,7 +190,7 @@ def build_groups(machine: Sequence[dict[str, Any]]) -> list[Group]:
     The grouping key is exactly the one used by
     :func:`alignment_service.aggregate_change_groups` -- ``(change_type,
     normalize_title(section_anchor))``, skipping ``UNCHANGED`` -- so the group
-    count stays comparable with the T-21 caliber. Only the *token* set differs:
+    count stays comparable with the caliber. Only the *token* set differs
     tokens are taken from the section anchor unconditionally, and from a
     ``points`` entry only when that item's ``source`` marks the entry as real
     prose. Including the placeholders is what poisoned the df statistics.
@@ -299,7 +299,7 @@ def wilson_interval(successes: int, n: int, z: float = 1.96) -> tuple[float | No
 
 
 def _gold_tokens(row: dict[str, Any]) -> set[str]:
-    """Gold-side token set: anchor plus field, exactly as T-21 does."""
+    """Gold-side token set: anchor plus field, exactly as does."""
     return topic_tokens(str(row.get("section_anchor") or "")) | topic_tokens(
         str(row.get("field") or "")
     )

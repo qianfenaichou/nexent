@@ -1,4 +1,4 @@
-"""E1 pure-RAG baseline runner (T-10a-2).
+"""E1 pure-RAG baseline runner.
 
 The A1 ablation arm of 02-technical-plan 3.5: answer each testset question
 from retrieved knowledge-base passages only - no graph, no multi-hop, no
@@ -9,7 +9,7 @@ Pipeline per question:
     retrieve (BM25 over the corpus) -> generate (mid tier) -> judge (large
     tier, different model family) -> per-run pass 0/1 -> pass^k aggregate
 
-K4 protocol (02-technical-plan 6): each question runs 3x, pass^2 (share of
+protocol (02-technical-plan 6): each question runs 3x, pass^2 (share of
 questions with >=2 passing runs) is the headline metric, p95 latency and
 tokens are reported alongside. The judge prompt is the frozen
 ``knowevo_judge_*`` pair; the scorer logic is rewritten from tau-bench
@@ -17,7 +17,7 @@ tokens are reported alongside. The judge prompt is the frozen
 
 CLI (from backend/):
     python -m services.knowevo.pipeline.eval_e1 \
-        --testset ../competition/corpus/testset-v1-seed.json \
+        --testset ../testset-v1-seed.json \
         --runs 3 --top-k 5 [--limit 5] [--dry-run] [--no-persist]
 """
 from __future__ import annotations
@@ -57,7 +57,7 @@ PASS_LINE = 0.8
 # Platform fault markers (E0 limitation 3: the free-tier gateway 429/500s
 # and returns empty content under load; a platform fault is NOT a reasoned
 # answer and must never be averaged into acc as a failed run).
-# T-18c D2: the marker list is a *substring* heuristic - a code bug whose
+# the marker list is a *substring* heuristic - a code bug whose
 # message happens to contain e.g. "502" (a line number, a port) must not be
 # classified as a platform fault. The authoritative classifier is
 # `_is_platform_fault(exc)` which checks exception types first and only
@@ -127,7 +127,7 @@ async def _pace(min_interval: float | None = None) -> None:
 
 
 def _is_platform_fault(exc: Exception | str) -> bool:
-    """Classify an error as a platform fault (T-18c D2).
+    """Classify an error as a platform fault.
 
     Platform faults are infra/transport conditions: type-first (timeouts,
     connection resets are always platform), then a *message* match only for
@@ -219,7 +219,7 @@ def parse_judge_output(text: str) -> dict[str, Any]:
     "parse_error": bool}``. Unparseable output (empty, truncated, or prose)
     comes back with ``parse_error=True``: it is never silently read as a
     pass. ``run_question`` treats such a run as a judge failure and keeps it
-    out of the accuracy denominator - the same honesty rule T-09 applied to
+    out of the accuracy denominator - the same honesty rule applied to
     malformed LLM output, extended to grading.
     """
     if not text or not text.strip():
@@ -287,7 +287,7 @@ def evidence_chain_text(evidence: list[dict[str, Any]]) -> str:
 def trace_completeness(evidence: list[dict[str, Any]]) -> float:
     """Machine trace completeness: share of hits carrying full locators.
 
-    Renamed semantics under T-18c D3 (exported as ``trace_machine`` in the
+    Renamed semantics under (exported as ``trace_machine`` in the
     report): this measures whether the *retriever* kept the doc/chunk/score
     locators intact end to end - it says nothing about whether the answer
     actually cites them. See ``trace_answer_cite`` for the answer-level
@@ -306,7 +306,7 @@ _CITATION_RE = re.compile(r"\[(\d{1,2})\]")
 
 def trace_answer_cite(question: str, evidence: list[dict[str, Any]],
                       answer: str | None = None) -> dict[str, Any]:
-    """Answer-level citation trace (D3, deterministic layer - zero LLM).
+    """Answer-level citation trace (, deterministic layer - zero LLM).
 
     Checks that every ``[n]`` reference in the generated answer points at a
     chunk that was actually retrieved (``n`` within 1..len(evidence)). A
@@ -339,7 +339,7 @@ async def run_question(router, item: dict[str, Any], retriever: Retriever,
                        ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """One question x ``runs`` trials: retrieve, generate, judge.
 
-    ``on_unexpected`` follows the D2 contract: "raise" (default) lets a
+    ``on_unexpected`` follows the contract: "raise" (default) lets a
     non-platform error abort the batch loudly; "count_fail" records such an
     error as ``pass=0`` with ``error="runner_error"`` so it stays in the
     accuracy denominator instead of vanishing into platform_fault.
@@ -359,7 +359,7 @@ async def run_question_with_context(
         ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """One question x ``runs`` trials over a pre-built (context, evidence).
 
-    T-22 additive extraction: the generate->judge loop of ``run_question``,
+    additive extraction: the generate->judge loop of ``run_question``,
     byte-for-byte the same semantics, factored out so the ablation arms
     (A2/A3/A4) can supply their own context/evidence (graph channels fused
     via ``assemble_evidence``) without forking the scoring contract. A1
@@ -414,7 +414,7 @@ async def run_question_with_context(
         gen_usage = gen_usage or {"input_tokens": 0, "output_tokens": 0}
         tokens_in += gen_usage.get("input_tokens", 0)
         tokens_out += gen_usage.get("output_tokens", 0)
-        # D3 answer-level citation trace (deterministic layer, no LLM):
+        # answer-level citation trace (deterministic layer, no LLM)
         # every [n] in the answer must point at a retrieved chunk.
         citation_traces.append(trace_answer_cite(question, evidence, answer))
 
@@ -450,7 +450,7 @@ async def _judge_once(router, item: dict[str, Any], answer: str,
                       t0: float,
                       citation_trace: dict[str, Any],
                       ) -> tuple[dict[str, Any], dict[str, int] | None]:
-    """Judge one generated answer (the judge half of the run loop, T-22).
+    """Judge one generated answer (the judge half of the run loop).
 
     Returns ``(per_run_entry, judge_usage)``; the entry follows the exact
     record shape ``run_question`` always produced (verdict, platform-fault
@@ -539,7 +539,7 @@ async def _call_with_retry(router, prompt: str, *, kind: str, tier: str,
 
     Returns ``(content, usage)``; on an unrecoverable platform fault returns
     ``(None, None)`` (caller marks the run platform_fault). Non-platform
-    errors are handled by ``on_unexpected`` (T-18c D2):
+    errors are handled by ``on_unexpected`` 
       * "raise" (default): re-raise immediately - a code bug must surface,
         never masquerade as flaky infra;
       * "count_fail": return ``(None, None)`` with ``_last_message`` set to
@@ -596,7 +596,7 @@ def summarize(runs: list[dict[str, Any]], details: list[dict[str, Any]],
               n_expected: int | None = None) -> dict[str, Any]:
     """Aggregate one evaluation run into the ``eval_run_t.metrics`` shape.
 
-    Honesty contract (T-18c D2):
+    Honesty contract 
       * Platform faults (judge/generation unavailable) are excluded from the
         acc/pass^k denominators and reported separately - a thundering
         free-tier gateway must not masquerade as a wrong answer;
@@ -698,10 +698,10 @@ def _resolved_model_id(router, tier: str) -> str:
 
 
 def persist_eval_run(metrics: dict[str, Any], testset_hash: str,
-                     tenant_id: str, task_ref: str = "T-10a-2") -> str | None:
+                     tenant_id: str, task_ref: str = "") -> str | None:
     """Write one ``eval_run_t`` row; returns the row id (None when skipped).
 
-    The table is INSERT-only from our side (T-03 owns its DDL), so this is a
+    The table is INSERT-only from our side (owns its DDL), so this is a
     straight insert of the run's config + metrics payload.
     """
     from database.knowevo_db import EvalRun, create_row
@@ -754,7 +754,7 @@ async def evaluate(testset_path: Path, runs: int = 3, top_k: int = 5,
                    on_unexpected: str = "raise") -> dict[str, Any]:
     """Run the E1 baseline over a testset and return the metrics payload.
 
-    ``on_unexpected`` (T-18c D2): "raise" aborts the batch on a non-platform
+    ``on_unexpected`` : "raise" aborts the batch on a non-platform
     runner error (a code bug must surface); "count_fail" records it as
     pass=0 in the denominator. The default for batch runs is count_fail -
     a long batch dying on one question's bug wastes the whole run, and the
@@ -780,7 +780,7 @@ async def evaluate(testset_path: Path, runs: int = 3, top_k: int = 5,
         "ablation_level": "A1_pure_rag",
         # Resolve the concrete model names from the router so the recorded
         # plan is what actually ran (a hardcoded name here is how the earlier
-        # tokenrouter fallback went unnoticed - see pitfall #38).
+        # tokenrouter fallback went unnoticed - see).
         "model_plan": {
             "generator": f"{GENERATE_TIER}:{_resolved_model_id(router, GENERATE_TIER)}",
             "judge": f"{JUDGE_TIER}:{_resolved_model_id(router, JUDGE_TIER)}",
@@ -832,7 +832,7 @@ def main(argv=None) -> int:
                         help="min seconds between LLM calls (default 8; 0 off)")
     parser.add_argument("--on-unexpected", default="count_fail",
                         choices=["count_fail", "raise"],
-                        help="non-platform runner error handling (T-18c D2): "
+                        help="non-platform runner error handling : "
                              "count_fail records pass=0 in the denominator "
                              "(default), raise aborts the batch")
     parser.add_argument("--out", default=None, help="write the full JSON here")

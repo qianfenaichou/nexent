@@ -1,5 +1,5 @@
 """
-Unit and integration tests for services/knowevo/version_pin.py (T-09, B2).
+Unit and integration tests for services/knowevo/version_pin.py (B2).
 
 This is the single most important test file of the version-pinning claim:
 the definition from 02-tech-plan 3.2 is transcribed in version_pin.py, and
@@ -15,7 +15,7 @@ Layer 2 (RUN_POSTGRES_INTEGRATION=1): the same semantics through the real
 Postgres adapter - an edge stamped invalid before t_v must be excluded from
 a pinned neighborhood while remaining visible in the historical view, and a
 pinned multi_hop walk must not traverse it. This is the test that catches
-"the predicate compiles but the walk ignores it" (pitfall #25 pattern).
+"the predicate compiles but the walk ignores it".
 """
 import os
 import sys
@@ -136,7 +136,7 @@ class TestResolveVersionClock:
         assert clock.ontology_version is None and clock.source == "now"
 
     def test_fact_cutoff_beats_created_at(self):
-        # T-18b D1: the version row's business-time upper bound is the
+        # the version row's business-time upper bound is the
         # correct t_v; created_at is only the fallback for rows committed
         # before fact_cutoff existed. The value arrives as an ISO string
         # out of the metrics JSONB, so the string round trip is the case.
@@ -172,7 +172,7 @@ class TestResolveVersionClock:
 
 class TestDiscriminativeVersionPin:
     def test_two_business_cutoffs_admit_different_facts(self):
-        # The D1 regression guard (T-18b acceptance #6): with valid_at on
+        # The regression guard (acceptance #6): with valid_at on
         # the facts' own business-time axis, the SAME edge set must split
         # differently under two different t_v values. While valid_at was
         # the ingest wall clock this predicate was always-true and version
@@ -317,7 +317,7 @@ class TestPinnedWalkInPostgres:
 
     This is the reproducible evidence behind the B2 claim, run against the
     real adapter rather than a fake - a store that ignores ``as_of`` would
-    pass every Layer 1 test and fail here (pitfall #25 pattern).
+    pass every Layer 1 test and fail here.
     """
 
     async def _seed_two_drugs_one_expired_edge(self, store, tenant):

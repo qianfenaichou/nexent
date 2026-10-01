@@ -1,7 +1,7 @@
 "use client";
 
 // Ontology tree page body: G6 v5 mindmap-style tree built from the active
-// snapshot's classes (parent edges), anchor-marked nodes. G6 is a T-05b
+// snapshot's classes (parent edges), anchor-marked nodes. G6 is a 
 // allowed dependency (@antv/g6@5, whitelist 03 plan ss4.1) installed by the
 // branch; if it is absent at build time the panel degrades to a plain list.
 import { useEffect, useMemo, useRef, useState } from "react";

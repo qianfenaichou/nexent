@@ -1,20 +1,20 @@
-"""CLI for the T-21 standard aligner (K5.4): diff two registered documents.
+"""CLI for the standard aligner : diff two registered documents.
 
 Runs the three-stage change detector over two documents registered in
 ``competition/corpus/registry.csv``, then (when a tenant is available) the
 affected-surface analysis and the VOI minimal update set, writing a JSON
 report to ``--out``.
 
-Acceptance-command shapes from competition/tasks/T-21-brief.md::
+Acceptance-command shapes from competition/tasks/-brief.md:
 
     python -m services.knowevo.pipeline.diff_guidelines \
         --old guide-2020 --new guide-2024 \
-        --gold ../competition/corpus/guideline_diff_seed.md \
-        --out ../competition/deliverables/alignment-diff.json
+        --gold ../guideline_diff_seed.md \
+        --out ../alignment-diff.json
 
     python -m services.knowevo.pipeline.diff_guidelines --impact-only \
         --old guide-2020 --new guide-2024 --tenant <uuid> \
-        --out ../competition/deliverables/alignment-impact.json
+        --out ../alignment-impact.json
 
 Honest reporting rules baked into the CLI:
 
@@ -153,7 +153,7 @@ def parse_gold(path: Path) -> list[dict]:
         row = dict(zip(headers, cells))
         raw_type = (row.get("类型") or row.get("change_type") or "").strip().upper()
         change_type = _GOLD_TYPE_MAP.get(raw_type)
-        # 口径（2026-09-27 用户裁决）：类型 UNC = 未变更话题（域内阴性）。
+        # 口径（2026-09-27 the agreed caliber）：类型 UNC = 未变更话题（域内阴性）。
         # 不再静默丢弃：保留为 status="negative"、change_type=None 的行——
         # recall 侧被 verified/corrected 过滤器排除（退出 recall 分母，不计为
         # gold change）；precision 侧进入假阳分母的阴性集（机器把未变更话题
@@ -426,7 +426,7 @@ async def _run(args: argparse.Namespace) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="T-21 standard aligner: diff two registered documents"
+        description="standard aligner: diff two registered documents"
     )
     parser.add_argument("--old", required=True, help="asset_no of the older document")
     parser.add_argument("--new", required=True, help="asset_no of the newer document")

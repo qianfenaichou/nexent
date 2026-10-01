@@ -1,4 +1,4 @@
-"""L5 community-summary persistence store (T-08 follow-up, 2026-09-30).
+"""L5 community-summary persistence store (follow-up, 2026-09-30).
 
 The knowevo-layer persistence for the L5 kernel (``community_summary.py``):
 one row per (tenant_id, ontology_version, community_id, level) in
@@ -6,7 +6,7 @@ one row per (tenant_id, ontology_version, community_id, level) in
 DDL source of truth; this module never creates tables). ``save_summaries``
 is the write side of the cluster + summarize job (idempotent: the same
 (tenant, version, community) is ONE logical summary and is overwritten);
-``load_summaries`` is the read side that future global-route wiring (T-08)
+``load_summaries`` is the read side that future global-route wiring 
 consumes before calling ``score_communities`` / ``entities_from_hits``.
 
 Scope discipline (same honest layering as the kernel):
@@ -25,8 +25,8 @@ Scope discipline (same honest layering as the kernel):
 Versioning: ``version_ref`` is the ontology version label
 (``ontology_version_t.version``, VARCHAR(20)) - a summary set is a
 snapshot of the graph under one version, so sets of different versions
-coexist and never overwrite each other. Preconditions discipline (pitfall
-#129 family): a tenant with no published version / no ingested graph
+coexist and never overwrite each other. Preconditions discipline: a tenant with no published version / no
+ingested graph
 silently yields zero communities and zero rows; callers must answer
 "which published version does this tenant have" BEFORE saving or loading.
 
@@ -101,7 +101,7 @@ class KgSummary(KnowevoTableBase):
     of truth); the shared knowevo DeclarativeBase keeps the table on the
     same schema/registry conventions as the rest of the knowevo layer.
     Not added to KNOWEVO_MODELS: that list is the 12 frozen domain tables
-    plus the T-06 run ledger, and this module is not wired into any
+    plus the run ledger, and this module is not wired into any
     create-all path.
     """
 

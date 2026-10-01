@@ -57,7 +57,7 @@ is total, the float arithmetic runs in one fixed order, and ``per_item_voi``
 Honest layering: this kernel is stdlib-only, DB-free and LLM-free. Turning
 deltaS / E_aff / D_aff / P_aff into UpdateCandidate rows - including every
 p_change estimate - belongs to the caller; wiring a production call site is
-out of scope here (T-08 / follow-up). ``per_item_voi`` exposes EVERY
+out of scope here (/ follow-up). ``per_item_voi`` exposes EVERY
 candidate's VOI (selected and skipped alike) so the L8 human-review budget
 curve can reuse the same ranking without re-deriving it.
 """

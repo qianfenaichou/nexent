@@ -1,5 +1,5 @@
 """
-Unit and integration tests for services/knowevo/ingest_service.py (T-02).
+Unit and integration tests for services/knowevo/ingest_service.py.
 
 Layer 1 (always runs): registry parsing and validation, doc_asset value
 mapping, supersede-of lineage pairing, parse quality scoring, the
@@ -117,7 +117,7 @@ class TestParseRegistry:
         return p
 
     def test_published_at_valid_and_blank(self, tmp_path):
-        # T-18b: the business publication date is optional per row; blank
+        # the business publication date is optional per row; blank
         # means "not traceable" and is recorded as absent, never guessed.
         p = self._write_with_published_at(tmp_path, [
             "G-1,指南,guideline,text,2,,,g.pdf,build,2021-04-01",
@@ -159,10 +159,10 @@ class TestSupersedeLink:
              "https://e.org/2020,CDS,g2020.pdf,build"),
             ("G24,中国2型糖尿病防治指南(2024年版),guideline,text,2,"
              "https://e.org/2024,CDS,g2024.pdf,build"),
-            "D1,二甲双胍说明书,drug_label,text,3,,,d.pdf,build",
+            ",二甲双胍说明书,drug_label,text,3,,,d.pdf,build",
         ])
         rows = parse_registry(p)
-        lookup = {"G20": "id-old", "G24": "id-new", "D1": "id-d"}
+        lookup = {"G20": "id-old", "G24": "id-new", "": "id-d"}
         updates = build_supersede_link(rows, TENANT_A, lookup)
         assert len(updates) == 1
         assert updates[0] == {"id": "id-new", "supersede_of": "id-old"}

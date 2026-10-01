@@ -1,4 +1,4 @@
-"""T-08 wiring: real three-tier LLM callable for the KnowEvo services.
+"""wiring: real three-tier LLM callable for the KnowEvo services.
 
 Implements the injected ``llm`` contract frozen by kg_service.py and
 ontology_service.py: an async callable accepting ``(prompt, *, kind,
@@ -38,13 +38,13 @@ TIER_LARGE = "large"
 # chain buys nothing and on reasoning-heavy providers it consumes the whole
 # output cap, so the JSON never appears (r19 evidence for kind='extract':
 # finish_reason=length with reasoning_tokens == completion_tokens ==
-# max_output_tokens and content_len == 0 - see pitfalls #52). The same burn
+# max_output_tokens and content_len == 0 - see). The same burn
 # hit the decision-card chain in the E8 paired run (e8-paired.log: 24x
 # event=llm_empty_content kind=ablation_decision_card / ablation_hop_plan,
 # finish_reason=length rt=8192 AND finish_reason=stop rt=3921, content empty
 # every time) while judge / route / answer kinds never went empty - so the
 # disabled set grows to exactly the card-chain JSON kinds and nothing else
-# (pitfalls #59). Judge/align/route/route_llm keep the provider default:
+#. Judge/align/route/route_llm keep the provider default
 # nothing observed is broken there, and the judge's quality must not be
 # quietly changed by this fix.
 _THINKING_DISABLED_KINDS = frozenset({"extract", "decision_card", "hop_plan"})
@@ -75,7 +75,7 @@ def _thinking_disabled(kind: str | None) -> bool:
 
 
 # Thinking-disabled kinds leave the client-level output cap unset. Honest
-# attribution (r20 review P2-4): the causal lever is the per-call `thinking`
+# attribution (r20 review): the causal lever is the per-call `thinking`
 # flag above. The generate() path assembles its request body from
 # self.kwargs, so this client attribute never reached the wire for any kind
 # (r19 wire probe: max_tokens_on_wire=null); the 8192 that truncated the JSON
@@ -191,7 +191,7 @@ class LlmRouter:
 
     One OpenAIModel instance is cached per ``(tier, temperature,
     disable_thinking)`` triple so repeated extraction/adjudication calls
-    reuse the client instead of re-resolving configs (r20 review P2-3: the
+    reuse the client instead of re-resolving configs (r20 review the
     key grew a boolean when the extract path started disabling thinking).
     The ``__call__`` signature matches the injected ``llm`` contract
     exactly; ``kind`` is carried for logging and the cost ledger.
@@ -201,7 +201,7 @@ class LlmRouter:
         self._tenant_id = tenant_id
         self._models: dict[tuple[str, float, bool], Any] = {}
         self._lock = threading.Lock()
-        # T-24 read surface: the most recent call's usage dict, exposed via
+        # read surface: the most recent call's usage dict, exposed via
         # last_usage() so a span-level caller can aggregate call-level
         # diagnostics (finish_reason / reasoning_tokens) WITHOUT changing the
         # frozen ``__call__ -> str`` contract.
@@ -285,7 +285,7 @@ class LlmRouter:
     def last_usage(self) -> dict[str, Any] | None:
         """Copy of the most recent call's usage dict, or None before any call.
 
-        T-24 (pitfalls #52/#55 沉淀机制, product side): ``__call__`` keeps
+        ``__call__`` keeps
         returning ``str`` for every existing caller; this additive read
         surface lets a span-level caller (pipeline/ingest_graph.py) aggregate
         ``reasoning_tokens`` and ``finish_reason`` per call into the
@@ -311,7 +311,7 @@ class LlmRouter:
         Additive sibling of the frozen ``(prompt, *, kind, tier,
         temperature) -> str`` contract: ``__call__`` stays byte-for-byte
         compatible for every existing caller, while the offline evaluation
-        runner (T-10a-2) needs per-call tokens for the cost ledger and the
+        runner needs per-call tokens for the cost ledger and the
         p95/token metrics. ``input_tokens``/``output_tokens`` come from
         ``ChatMessage.token_usage``, which the SDK fills from the provider
         response (0 when the provider omitted usage - reported as measured,
@@ -319,7 +319,7 @@ class LlmRouter:
 
         The returned dict is purely additive over those two counters:
         ``reasoning_tokens`` (int, 0 when the provider reports none) and
-        ``finish_reason`` (str | None) satisfy the pitfalls #52 沉淀机制 -
+        ``finish_reason`` (str | None) satisfy -
         the extraction chain can now tell a ``length`` truncation that burned
         the output budget on a reasoning chain apart from a genuine empty
         body. Existing callers read via ``.get()`` and are unaffected.
@@ -356,7 +356,7 @@ class LlmRouter:
         usage = {
             "input_tokens": int(getattr(tu, "input_tokens", 0) or 0),
             "output_tokens": int(getattr(tu, "output_tokens", 0) or 0),
-            # Additive observability (pitfalls #52/#55); see _observe_call.
+            # Additive observability; see _observe_call.
             "reasoning_tokens": reasoning_tokens,
             "finish_reason": finish_reason,
         }

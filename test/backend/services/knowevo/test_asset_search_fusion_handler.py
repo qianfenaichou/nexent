@@ -1,4 +1,4 @@
-"""asset_search handler fusion branch (T-08 phase 2, offline).
+"""asset_search handler fusion branch (phase 2, offline).
 
 The handler tries the asset fusion factory first and only consumes its
 order when the ignition gate is open (>= 2 non-empty routes). Otherwise

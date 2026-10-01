@@ -1,15 +1,15 @@
 """
-KnowEvo ontology semi-automatic construction pipeline (K1 core, T-04).
+KnowEvo ontology semi-automatic construction pipeline (core).
 
 Business logic only: seed extraction, two-level proposals, rule-based
 validation (V1-V5/V9 auto, V6/V7/V8 report), ranking with the auto_accept
-gate, versioned commits, K0 quality metrics, and the ontology-summary
+gate, versioned commits, quality metrics, and the ontology-summary
 truncation guard. HTTP parsing/auth lives in the future
 knowledge_graph_app.py; LLM calls are injected as an async callable so
 tests (and any model tier swap) never patch module state.
 
 Interface contract frozen in knowevo/backend/services/knowevo/
-ontology_service.py.md; algorithm source: memo 02-K1 (competition tree).
+ontology_service.py.md; algorithm source
 """
 import hashlib
 import logging
@@ -23,22 +23,22 @@ from services.knowevo.conformal import DEFAULT_ALPHA, conformal_accept_line
 
 logger = logging.getLogger(__name__)
 
-# K1 §2: first-level nomination uses the mid tier (signal is enough, 5x
+# first-level nomination uses the mid tier (signal is enough, 5x
 # cheaper); schema assembly uses the large tier. Tier routing is the
 # caller's concern - this module only tags which tier each call wants.
 TIER_MID = "mid"
 TIER_LARGE = "large"
 
-# K1 §4 V3: allowed property types.
+# V3: allowed property types.
 ALLOWED_PROP_TYPES = {"string", "float", "int", "bool", "enum[]", "date", "ref"}
 
-# K1 §5: auto-accept line, three-condition AND gate.
+# auto-accept line, three-condition AND gate.
 AUTO_ACCEPT_LINE = KW_AUTO_ACCEPT_LINE
 
-# K1 §5: 15k token injection cap for ontology summaries (L4 carried value).
+# 15k token injection cap for ontology summaries (L4 carried value).
 ONTOLOGY_SUMMARY_TOKEN_LIMIT = 15000
 
-# K1 §5: proposal batch ceiling per expert session (30-minute constraint).
+# proposal batch ceiling per expert session (30-minute constraint).
 MAX_PROPOSALS_PER_SESSION = 40
 
 W_DEFAULT = {"w_c": 0.5, "w_n": 0.2, "w_i": 0.3}
@@ -48,7 +48,7 @@ MAX_DEPTH = 5
 
 
 # ---------------------------------------------------------------------------
-# Proposal dataclasses (K1 data contract, framework-package .md frozen)
+# Proposal dataclasses (data contract, framework-package.md frozen)
 # ---------------------------------------------------------------------------
 
 @dataclass
@@ -108,13 +108,13 @@ class SeedSkeleton:
 
 def score_formula(conf: float, novelty: float, impact: float,
                    weights: dict[str, float] = W_DEFAULT) -> float:
-    """K1 §3: score = w_c*conf + w_n*novelty + w_i*impact."""
+    """score = w_c*conf + w_n*novelty + w_i*impact."""
     return (weights["w_c"] * conf + weights["w_n"] * novelty
             + weights["w_i"] * impact)
 
 
 def build_ev_rich(evidence_spans: list[dict[str, Any]]) -> float:
-    """K1 §3: >=2 distinct documents -> 1.0, single document -> 0.6."""
+    """>=2 distinct documents -> 1.0, single document -> 0.6."""
     docs = {span.get("doc") for span in evidence_spans}
     return 1.0 if len(docs) >= 2 else 0.6
 
@@ -152,7 +152,7 @@ def truncate_ontology_summary(classes: list[dict[str, Any]],
 
     if estimate_tokens_cjk(classes) <= token_limit:
         return classes
-    # Active + high-frequency first (K1: "active classes + high-freq props").
+    # Active + high-frequency first ("active classes + high-freq props").
     ranked = sorted(classes,
                     key=lambda c: (c.get("active", True) is False,
                                    -(c.get("freq", 0))))
@@ -172,7 +172,7 @@ def truncate_ontology_summary(classes: list[dict[str, Any]],
 # ---------------------------------------------------------------------------
 # Persistence seam: the service never imports the DB session directly in
 # business methods; PgStore (below) adapts knowevo_db helpers, tests use
-# FakeStore. This is the pattern a2a_agent_db.py established (T-03).
+# FakeStore. This is the pattern a2a_agent_db.py established.
 # ---------------------------------------------------------------------------
 
 class PgStore:
@@ -214,7 +214,7 @@ class PgStore:
     async def max_doc_published_at(self, tenant_id):
         """Latest business publication date among the tenant's documents.
 
-        Reads ``doc_asset_t.meta_data.published_at`` (T-18b) in Python
+        Reads ``doc_asset_t.meta_data.published_at`` in Python
         rather than SQL: the JSONB extraction would be dialect-specific and
         the per-tenant document count is small (tens), so a scan is simpler
         and testable. Returns None when no document carries a date - the
@@ -240,7 +240,7 @@ class PgStore:
 
         Additive companion to ``load_active_snapshot``: the workbench tree
         panel needs the version label, status and metrics alongside the
-        snapshot, while the T-04 snapshot-only contract stays frozen. The
+        snapshot, while the snapshot-only contract stays frozen. The
         ordering matches ``load_active_snapshot`` (newest created_at first)
         so both read the same active version.
         """
@@ -304,14 +304,14 @@ class PgStore:
                 {"version": r.version, "status": r.status,
                  "applied_ops": r.applied_ops, "snapshot": r.snapshot,
                  "created_at": r.created_at,
-                 # T-18b D1: the version's fact cutoff travels with the row
+                 # the version's fact cutoff travels with the row
                  # so version-clock resolution can pin against the facts'
                  # business time instead of the commit wall clock.
                  "fact_cutoff": (r.metrics or {}).get("fact_cutoff")}
                 for r in rows
             ]
 
-    # ── T-05 additions (appended only; T-04 methods above are frozen) ──
+    # ── additions (appended only; methods above are frozen) ──
 
     async def list_queue_rows(self, tenant_id, round_id=None, status="pending"):
         """Review-queue rows for one tenant, newest first, with the
@@ -453,7 +453,7 @@ def _row_to_op(row: dict[str, Any]) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 class OntologyService:
-    """K1 pipeline: seed -> two-level proposals -> validate -> rank ->
+    """pipeline: seed -> two-level proposals -> validate -> rank ->
     auto_accept -> confirm -> versioned commit -> quality metrics."""
 
     def __init__(self, store=None, llm: Any | None = None):
@@ -527,9 +527,9 @@ class OntologyService:
         """Auto-repair/keep what the machine can (V1-V5, V9); reject with a
         reason string per dropped proposal. The semantic rules (V6 duplicate
         via embedding similarity, V7 granularity, V8 orphan) need the
-        embedding channel that T-06 wires - v0 carries their flag fields
+        embedding channel that wires - v0 carries their flag fields
         (duplicate_of / granularity_hint) but performs no detection; the
-        expert sees those flags once T-06 lands, not silently here."""
+        expert sees those flags once lands, not silently here."""
         kept: list[Any] = []
         rejected: list[str] = []
         for p in proposals:
@@ -591,7 +591,7 @@ class OntologyService:
             current = parent_map.get(current)
         return depth <= MAX_DEPTH
 
-    # ── Ranking + auto-accept (K1 §3) ─────────────────────────────────
+    # ── Ranking + auto-accept ─────────────────────────────────
 
     async def rank_proposals(self, proposals: list[Any],
                              weights: dict[str, float] = W_DEFAULT
@@ -600,8 +600,8 @@ class OntologyService:
 
         No truncation here: dropping low-ranked proposals would lose them
         entirely (they are still queue rows). The 40-per-session batch
-        ceiling (K1 §3, MAX_PROPOSALS_PER_SESSION) is a confirm-loop
-        concern - T-05 slices the ranked queue into sessions; persistence
+        ceiling (MAX_PROPOSALS_PER_SESSION) is a confirm-loop
+        concern - slices the ranked queue into sessions; persistence
         and ranking keep everything.
         """
 
@@ -683,9 +683,9 @@ class OntologyService:
                              ) -> dict[str, Any]:
         """Apply the op log onto the parent snapshot, persist a new row in
         ontology_version_t, bump semver (minor for additions, major for
-        deprecations), and compute K0 metrics into the row.
+        deprecations), and compute metrics into the row.
 
-        T-18b D1: ``fact_cutoff`` is the business-time upper bound of the
+        ``fact_cutoff`` is the business-time upper bound of the
         facts this version covers - the instant version pinning tests every
         edge window against. It is stored in ``metrics`` (existing JSONB,
         zero DDL) as an ISO-8601 string so it survives the JSONB round trip.
@@ -764,12 +764,12 @@ class OntologyService:
             ops.extend(v.get("applied_ops", []))
         return ops
 
-    # ── Incremental entries (K1 backflow / K5 trigger) ───────────────
+    # ── Incremental entries (backflow / trigger) ───────────────
 
     async def propose_from_pending(self, pending: list[dict[str, Any]]
                                    ) -> list[ConceptProposal]:
         """High-frequency unmapped entities -> new-class proposals through
-        the same proposal-confirm-version channel (K1 unmappable backflow)."""
+        the same proposal-confirm-version channel (unmappable backflow)."""
         proposals = []
         for e in pending:
             if e.get("mention_count", 0) < 3:  # high-frequency threshold
@@ -802,11 +802,11 @@ class OntologyService:
     async def quality_metrics(self, snapshot: dict[str, Any],
                               seed_terms: list[str] | None = None,
                               ) -> dict[str, Any]:
-        """K0 four metrics on a snapshot: cov/red/dep/align (hand-computed
+        """four metrics on a snapshot: cov/red/dep/align (hand-computed
         fixture in test_ontology_service.py locks the semantics)."""
         return _k0_metrics_from_snapshot(snapshot, seed_terms)
 
-    # ── T-05 confirm loop (appended; T-04 signatures above are frozen) ──
+    # ── confirm loop (appended; signatures above are frozen) ──
 
     async def list_review_queue(self, tenant_id: str, page: int = 1,
                                 page_size: int = 40, round_id: str | None = None,
@@ -814,7 +814,7 @@ class OntologyService:
                                 ) -> dict[str, Any]:
         """One session slice of the ranked review queue. Rows come back
         score-ordered (rank formula re-computed from the stored features);
-        page_size is capped at MAX_PROPOSALS_PER_SESSION (K1 ss3)."""
+        page_size is capped at MAX_PROPOSALS_PER_SESSION."""
         page_size = min(page_size, MAX_PROPOSALS_PER_SESSION)
         if not hasattr(self.store, "list_queue_rows"):
             return {"items": [], "total": 0, "page": page,
@@ -931,7 +931,7 @@ class OntologyService:
 
     async def version_metrics(self, tenant_id: str, version: str
                              ) -> dict[str, Any] | None:
-        """K0 metrics of a committed version row (None when unknown)."""
+        """metrics of a committed version row (None when unknown)."""
         if not hasattr(self.store, "get_version_row"):
             return None
         row = await self.store.get_version_row(tenant_id, version)
@@ -947,8 +947,8 @@ class OntologyService:
                                    parsed_docs: list[dict[str, Any]],
                                    trigger: str = "seed_bootstrap",
                                    dry_run: bool = False) -> dict[str, Any]:
-        """Seed -> concepts -> autofix -> rank -> persist (the T-04 CLI
-        wraps exactly this; T-05 confirm loop and stage-4/6 continue from
+        """Seed -> concepts -> autofix -> rank -> persist (the CLI
+        wraps exactly this; confirm loop and stage-4/6 continue from
         the queue). Idempotent per chapter hash: rerunning the same docs
         does not duplicate proposals for the same round."""
         seed = await self.extract_seed(doc_ids, parsed_docs=parsed_docs)
@@ -1017,7 +1017,7 @@ def _apply_ops(base: dict[str, Any], ops: list[dict[str, Any]]
                         {"name": payload["name"], "type": payload.get("type")})
         elif code == "REL_ADD":
             snapshot["rel_types"].append(payload)
-        # CLS_UPD/CLS_DEL/PROP_UPD/... are T-05/T-11 extensions; unknown
+        # CLS_UPD/CLS_DEL/PROP_UPD/... are extensions; unknown
         # codes are ignored here, not invented (anti-hallucination rule).
     return snapshot
 
@@ -1038,7 +1038,7 @@ def _bump_semver(base_version: str | None,
 def _k0_metrics_from_snapshot(snapshot: dict[str, Any],
                               seed_terms: list[str] | None = None
                               ) -> dict[str, Any]:
-    """K0 §1.3 four metrics:
+    """four metrics
     cov  - share of classes the seed terms cover
     red  - redundant-parent edges / class count
     dep  - max inheritance depth (capped view: levels, root=1)

@@ -1,8 +1,8 @@
 """Tests for the asset_search MCP tool (asset-search charter M3, 2026-09-29).
 
 Closes the last frozen-vocabulary gap: the tool surface is now 9/9
-(FROZEN_EIGHT + T-20's skill_template_apply), so this file carries the
-same dual-registration assertions as the earlier tools (pitfall #27:
+(FROZEN_EIGHT + 's skill_template_apply), so this file carries the
+same dual-registration assertions as the earlier tools (
 the two registration surfaces must never drift) plus the handler
 behaviour over a single-seam fake service (RelationStore style, no
 internal mocking) and the memo-10 shape-deviation pin.
@@ -92,7 +92,7 @@ def _hit(id_="DA-1", **over):
 
 
 # ---------------------------------------------------------------------------
-# Dual registration (pitfall #27 discipline, extended to asset_search)
+# Dual registration 
 # ---------------------------------------------------------------------------
 
 class TestAssetRegistration:
@@ -258,7 +258,7 @@ class TestAssetSearchHandler:
         assert isinstance(svc, DocAssetService)
         assert svc.es_client is None, (
             "default construction is ES-free: the seam is injected by the "
-            "T-08 wiring, the bare service degrades to the PG path")
+            "wiring, the bare service degrades to the PG path")
 
     @pytest.mark.asyncio
     async def test_output_serializes_to_json_safe_dict(self):

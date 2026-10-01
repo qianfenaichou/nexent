@@ -1,9 +1,9 @@
-"""T-08 wiring guardrails.
+"""wiring guardrails.
 
-Layer 1 (always runs) - the wiring that T-05/T-07 deferred to T-08:
+Layer 1 (always runs) - the wiring that deferred to 
 1. ``knowevo_router`` is mounted in both the config and runtime apps and
    resolves at ``/api/knowevo/...`` (create_app's root_path supplies the
-   ``/api`` prefix; the router itself must NOT repeat it - the T-05
+   ``/api`` prefix; the router itself must NOT repeat it - the 
    ``prefix="/api/knowevo"`` bug produced ``/api/api/knowevo/...`` and
    every request 404'd).
 2. The same five endpoints are reachable, answering 403/405 (auth and
@@ -48,7 +48,7 @@ def test_knowevo_routes_mounted_in_config_app(path, method):
     response = getattr(_client(app), method)(path)
     assert response.status_code != 404, (
         f"{method.upper()} {path} -> 404; the router prefix is doubled "
-        "(T-05 bug: '/api' repeated) or the router is unmounted")
+        "(bug: '/api' repeated) or the router is unmounted")
 
 
 @pytest.mark.parametrize("path,method", KNOWEVO_ROUTES[:1] + KNOWEVO_ROUTES[3:])

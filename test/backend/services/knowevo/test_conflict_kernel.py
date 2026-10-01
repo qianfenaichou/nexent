@@ -6,7 +6,7 @@ algorithm: detect / classify / resolve, frozen attribution vocabulary) and
 ``competition/docs/tech-optimization-2026-09-28/a4-conflict-design-2026-09-30.md``.
 
 Semantics pinned here (every non-obvious expectation was verified by
-actually running the implementation first - pitfalls #150: never back-fill
+actually running the implementation first - : never back-fill
 expected values from mental simulation):
 
 - conflict key: relation = (subject, predicate, object); attribute =

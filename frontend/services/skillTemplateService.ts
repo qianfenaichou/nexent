@@ -1,8 +1,8 @@
-// KnowEvo skill-template API client (T-20). Thin wrapper over
+// KnowEvo skill-template API client. Thin wrapper over
 // fetchWithAuth; every error surfaces as ApiError so pages can message.
 //
 // WIRED: GET /api/knowevo/skill-template/list is live in
-// apps/knowledge_graph_app.py (read-only, workbench RBAC) - the T-20
+// apps/knowledge_graph_app.py (read-only, workbench RBAC) - the 
 // integration round shipped this client against the agreed contract
 // while the route itself was still a pending-wiring item.
 import { ApiError } from "./api";

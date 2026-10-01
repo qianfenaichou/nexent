@@ -1,7 +1,7 @@
 """
-KnowEvo Local-MCP inner registration - kg_search + kg_stats (T-07b),
-kg_multi_hop (T-09), decision_card_render (T-19), skill_template_apply
-(T-20), the L2 completion kg_evolution_trace / ontology_diff /
+KnowEvo Local-MCP inner registration - kg_search + kg_stats,
+kg_multi_hop, decision_card_render, skill_template_apply
+the L2 completion kg_evolution_trace / ontology_diff /
 evidence_verify (2026-09-28) and asset_search (asset-search charter M3,
 2026-09-29 - the frozen-vocabulary surface is now 9/9 registered).
 
@@ -11,7 +11,7 @@ in the deployed form, and this module exposes the SAME handlers for the
 Nexent Agent's local MCP pipeline (tool_collection/mcp/) - single schema
 source, dual registration, no drift (SPEC discipline 1).
 
-The mount into ``local_mcp_service.py`` is a T-08 wiring task (that file is
+The mount into ``local_mcp_service.py`` is a wiring task (that file is
 upstream-owned and frozen); because the mounted unit is the shared FastMCP
 app itself, tools added here reach the Agent on the next wiring run without
 a second mount call.
@@ -108,7 +108,7 @@ def handlers() -> dict[str, object]:
 def wire(tenant_id: str = "") -> FastMCP:
     """Return the mounted app after configuring the shared store binding.
 
-    T-08 calls this with no argument and mounts the result into
+    calls this with no argument and mounts the result into
     local_mcp_service, so the mount is process-wide. Per-call tenants are
     resolved from the caller's Authorization header when the platform
     forwards one (mcp_servers/knowevo_mcp/server.py::_request_tenant); the
@@ -123,7 +123,7 @@ def wire(tenant_id: str = "") -> FastMCP:
 
 
 # Reference the output schemas so the module documents the full contract
-# even before T-08 wiring (imports are used by documentation hooks).
+# even before wiring (imports are used by documentation hooks).
 __all__ = [
     "KG_MCP_TOOL_NAMES",
     "SERVICE_NAME",

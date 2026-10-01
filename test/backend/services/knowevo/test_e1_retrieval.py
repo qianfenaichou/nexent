@@ -1,4 +1,4 @@
-"""Unit tests for services/knowevo/e1_retrieval.py (T-10a-2 E1 baseline).
+"""Unit tests for services/knowevo/e1_retrieval.py (E1 baseline).
 
 Layer 1: pure functions (tokenizer, chunking, BM25 scoring, context
 rendering). No network, no LLM, no real corpus: fixture documents are tiny
@@ -165,7 +165,7 @@ class TestRetrieveContext:
 
 
 # ---------------------------------------------------------------------------
-# T-18d D4: authority-aware ranking + per-doc quota
+# authority-aware ranking + per-doc quota
 # ---------------------------------------------------------------------------
 
 
@@ -179,7 +179,7 @@ def _auth_doc(asset_no: str, title: str, authority_level: int, text: str,
 AUTH_DOCS = [
     # Low-authority drug label that matches the query term-for-term (BM25
     # favourite) vs a high-authority guideline that matches with slightly
-    # lower frequency - the exact "说明书压过指南" scenario D4 targets.
+    # lower frequency - the exact "说明书压过指南" scenario targets.
     _auth_doc("label-1", "二甲双胍说明书", 3,
               "二甲双胍 二甲双胍 二甲双胍 二甲双胍 二甲双胍 二甲双胍 "
               "二甲双胍 二甲双胍 二甲双胍 二甲双胍"),
@@ -207,7 +207,7 @@ class TestAuthorityPrior:
     def test_authority_prior_reorders_close_scores(self, auth_retriever):
         # label-1 has the raw BM25 favourite; with the prior, guide-1's
         # near-score must outrank it (0.95 vs 0.85 multiplier flips the pair
-        # only when raw scores are close - the D4 contract).
+        # only when raw scores are close - the contract).
         hits = auth_retriever.search("二甲双胍", top_k=4)
         ordered = [h.chunk.doc_id for h in hits]
         assert ordered[0] in ("guide-1", "policy-1"), ordered

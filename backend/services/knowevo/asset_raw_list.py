@@ -1,4 +1,4 @@
-"""Raw-list ES adapter for the asset_search fusion phase 2 (T-08, 2026-09-30).
+"""Raw-list ES adapter for the asset_search fusion phase 2 (2026-09-30).
 
 The fusion kernel (``rrf_fusion.fuse``) consumes ranked hit lists whose
 items expose a string id in ONE shared id space. For the asset context
@@ -12,7 +12,7 @@ Query construction lives here and deliberately does NOT go through the
 platform ``accurate_search``: its weighted query targets the KB schema
 fields ``title``/``content``, which the asset index does not carry
 (``title`` only; no body field). Pointing ``accurate_search`` at this
-index returns zero hits silently - the pitfall #170 family, same reason
+index returns zero hits silently - family, same reason
 ``EsRawListClient`` owns its own DSL. The adapter issues a self-contained
 ``multi_match`` over ``title`` with ``operator=and`` and a forced tenant
 filter via the raw ``client.search`` transport.

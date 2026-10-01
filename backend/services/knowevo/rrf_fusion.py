@@ -18,7 +18,7 @@ constant, and there is no third (graph) route at all. RRF is rank-only,
 parameter-light (one k), and extends to N lists.
 
 This module is stdlib-only and touches no database, no ES, no LLM.
-Wiring a production call site is out of scope (T-08 / follow-up); nothing
+Wiring a production call site is out of scope (/ follow-up); nothing
 in the running system imports this module yet, so default retrieval
 behaviour is unchanged.
 

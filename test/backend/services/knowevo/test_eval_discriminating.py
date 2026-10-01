@@ -1,6 +1,6 @@
-"""T-28 tests: discriminating testset + eval_v1 additive path support.
+"""tests: discriminating testset + eval_v1 additive path support.
 
-Layer 1 (always runs): the T-28 discriminating testset
+Layer 1 (always runs): the discriminating testset
 (competition/corpus/testset-discriminating-v1.json) passes the frozen
 validate_testset contract, the default-path CLI behavior is unchanged
 (the frozen v1 seed), and the additive question fields
@@ -41,7 +41,7 @@ class TestDiscriminatingTestset:
         assert len(qs) == 8
         for q in qs:
             # every question is a V-type with dual gold labels and the
-            # discriminating markers, per the T-28 brief
+            # discriminating markers, per the brief
             assert q["type"] == "V"
             assert q["id"].startswith("V-")
             ans = q["answer"]
@@ -106,7 +106,7 @@ class TestAdditiveFieldTolerance:
     def test_unknown_question_fields_tolerated(self):
         """validate_testset inspects only the frozen shape: additive
         fields (discriminating / probe_evidence / any future key) must
-        not produce violations - the K4 semantic rules stay intact."""
+        not produce violations - the semantic rules stay intact."""
         base = {
             "id": "V-901", "type": "V",
             "question": "additive-field probe",

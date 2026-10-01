@@ -1,4 +1,4 @@
-"""Unit tests for services/knowevo/pipeline/eval_e1.py (T-10a-2).
+"""Unit tests for services/knowevo/pipeline/eval_e1.py.
 
 Layer 1: prompt rendering, judge-output parsing, pass^k aggregation, trace
 completeness and cost-ledger / eval_run_t persistence (monkey-patched to
@@ -146,7 +146,7 @@ class TestPassk:
         agg = passk_aggregate(runs)
         assert agg["acc"] == 1.0
         # pass2 needs >=2 runs per question; with 1 run each it stays 0 - the
-        # K4 protocol runs 3x, so this only happens for smoke runs.
+        # protocol runs 3x, so this only happens for smoke runs.
         assert agg["pass2"] == 0.0
 
 
@@ -198,7 +198,7 @@ class TestSummarizePlatformFaults:
     def test_faults_excluded_from_denominator(self):
         # 2 judged runs for F-001 (1 pass), 1 platform fault for M-001: the
         # fault must not appear as a wrong answer, and M must be reported as
-        # insufficient_data instead of vanishing (D2: silent omission used
+        # insufficient_data instead of vanishing (silent omission used
         # to inflate by_type accuracy).
         runs = [
             {"question_id": "F-001", "pass": 1, "type": "F"},
@@ -215,7 +215,7 @@ class TestSummarizePlatformFaults:
         assert m["n_judged"] == 2 and m["n_expected"] == 3
         assert m["platform_faults"]["n"] == 1
         assert m["platform_faults"]["judge"] == 1
-        # D2: the M type is explicitly flagged, never silently dropped.
+        # the M type is explicitly flagged, never silently dropped.
         assert m["by_type"]["M"] == {
             "n": 0, "n_judged": 0, "acc": None, "insufficient_data": True}
         # The shortfall is fully explained by the platform fault -> no
@@ -245,7 +245,7 @@ class TestSummarizePlatformFaults:
         assert m["platform_faults"]["n"] == 1
 
     def test_runner_error_counts_fail_and_warns(self):
-        # D2: a count_fail run stays in the denominator as pass=0 and flips
+        # a count_fail run stays in the denominator as pass=0 and flips
         # integrity_warning - the old code swept it out as platform_fault.
         runs = [
             {"question_id": "F-001", "pass": 1, "type": "F"},
@@ -307,7 +307,7 @@ class TestCallWithRetry:
         assert router.calls == 2  # retried exactly once
 
     def test_non_platform_error_re_raises_by_default(self):
-        # D2: a code bug must crash loudly, never masquerade as flaky infra.
+        # a code bug must crash loudly, never masquerade as flaky infra.
         router = self._FakeRouter([ValueError("prompt template broken")])
         with pytest.raises(ValueError, match="prompt template broken"):
             asyncio.run(eval_e1._call_with_retry(
@@ -316,7 +316,7 @@ class TestCallWithRetry:
         assert router.calls == 1  # not retried as if it were a 429
 
     def test_non_platform_error_count_fail_returns_none(self):
-        # D2 opt-in: count_fail hands the error back to the caller so the
+        # opt-in: count_fail hands the error back to the caller so the
         # run is recorded as pass=0 IN the denominator.
         router = self._FakeRouter([ValueError("prompt template broken")])
         content, usage = asyncio.run(eval_e1._call_with_retry(
@@ -326,7 +326,7 @@ class TestCallWithRetry:
         assert router.calls == 1
 
     def test_code_bug_with_incidental_marker_is_not_a_platform_fault(self):
-        # D2: "502" appearing in a code bug's message (a line number, an id)
+        # "502" appearing in a code bug's message (a line number, an id)
         # must not reclassify it - the frame requirement ("error code: 502")
         # keeps the transport reading.
         router = self._FakeRouter([
@@ -407,7 +407,7 @@ class TestSummarize:
         assert m["config"] is config  # config carried through
 
 class TestTraceAnswerCite:
-    """D3 answer-level citation trace (deterministic layer, zero LLM)."""
+    """answer-level citation trace (deterministic layer, zero LLM)."""
 
     EV = ({"rank": 1, "doc_id": "g1"}, {"rank": 2, "doc_id": "g2"})
 
@@ -449,7 +449,7 @@ class TestTraceAnswerCite:
         assert m["trace_machine"] == 1.0
 
     def test_trace_answer_is_not_constant_one(self):
-        # The D3 judgement criterion: the three distinguishable states
+        # The judgement criterion: the three distinguishable states
         # (all-cited / out-of-range / none) must produce different values,
         # unlike the old field-completeness metric that was structurally 1.0.
         full = trace_answer_cite("q", list(self.EV), "a[1] b[2]")

@@ -1,4 +1,4 @@
-// KnowEvo decision-card API client (T-19). Thin wrapper over
+// KnowEvo decision-card API client. Thin wrapper over
 // fetchWithAuth; every error surfaces as ApiError so pages can message.
 // Same pipeline as the decision_card_render MCP tool - the panel, the
 // Agent and the evaluation harness see the same card.

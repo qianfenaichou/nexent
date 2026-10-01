@@ -2,7 +2,7 @@
 
 // Evolution timeline: document-version events (wired alignment/diff/list)
 // stacked above the evolution-round ledger rows when that HTTP route lands.
-// Honesty (workorder D6):
+// Honesty (workorder)
 //   roundsFailure=pending_wiring -> Alert (route missing), not an empty list
 //   rounds=[] and no failure     -> empty state
 //   roundsFailure=forbidden      -> 403 tenant/RBAC notice
@@ -186,7 +186,7 @@ export function EvolutionTimeline({
     return [...docItems, ...roundItems];
   }, [alignmentDiffs, rounds, sourceFilter, selectedId, onSelect, t]);
 
-  // Empty copy depends on *why* the list is short (D6).
+  // Empty copy depends on *why* the list is short.
   const emptyDescription = roundsFailure
     ? t("evolutionBoard.timeline.emptyBlocked", {
         defaultValue:

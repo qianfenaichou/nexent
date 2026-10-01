@@ -1,4 +1,4 @@
-"""Standard-alignment service (T-21, K5 - the innovation main axis).
+"""Standard-alignment service (the innovation main axis).
 
 Implements the document change detection pipeline defined in 02-tech-plan
 sections 4.1-4.3:
@@ -1232,7 +1232,7 @@ def calibrate_pr(
 
 
 # ---------------------------------------------------------------------------
-# Topic-level calibration (T-21 calibration refactor)
+# Topic-level calibration (calibration refactor)
 # ---------------------------------------------------------------------------
 
 _CJK_RUN_RE = re.compile(r"[\u4e00-\u9fff]+")

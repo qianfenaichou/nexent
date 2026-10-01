@@ -1,5 +1,5 @@
 """
-Unit and integration tests for services/knowevo/alignment_service.py (T-21).
+Unit and integration tests for services/knowevo/alignment_service.py.
 
 Layer 1 (always runs): the pure, deterministic core of the three-stage
 standard aligner and the innovation kernel behind it - title normalization,
@@ -15,9 +15,9 @@ is injected as a callable.
 Layer 2 (RUN_POSTGRES_INTEGRATION=1): the real-Postgres impact surface -
 the two index lookups of 02-tech-plan 4.2 (evidence span -> affected
 entities -> citing decision cards), including tenant isolation. Same gate
-pattern as test_kg_service.py (pitfalls #14 template).
+pattern as test_kg_service.py.
 
-Contract source: competition/tasks/T-21-brief.md and 02-tech-plan 4.1-4.3.
+Contract source: competition/tasks/-brief.md and 02-tech-plan 4.1-4.3.
 """
 import dataclasses
 import inspect
@@ -100,7 +100,7 @@ DOC_TABLE_OLD = (
 )
 DOC_TABLE_NEW = DOC_TABLE_OLD.replace("500mg", "1000mg")
 
-# The T-21 table-match fix: the same table with a reworded caption across
+# The table-match fix: the same table with a reworded caption across
 # versions must not become a phantom ADD + DELETE. Sections are identical
 # here; only the caption text differs (2020 "8 次...调查情况" vs 2024
 # "9 次...调查结果" style drift). DOC_SAME_TABLE_NEW also carries one row
@@ -690,7 +690,7 @@ class TestDiffTables:
 
 # ---------------------------------------------------------------------------
 # Layer 1: diff_tables matches on section context + column signature
-# (T-21 fix: caption-only matching turned identical tables with reworded
+# (fix: caption-only matching turned identical tables with reworded
 # captions into phantom ADD + DELETE; the match key is now the table's
 # section context plus its column signature, all deterministic, zero LLM)
 # ---------------------------------------------------------------------------
@@ -940,7 +940,7 @@ class TestCalibratePr:
 
 
 # ---------------------------------------------------------------------------
-# Layer 1: topic-level calibration (the T-21 calibration refactor)
+# Layer 1: topic-level calibration (the calibration refactor)
 # ---------------------------------------------------------------------------
 
 class TestTopicTokens:
@@ -1263,7 +1263,7 @@ class TestTableChannelZeroLlm:
 
 
 # ---------------------------------------------------------------------------
-# Layer 1: detect() table matching across reworded captions (T-21 fix)
+# Layer 1: detect table matching across reworded captions (fix)
 # ---------------------------------------------------------------------------
 
 class TestTableSectionContextDetect:

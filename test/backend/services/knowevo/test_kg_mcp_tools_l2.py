@@ -40,7 +40,7 @@ FROZEN_EIGHT = {
     "kg_search", "kg_multi_hop", "kg_evolution_trace", "ontology_diff",
     "asset_search", "decision_card_render", "evidence_verify", "kg_stats",
 }
-# skill_template_apply is T-20's additive tool beyond the frozen 8.
+# skill_template_apply is 's additive tool beyond the frozen 8.
 L2_NEW = ("kg_evolution_trace", "ontology_diff", "evidence_verify")
 # tool name -> the schema class / handler function shared by both surfaces
 L2_SCHEMA_CLASSES = {
@@ -156,7 +156,7 @@ REL_SUPERSEDED = {"id": "e2", "src": "Drug:a", "dst": "Drug:c",
 
 
 # ---------------------------------------------------------------------------
-# Dual registration (pitfall #27 discipline, extended to the L2 trio)
+# Dual registration 
 # ---------------------------------------------------------------------------
 
 class TestL2Registration:
@@ -315,7 +315,7 @@ class TestKGEvolutionTrace:
     def test_builder_falls_back_to_pipeline_store_without_seam(self):
         # The GraphStore seams cannot return superseded edges, so a store
         # without list_relations_by_entity must NOT back the timeline -
-        # the builder swaps in the K2 pipeline's own PgStore adapter.
+        # the builder swaps in the pipeline's own PgStore adapter.
         from services.knowevo.graph_store import PgJsonbGraphStore
         from services.knowevo.kg_service import PgStore
 

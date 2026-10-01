@@ -1,5 +1,5 @@
 """
-Regression test for pitfall #137 - the "silent loss on resume" gap in the
+Regression test for - the "silent loss on resume" gap in the
 span-ledger idempotency of ``services/knowevo/pipeline/ingest_graph.py``.
 
 Background: the paced ingest driver returns ``{}`` once it has exhausted its

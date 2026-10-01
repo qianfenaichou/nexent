@@ -1,4 +1,4 @@
-"""asset_search two-route fusion factory (T-08 phase 2, 2026-09-30).
+"""asset_search two-route fusion factory (phase 2, 2026-09-30).
 
 The asset-context consumer of the frozen RRF kernel
 (``rrf_fusion.fuse``). Id space is strictly ``AssetHit.id`` (str) - the

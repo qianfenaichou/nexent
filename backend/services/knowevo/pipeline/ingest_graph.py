@@ -1,5 +1,5 @@
 """
-ingest_graph CLI (T-06) - thin wrapper over KGService.
+ingest_graph CLI - thin wrapper over KGService.
 
 Per the pipeline/ contract: argument parsing, progress output, cost-ledger
 row, exit code only. All algorithm lives in services/knowevo/kg_service.py.
@@ -18,7 +18,7 @@ batch.json schema:
 
 --tables-only skips the LLM channel (deterministic extraction only; this is
 the smoke path that needs no model access). Without it, text chunks go
-through the offline echo LLM in v0 - real tier routing is T-08 wiring, the
+through the offline echo LLM in v0 - real tier routing is wiring, the
 CLI shape stays identical.
 
 Idempotency: each span's hash lands in kg_extract_run_t; re-running a
@@ -44,7 +44,7 @@ COST_LEDGER_PATH = Path(__file__).resolve().parents[4] / "competition" / "docs" 
 class _EchoLLM:
     """Offline default LLM: extracts nothing (zero entities), so a batch
     run without model wiring still exercises the full chain - anchors,
-    alignment, merges - honestly. Real runs inject the mid tier via T-08
+    alignment, merges - honestly. Real runs inject the mid tier via 
     wiring; the CLI stays testable without network access."""
 
     def __init__(self):
@@ -64,7 +64,7 @@ def _as_int(value: Any) -> int:
 def _is_blank_body(raw: Any) -> bool:
     """True when a call produced no body: blank string, empty dict, or None.
 
-    "No content" (pitfalls #52) and "no entities" (a parsed but empty body)
+    "No content" and "no entities" (a parsed but empty body)
     must stay distinguishable. A text LLM path returns raw ``str``, so a blank
     or whitespace-only string is "no content". The offline echo path and the
     paced ingest driver return a parsed ``dict``: there an *empty* dict is the
@@ -83,7 +83,7 @@ def _is_blank_body(raw: Any) -> bool:
 class _SpanDiagnostics:
     """Span-scoped adapter that aggregates call-level LLM diagnostics.
 
-    pitfalls #52/#55 沉淀机制 (product side): one ``kg_extract_run_t`` row must
+     (product side): one ``kg_extract_run_t`` row must
     be able to answer "why did this span produce no entities?". A single span's
     extraction window may issue several calls (retry / tier escalation), so the
     ledger row carries the span-level aggregate:
@@ -179,7 +179,7 @@ async def _run(args: argparse.Namespace) -> int:
         return 0
 
     snapshot = await store.load_ontology_snapshot(tenant)
-    # T-24: wrap the injected LLM so each span's call-level diagnostics
+    # wrap the injected LLM so each span's call-level diagnostics
     # (llm_calls / empty_content_calls / reasoning_tokens / finish_reasons)
     # aggregate and land in kg_extract_run_t alongside the span's ledger row.
     diag = None if args.tables_only else _SpanDiagnostics(_EchoLLM())
@@ -238,7 +238,7 @@ async def _run(args: argparse.Namespace) -> int:
             report = await svc.merge_delta([result])
             if channel == "llm" and not (result.entities or result.edges
                                          or result.pending):
-                # pitfall #137: a hard-failed LLM call and a legitimately
+                # : a hard-failed LLM call and a legitimately
                 # empty extraction are indistinguishable by the time we get
                 # here (the paced driver returns {} after exhausting its
                 # retries), so an empty LLM span must NOT be written to the
@@ -296,7 +296,7 @@ async def _run(args: argparse.Namespace) -> int:
 
 
 def _es_upsert_best_effort(tenant_id: str, run_id: str) -> None:
-    """T-08 follow-up: after a run's entities landed in PG, best-effort
+    """follow-up: after a run's entities landed in PG, best-effort
     reconcile them into the production ES entity index.
 
     Failure isolation is the contract: any error (sync not armed, ES
@@ -337,7 +337,7 @@ def _append_cost_ledger_row(report: dict) -> None:
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
-        description="Graph extraction batch run (K2, T-06)")
+        description="Graph extraction batch run ")
     parser.add_argument("--batch", required=True,
                         help="JSON batch file (docs + chunks)")
     parser.add_argument("--tables-only", action="store_true",

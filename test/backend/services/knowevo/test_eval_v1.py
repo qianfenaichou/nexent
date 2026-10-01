@@ -1,8 +1,8 @@
 """
-Unit tests for services/knowevo/pipeline/eval_v1.py (T-10a).
+Unit tests for services/knowevo/pipeline/eval_v1.py.
 
 Layer 1 (always runs): testset schema validation (valid seed passes,
-each K4 rule has a negative case), pass^k aggregation math, and the
+each rule has a negative case), pass^k aggregation math, and the
 bilingual judge/expand prompt rendering (both langs produce non-empty
 system+user with placeholders substituted). No database and no LLM.
 """
@@ -67,20 +67,20 @@ class TestValidateTestset:
         assert types == {"F": 5, "M": 5, "V": 5, "X": 5}
 
     def test_v1_seed_has_refusal_questions(self):
-        """K4 6.1 X-type tests knowledge-boundary self-awareness: at least
+        """6.1 X-type tests knowledge-boundary self-awareness: at least
         half of the X questions must be out-of-corpus refusal items."""
         data = _load_seed()
         x_questions = [q for q in data["questions"] if q["type"] == "X"]
         refusals = [q for q in x_questions
                     if q["rubric"]["refusal_expected"]]
         assert len(refusals) >= len(x_questions) // 2, (
-            "X-type must include out-of-corpus refusal questions (K4 6.1)")
+            "X-type must include out-of-corpus refusal questions (6.1)")
 
     def test_v1_seed_blind_ratio_deferred_is_documented(self):
-        """K4 6.1 anti-overfitting isolation (M/F >= 0.5 blind) is a 120-set
+        """6.1 anti-overfitting isolation (M/F >= 0.5 blind) is a 120-set
         build-time rule; the 20-question seed keeps blind_set_ratio 0 for
         corpus-backed questions (refusal items are 1.0 = fully out-of-corpus)
-        and must not silently pretend otherwise (deferred to T-10a-3)."""
+        and must not silently pretend otherwise (deferred to)."""
         data = _load_seed()
         for q in data["questions"]:
             ratio = q["evidence_origin"]["blind_set_ratio"]

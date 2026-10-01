@@ -21,7 +21,7 @@ case where every cost is 1.0 and budgets are 1..n.
 
 Quality is an injectable callable ``quality_fn(confirmed_ids) -> mapping``
 over the confirmed-id prefix in review order. The recommended default is
-the production K0 metric implementation
+the production metric implementation
 ``ontology_service._k0_metrics_from_snapshot`` (Cov/Red/Dep/Align, 05-计划书
 §3.4); :func:`k0_quality_fn` builds such a callable and falls back to that
 implementation when no ``metrics_fn`` is injected.
@@ -126,7 +126,7 @@ def k0_quality_fn(
     *,
     metrics_fn: Callable[..., Mapping[str, Any]] | None = None,
 ) -> QualityFn:
-    """Build a Quality callable backed by the production K0 four metrics.
+    """Build a Quality callable backed by the production four metrics.
 
     Confirming item ``i`` appends ``item_classes[i]`` (may be missing/empty)
     to ``base_classes``; the snapshot ``{"classes": [...]}`` is then scored

@@ -1,5 +1,5 @@
 """
-build_ontology CLI (T-04) - thin wrapper over OntologyService.
+build_ontology CLI - thin wrapper over OntologyService.
 
 Per the pipeline/ contract: argument parsing, progress output, cost-ledger
 row, exit code only. All algorithm lives in services/knowevo/
@@ -11,9 +11,9 @@ Usage (from backend/):
 
 docs.json schema: [{"title", "toc": ["1 用药", "1.1 二甲双胍", ...],
                     "terms": [{"name", "aliases", "section", "parent"}]}]
---plan: three-tier model assignment YAML (K8 §2); v0 records the tier
+--plan: three-tier model assignment YAML; v0 records the tier
         mapping into the cost-ledger row, actual tier routing lands with
-        the T-08 LLM wiring.
+        the LLM wiring.
 Exit codes: 0 success / 2 partial failure / 1 fatal.
 """
 import argparse
@@ -35,8 +35,8 @@ COST_LEDGER_PATH = Path(__file__).resolve().parents[4] / "competition" / "docs" 
 
 
 def _load_plan(plan_path: str | None) -> dict:
-    """Three-tier model plan (K8 §2). YAML in real deployments; v0 accepts
-    the file and records it - tier routing itself is T-08 wiring."""
+    """Three-tier model plan. YAML in real deployments; v0 accepts
+    the file and records it - tier routing itself is wiring."""
     if not plan_path:
         return {"tier_mid": "mid", "tier_large": "large", "source": "default"}
     import yaml
@@ -50,7 +50,7 @@ def _load_plan(plan_path: str | None) -> dict:
 
 class _EchoLLM:
     """Offline default LLM: nominates the seed terms themselves as
-    concepts. Real runs inject the mid/large tier via --llm in T-08
+    concepts. Real runs inject the mid/large tier via --llm in 
     wiring; the CLI stays testable without network access."""
 
     def __init__(self):
@@ -115,7 +115,7 @@ async def _run(args: argparse.Namespace) -> int:
         "stage": "ontology",
         "model_plan": plan,
         # echo mode makes no network calls, so billed tokens are honestly 0;
-        # real tier routing (T-08) will replace this with usage from the
+        # real tier routing will replace this with usage from the
         # injected llm's response metadata.
         "tokens": 0,
         "llm_calls": len(llm.calls),
@@ -149,14 +149,14 @@ def _append_cost_ledger_row(report: dict) -> None:
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
-        description="Seed ontology build round (K1 stage 0-3, T-04)")
+        description="Seed ontology build round (stage 0-3)")
     parser.add_argument("--docs", required=True,
                         help="JSON file with parsed standard docs")
     parser.add_argument("--dry-run", action="store_true",
                         help="score and print proposals without persisting")
     parser.add_argument("--tenant", default=None, help="tenant UUID")
     parser.add_argument("--plan", default=None,
-                        help="three-tier model plan YAML (K8 §2)")
+                        help="three-tier model plan YAML ")
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s %(levelname)s %(message)s")
     try:

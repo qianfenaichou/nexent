@@ -7,7 +7,7 @@ Spec anchors:
 - probe module ``competition/experiments/probe_l5_ablation.py``.
 
 Expected numbers were verified by running the implementation first
-(pitfalls #150: never back-fill expected values from mental simulation).
+(never back-fill expected values from mental simulation).
 """
 from __future__ import annotations
 

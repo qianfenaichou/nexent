@@ -1,8 +1,8 @@
 "use client";
 
-// Ontology workbench shell (T-05b): tabbed container over the proposal
+// Ontology workbench shell : tabbed container over the proposal
 // queue, the G6 tree, and the diff+quality panel. Route: /knowledgeGraph
-// (direct-URL acceptance; official nav registration belongs to T-12).
+// (direct-URL acceptance; official nav registration belongs to).
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Tabs } from "antd";

@@ -1,6 +1,6 @@
 """
-Tests for apps/knowledge_graph_app.py + the T-05 service additions in
-services/knowevo/ontology_service.py (T-05a).
+Tests for apps/knowledge_graph_app.py + the service additions in
+services/knowevo/ontology_service.py.
 
 Layer 1 (always runs): endpoint behavior with the auth seam and the store
 seam monkeypatched - happy paths, 401 (expired session), 403 (missing
@@ -41,7 +41,7 @@ TENANT_B = "22222222-2222-2222-2222-222222222222"
 
 
 class FakeReviewStore:
-    """In-memory stand-in for PgStore's T-05 queue/version surface."""
+    """In-memory stand-in for PgStore's queue/version surface."""
 
     def __init__(self):
         self.proposals = {}   # id -> row dict
@@ -112,7 +112,7 @@ class FakeReviewStore:
         return None
 
     async def load_active_version_row(self, tenant_id):
-        """Newest committed version row, or None (T-18a active endpoint)."""
+        """Newest committed version row, or None (active endpoint)."""
         if not self.versions:
             return None
         v = self.versions[-1]
@@ -203,11 +203,11 @@ def test_context_kb_fallback_allows_admin_until_t08_wiring(monkeypatch):
     assert ("ADMIN", "RESOURCE", "KB", "MANAGE") in calls
 
 
-# ── _ontology_service wiring (pitfalls #49) ──────────────────────────
+# ── _ontology_service wiring ──────────────────────────
 
 
 def test_ontology_service_injects_pgstore(monkeypatch):
-    """Regression for pitfalls #49: the factory used to return
+    """Regression for : the factory used to return
     OntologyService(store=None), which made every ontology endpoint answer
     empty data. PgStore is stubbed out so the test never touches a
     database - the assertion is about the wiring (store must be non-None),
@@ -411,7 +411,7 @@ def test_commit_version_semver_and_metrics_and_diff_roundtrip(monkeypatch):
     assert "Metformin" in names        # the confirmed one is folded in
     assert "Sulfonylurea" not in names  # pending stays queued, not committed
 
-    # K0 metrics on the committed version
+    # metrics on the committed version
     m = _run(knowledge_graph_app.version_metrics("v1.0.0",
                                                  authorization="Bearer t"))
     assert set(m["metrics"]) == {"cov", "red", "dep", "align"}
@@ -456,7 +456,7 @@ def test_commit_with_no_confirmed_ids_folds_whole_session(monkeypatch):
     assert res["folded"] == 1  # only the confirmed one, pending stays queued
 
 
-# ── GET /ontology/versions/active (T-18a) ─────────────────────────────
+# ── GET /ontology/versions/active ─────────────────────────────
 
 
 def test_active_version_404_before_first_commit(monkeypatch):
@@ -520,7 +520,7 @@ def test_active_version_scopes_to_session_tenant(monkeypatch):
 
 
 class TestPostgresReviewLoop:
-    """Layer 2 (RUN_POSTGRES_INTEGRATION=1): the T-05 confirm loop against
+    """Layer 2 (RUN_POSTGRES_INTEGRATION=1): the confirm loop against
     the real schema - queue listing, batch review with reparent cycle
     refusal, commit_from_queue version bump, version metrics, and tenant
     isolation. Self-cleaning like TestPostgresRound above."""
@@ -661,7 +661,7 @@ class TestPostgresReviewLoop:
         reason="set RUN_POSTGRES_INTEGRATION=1 with a reachable PG",
     )
     async def test_build_tenant_active_ontology_is_wired_v11(self):
-        """End-to-end wiring proof for pitfalls #49: the build tenant's
+        """End-to-end wiring proof for : the build tenant's
         published ontology (v1.1.0, 10 classes / 10 relations) is visible
         through the real PgStore - the exact read the fixed
         _ontology_service() serves. Read-only: this tenant is a live seed,

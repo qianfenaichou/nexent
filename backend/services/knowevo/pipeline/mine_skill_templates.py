@@ -1,4 +1,4 @@
-"""mine_skill_templates CLI (T-20) - thin wrapper over SkillTemplateService.
+"""mine_skill_templates CLI - thin wrapper over SkillTemplateService.
 
 Per the pipeline/ contract: argument parsing, progress output, cost-ledger
 row, exit code only. All algorithm lives in services/knowevo/
@@ -9,7 +9,7 @@ decision_card_t history (read-only) is grouped by (domain, task_type);
 groups with support >= --min-support become parameterized SKILL.md
 templates upserted into skill_template_t (INSERT/UPDATE only, zero ALTER).
 
-Honesty guards (pitfalls #38/#39):
+Honesty guards 
 - prints the resolved model id + api_base BEFORE any call; a silent
   fallback to a wrong tenant default is the most expensive failure mode;
 - every LLM call: 120s hard timeout, 3 attempts max;
@@ -113,7 +113,7 @@ class GuardedLLM:
 
 
 def _self_check(tenant_id: str) -> dict:
-    """Print the model actually wired per tier (pitfall #38 discipline)."""
+    """Print the model actually wired per tier."""
     from services.knowevo.llm_client import LlmRouter, _tier_model_id
     from utils.config_utils import get_model_name_from_config
 
@@ -139,7 +139,7 @@ def _self_check(tenant_id: str) -> dict:
         if not env_id:
             print(f"[self-check] WARNING: KW_LLM_{tier.upper()}_MODEL_ID is "
                   "unset; the router will silently fall back to the tenant "
-                  "default LLM (pitfall #38). Verify the line above before "
+                  "default LLM. Verify the line above before "
                   "trusting this run.")
     return report
 
@@ -292,7 +292,7 @@ def _append_cost_ledger_row(tenant_id: str, model_report: dict, llm,
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
         description="Mine parameterized SKILL.md templates from "
-                    "decision_card_t history (T-20)")
+                    "decision_card_t history ")
     parser.add_argument("--min-support", type=int, default=2,
                         help="minimum group support to become a candidate")
     parser.add_argument("--limit", type=int, default=200,

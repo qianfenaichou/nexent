@@ -1,6 +1,6 @@
 "use client";
 
-// Expandable evidence chain for one decision-card candidate (T-19).
+// Expandable evidence chain for one decision-card candidate.
 // Every item carries its provenance (doc / span / kg_path) and the
 // EXTRACTED|INFERRED tag - the traceability the card contract promises.
 // Contested items are marked, never silently dropped.

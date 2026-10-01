@@ -1,13 +1,13 @@
 "use client";
 
-// Skill-template library panel (T-20). Route: /skillTemplate. Browses the
+// Skill-template library panel. Route: /skillTemplate. Browses the
 // mined parameterized SKILL.md templates in skill_template_t: list (name /
 // task type / version / reuse count / success rate), preview the raw
 // pre-render body_md, copy to clipboard.
 //
 // DATA-SOURCE STATUS: the list is served by
 // GET /api/knowevo/skill-template/list (read-only, workbench RBAC) -
-// wired after the T-20 integration round deferred it (its brief
+// wired after the integration round deferred it (its brief
 // authorized no HTTP route). The pending-wiring Alert below is the
 // fetch-failure state, never fabricated rows. Instantiation itself is
 // reachable today through the skill_template_apply MCP tool.
@@ -46,7 +46,7 @@ export default function SkillTemplatePanel() {
   const [loading, setLoading] = useState(false);
   // Three distinct tail states (error / empty / pending-wiring) must never
   // collapse into one, per the DiffAndQualityPanel error/empty dichotomy
-  // (pitfall #71): a transient fetch failure is its own recoverable state
+  // : a transient fetch failure is its own recoverable state
   // with a retry affordance, NOT the permanent "route not wired" notice.
   const [templates, setTemplates] = useState<SkillTemplate[] | null>(null);
   const [loadError, setLoadError] = useState(false);

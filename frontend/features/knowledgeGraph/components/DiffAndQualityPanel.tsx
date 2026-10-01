@@ -2,7 +2,7 @@
 
 // Version diff replay view: ops between two committed versions with the
 // three-color coding frozen in the SPEC (added green / deprecated grey /
-// changed yellow). Plus the K0 quality panel (recharts radar, already in
+// changed yellow). Plus the quality panel (recharts radar, already in
 // the dependency tree).
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -36,7 +36,7 @@ export function DiffAndQualityPanel() {
   const [diff, setDiff] = useState<OntologyDiffResult | null>(null);
   const [diffError, setDiffError] = useState(false);
   // Loading is its own state: while the fetch is in flight the panel must
-  // NOT fall through to the "no diff" Empty state (pitfall #71 - a state
+  // NOT fall through to the "no diff" Empty state (a state
   // that looks like "empty" but is really "not loaded yet" is not provable).
   const [diffLoading, setDiffLoading] = useState(true);
   const [metrics, setMetrics] = useState<OntologyMetrics | null>(null);

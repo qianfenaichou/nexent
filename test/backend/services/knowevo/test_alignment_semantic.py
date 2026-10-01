@@ -1,7 +1,7 @@
-"""Unit tests for services/knowevo/alignment_semantic.py (K5 semantic aligner).
+"""Unit tests for services/knowevo/alignment_semantic.py (semantic aligner).
 
 Acceptance anchor (knowevo/backend/services/knowevo/alignment_semantic.py.md
-"验收锚点" :120): group keys identical to T-21's ``aggregate_change_groups``
+"验收锚点" :120): group keys identical to 's ``aggregate_change_groups``
 (same key function), ``weighted_cosine`` = 0 on orthogonal (disjoint) token
 sets, ``benjamini_hochberg`` raises ``ValueError`` on out-of-range ``q``,
 ``wilson_interval(0, 0)`` returns ``(None, None)``, and ``semantic_calibrate``
@@ -57,7 +57,7 @@ MACHINE = [
 ]
 
 # t-unverified is deliberately unverified: it must leave both the numerator
-# and the denominator of recall (the T-21 honesty rule).
+# and the denominator of recall (the honesty rule).
 GOLD = [
     {"id": "t-drug", "section_anchor": "3.2 药物治疗", "field": "二甲双胍",
      "status": "verified"},
@@ -90,7 +90,7 @@ CONTRACT_CALIBRATION_FIELDS = (
 
 
 def _machine_as_change_items():
-    """The same machine items as alignment_service.ChangeItem (T-21 side)."""
+    """The same machine items as alignment_service.ChangeItem (side)."""
     return [
         als.ChangeItem(
             change_type=item["change_type"],
@@ -112,7 +112,7 @@ def _run(**kwargs):
 
 
 # ---------------------------------------------------------------------------
-# 1. group key parity with T-21 (anchor: aggregate_change_groups 同款键函数)
+# 1. group key parity with (anchor: aggregate_change_groups 同款键函数)
 # ---------------------------------------------------------------------------
 
 def test_group_keys_match_t21_aggregate_change_groups():
@@ -165,7 +165,7 @@ def test_provenance_hygiene_tokens():
     assert "paragraph" not in drug.tokens
     assert "added" not in insulin.tokens
 
-    # The documented "唯一区别在 token 集": T-21's grouper unions *all* points,
+    # The documented "唯一区别在 token 集": 's grouper unions *all* points,
     # so its token sets are supersets that do contain the placeholders.
     t21 = {
         f"{g.change_type}|{als.normalize_title(g.section_anchor)}": g

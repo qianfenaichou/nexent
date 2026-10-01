@@ -91,7 +91,7 @@ def _hit_from_es(d: Any, filters: dict[str, Any]) -> AssetHit | None:
     raw_score = float(raw) if isinstance(raw, (int, float)) else 0.0
     level = d.get("authority_level")
     parse_quality = d.get("parse_quality")
-    # Per-hit skip on dirty types (review P1-3): one malformed field must
+    # Per-hit skip on dirty types (review): one malformed field must
     # not throw into the caller's broad except and drop the whole ES page.
     try:
         authority_level = int(level) if level is not None else 3

@@ -16,7 +16,7 @@ update_planner / budget_curve):
   NOT done here and is NOT imported by any running path yet, so default
   retrieval/routing behaviour is unchanged.
 
-Persistence seam (T-08 follow-up, 2026-09-30; docstring note only - no
+Persistence seam (follow-up, 2026-09-30; docstring note only - no
 code change in this kernel): community summaries are persisted by
 ``services.knowevo.summary_store.SummaryStore`` (table
 ``nexent.kg_summary_t``, migration ``v2.5.5_kw_012_kg_summary.sql``).

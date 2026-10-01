@@ -1,5 +1,5 @@
 """
-Tests for the T-29 used_tokens observation gap: render_card must carry
+Tests for the used_tokens observation gap: render_card must carry
 the measured usage of its own decision-card LLM call on the card.
 
 Three contract points:
@@ -108,7 +108,7 @@ def _run(coro):
 class TestUsedTokensObservation:
     @pytest.mark.asyncio
     async def test_llm_path_assigns_measured_usage(self):
-        """The card render's own call feeds card.used_tokens (T-29)."""
+        """The card render's own call feeds card.used_tokens."""
         llm = UsageLLM()
         svc = DecisionService(llm=llm, tenant_id=TENANT)
         card = await svc.render_card("q", _chain_with_claim())

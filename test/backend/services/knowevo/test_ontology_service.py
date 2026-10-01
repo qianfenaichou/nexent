@@ -1,10 +1,10 @@
 """
-Unit and integration tests for services/knowevo/ontology_service.py (T-04).
+Unit and integration tests for services/knowevo/ontology_service.py.
 
 Layer 1 (always runs): pure-function behavior of the ontology pipeline -
 seed skeleton assembly, two-level proposal shaping, V1-V5/V9 validator
 behavior, ranking (score formula + ev_rich tie-break), auto_accept gate,
-version commit/diff round-trip on an in-memory fake store, K0 quality
+version commit/diff round-trip on an in-memory fake store, quality
 metrics against a hand-computed fixture, 15k-token truncation of the
 ontology summary. No database and no LLM required: the LLM is injected as
 a callable (fake in tests).
@@ -115,7 +115,7 @@ class FakeStore:
         return versions[-1]["snapshot"] if versions else {"classes": [], "rel_types": []}
 
     async def load_active_version_row(self, tenant_id):
-        """Row-level active version (T-18a): mirrors PgStore, which serves
+        """Row-level active version : mirrors PgStore, which serves
         the newest published row with its label and metrics."""
         versions = [v for v in self.versions
                     if v["tenant_id"] == tenant_id and v["status"] == "published"]
@@ -140,7 +140,7 @@ class FakeStore:
 
 
 class _SnapshotOnlyStore:
-    """Minimal store exposing only the T-04 snapshot surface, used to lock
+    """Minimal store exposing only the snapshot surface, used to lock
     the ``get_active_row`` degradation path (no row surface -> None/404)."""
 
     async def load_active_snapshot(self, tenant_id):
@@ -293,7 +293,7 @@ class TestVersioning:
         # snapshot contains the classes the ops added
         names = {c["name"] for c in v1["snapshot"]["classes"]}
         assert {"Drug", "Metformin"} <= names
-        # metrics were computed onto the version row (K0 into `metrics`)
+        # metrics were computed onto the version row (into `metrics`)
         assert set(v1["metrics"]) == {"cov", "red", "dep", "align"}
 
         # minor bump for additions on top of v1.0.0

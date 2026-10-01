@@ -1,6 +1,6 @@
 "use client";
 
-// Ontology proposal queue with the A/X/P keyboard flow (K1 ss3): each
+// Ontology proposal queue with the A/X/P keyboard flow: each
 // card shows proposal + evidence anchor + impact summary + confidence
 // only (information-minimized confirm loop, <=3 keystrokes per decision).
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";

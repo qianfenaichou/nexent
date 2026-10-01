@@ -1,10 +1,10 @@
-"""E1 pure-RAG retrieval base (T-10a-2): corpus parsing + BM25 index.
+"""E1 pure-RAG retrieval base : corpus parsing + BM25 index.
 
 This is the "A1 pure RAG" ablation arm from 02-technical-plan 3.5: the
 agent gets knowledge_base_search only - no graph, no multi-hop, no version
 pinning. E1 therefore needs a document retriever that works over the raw
 corpus (58+ PDF/HTML files under competition/corpus/) because the project
-had no document index yet (only the T-07 graph store and the T-04 ontology
+had no document index yet (only the graph store and the ontology
 term matcher, neither of which retrieves document passages).
 
 Design decisions:
@@ -192,7 +192,7 @@ def parse_corpus(corpus_root: Path, registry_csv: Path | None = None,
     ``include_blind=False`` restricts to the build split (the 80% used for
     graph construction), which is what a *pipeline* run should see; the
     evaluation arms keep blind docs so F/M questions sourced from blind
-    documents stay answerable (K4 6.1 anti-overfitting isolation).
+    documents stay answerable (6.1 anti-overfitting isolation).
     """
     import csv
 
@@ -251,7 +251,7 @@ class Hit:
 
     ``score`` is the pure BM25 value (what E1 reports and the judge reads,
     stable across ranking changes); ``ranked_score`` is the value actually
-    used for ordering after the authority prior is applied (T-18d). Keeping
+    used for ordering after the authority prior is applied. Keeping
     the raw BM25 score on the hit preserves auditability: a re-rank never
     rewrites history, it only changes the order.
     """
@@ -261,7 +261,7 @@ class Hit:
     ranked_score: float | None = None
 
 
-# Default authority prior weights (T-18d D4). Semantic: *down-weight* low
+# Default authority prior weights. Semantic: *down-weight* low
 # authority rather than boost high authority, so a drug label that happens to
 # hit every query term cannot crowd out a guideline with a near-equal BM25
 # score. authority_level 1 (national standard) is never penalised; 4 (public
@@ -281,15 +281,15 @@ class Retriever:
     construction silently returning empty hits - a search that "works" but
     finds nothing is the hardest kind of retrieval bug to notice.
 
-    Authority-aware ranking (T-18d): ``authority_weights`` applies a
+    Authority-aware ranking : ``authority_weights`` applies a
     multiplicative prior ``ranked_score = bm25 * w(authority_level)`` and
     ``per_doc_quota`` caps how many top-k slots one document may occupy
     (deterministic MMR-lite: greedy by ranked score, skip over-quota docs).
     Conventions:
       * ``authority_weights=None`` -> use ``DEFAULT_AUTHORITY_WEIGHTS``
-        (authority ranking ON by default - the D4 contract);
+        (authority ranking ON by default - the contract);
       * ``authority_weights={}``    -> disable the prior (pure BM25 order,
-        used by the T-22 ablation as the no-authority arm);
+        used by the ablation as the no-authority arm);
       * ``per_doc_quota=None``      -> no per-document cap.
     """
 
@@ -352,7 +352,7 @@ class Retriever:
         ``splits`` optionally restricts to build/blind chunks (used by the
         anti-overfitting check); None searches everything.
 
-        Ranking (T-18d): every chunk is scored by pure BM25 first; the
+        Ranking : every chunk is scored by pure BM25 first; the
         authority prior is then applied multiplicatively to produce
         ``ranked_score`` (raw ``score`` is preserved for auditability), and
         the final list is a greedy pass that skips a hit when its document

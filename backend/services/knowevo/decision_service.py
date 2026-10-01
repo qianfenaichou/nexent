@@ -1,5 +1,5 @@
 """
-KnowEvo K3 decision layer (T-09): routing, version-pinned multi-hop beam
+KnowEvo decision layer : routing, version-pinned multi-hop beam
 search, evidence-chain assembly and decision-card rendering.
 
 Two things make this file the centre of the project's originality claim:
@@ -19,12 +19,12 @@ Two things make this file the centre of the project's originality claim:
 
 The LLM is injected as the async callable contract frozen by kg_service and
 implemented by llm_client (``await llm(prompt, *, kind, tier,
-temperature)``), so tests drive the whole layer with a fake and T-08's
-LlmRouter plugs in unchanged. Persistence goes to decision_card_t (T-03
+temperature)``), so tests drive the whole layer with a fake and 's
+LlmRouter plugs in unchanged. Persistence goes to decision_card_t (
 schema - no migration, no ALTER).
 
 Interface contract: knowevo/backend/services/knowevo/decision_service.py.md;
-algorithm source: memo 04-K3 (02-technical-plan 3.1-3.4).
+algorithm source: memo 04-(02-technical-plan 3.1-3.4).
 Design inspired by: Adaptive-RAG's rule-then-classify routing (2403.14403)
 and HippoRAG's graph-informed path ranking (2409.14866), both reimplemented
 against this repo's own graph seam - attribution per 03-development-plan 4.2.
@@ -85,7 +85,7 @@ logger = logging.getLogger(__name__)
 TIER_SMALL = "small"
 TIER_MID = "mid"
 
-# K3 1.1 latency budget (p95 <= 30s hard ceiling): the reasoning path gets
+# 1.1 latency budget (p95 <= 30s hard ceiling): the reasoning path gets
 # 25s of it; calibrate_hops refuses to recommend a depth that breaks this.
 REASONING_LATENCY_BUDGET_MS = 25000
 
@@ -133,7 +133,7 @@ MULTI_HOP_MARKERS = [
 # not a domain word that merely contains one: "禁" was in this list and
 # made every claim mentioning 禁忌 (contraindication) look negated, which
 # silently disabled contradiction detection for exactly the drug-safety
-# pairs the check exists for (pitfall #34).
+# pairs the check exists for.
 NEGATION_MARKERS = ["不", "无", "禁用", "停用", "不可", "避免", "不再", "取消",
                     "not", "no longer", "avoid", "contraindicated", "never"]
 
@@ -161,7 +161,7 @@ HEALTHCARE_DISCLAIMER = (
 # proposition (used for cross-channel fusion and contradiction checks).
 PROPOSITION_MATCH = 0.5
 
-# K4 4.1: empirical calibration is a ten-bucket curve, so every card's
+# empirical calibration is a ten-bucket curve, so every card's
 # confidence means the same thing across evaluation runs. The edges are
 # fixed here rather than inferred from the table so a short or ragged
 # table is detectable instead of silently producing a different curve.
@@ -220,7 +220,7 @@ def _contradicts(left: str, right: str) -> bool:
 
     Intentionally narrow: high lexical overlap plus exactly one side
     carrying a negation marker. It will miss subtle conflicts - which is why
-    cross-document disagreement is also caught at the merge layer (T-06
+    cross-document disagreement is also caught at the merge layer (
     CONTENDED) - but it never invents one, and everything it catches is
     surfaced rather than resolved.
     """
@@ -230,7 +230,7 @@ def _contradicts(left: str, right: str) -> bool:
 
 
 class DecisionService:
-    """K3 orchestration: route -> dual-path execution -> chain -> card.
+    """orchestration: route -> dual-path execution -> chain -> card.
 
     ``store`` is a GraphStore (PgJsonbGraphStore in production, a fake in
     tests); ``llm`` is the injected async callable, or None when the caller
@@ -404,7 +404,7 @@ class DecisionService:
 
         Session-level signal only: it exists to escalate a question shape
         that keeps failing, not to be a durable statistic (durable route
-        statistics belong in eval_run_t, T-10b).
+        statistics belong in eval_run_t).
         """
         entry = self._route_ledger.setdefault(
             _signature(question), {"hits": 0, "misses": 0})
@@ -438,7 +438,7 @@ class DecisionService:
         evidence that ends up on the card.
 
         ``pin_version=False`` runs the identical walk with the predicate
-        off - the ablation switch for T-10b and for the demo's "what the
+        off - the ablation switch for and for the demo's "what the
         old system would have answered" comparison.
 
         Excluded evidence is reported, not swallowed. A store-side cutoff
@@ -556,7 +556,7 @@ class DecisionService:
                       t_v: datetime | None) -> Subgraph:
         """One expansion step, version-pinned when ``t_v`` is set.
 
-        ``as_of`` is a T-09 extension on the GraphStore seam: a store that
+        ``as_of`` is a extension on the GraphStore seam: a store that
         predates it would raise TypeError on every pinned query, so the
         support check happens once (never per hop) and degrades to the
         current view - the path-level re-verification still carries the
@@ -609,7 +609,7 @@ class DecisionService:
             # ``store.neighbors(rel_types=[...])``, so one hallucinated name
             # matches zero edges, the walk breaks at the first level and the
             # card reports "no evidence" for knowledge that does exist -
-            # which is what T-26 caught the production panel doing on
+            # which is what caught the production panel doing on
             # questions the evaluation chain could reach (the two chains
             # differed only in this: production passes no ontology, so this
             # guard was disabled). "Walk everything" is the documented
@@ -681,7 +681,7 @@ class DecisionService:
             try:
                 from database.knowevo_db import OntologyVersion, _get_db_session
                 with _get_db_session() as session:
-                    # T-18b D1: the version's fact_cutoff (business-time
+                    # the version's fact_cutoff (business-time
                     # upper bound of its facts) travels alongside created_at
                     # so the pin resolves against the facts' own clock.
                     rows = [
@@ -984,7 +984,7 @@ class DecisionService:
 
         The refusal branch deliberately does not call the LLM. Asking a
         model to conclude "insufficient evidence" leaves it free to invent a
-        candidate instead, and the K4 X-type questions exist precisely to
+        candidate instead, and the X-type questions exist precisely to
         check that the system knows its own boundary: no evidence in means
         no candidates out, full stop.
 
@@ -1042,7 +1042,7 @@ class DecisionService:
             card.decision = DECISION_INSUFFICIENT
             # Zero-LLM deterministic refusal: this branch never issues a
             # model call, so the honest token budget is exactly 0. Recorded
-            # explicitly (T-29 observation gap) rather than left to the
+            # explicitly (observation gap) rather than left to the
             # field default, so the refusal surface cannot be confused with
             # an LLM path that simply failed to report usage.
             card.used_tokens = 0
@@ -1065,7 +1065,7 @@ class DecisionService:
             failed_paths=_render_failed(chain))
         raw, usage = await self._call_llm_with_usage(
             system, user, kind="decision_card", tier=TIER_MID)
-        # T-29 observation gap: the card render is the one call whose cost
+        # observation gap: the card render is the one call whose cost
         # the card itself can carry. Aggregate the measured counters (the
         # measured-only rule - never estimated) into card.used_tokens so
         # the DB row and the payload both show whether the LLM actually
@@ -1232,11 +1232,11 @@ class DecisionService:
         """Load the bucket table once, from eval_run_t or the injected dict.
 
         A DB failure is not an error here: "no calibration yet" is a
-        legitimate state before T-10b has run, and failing an entire card
+        legitimate state before has run, and failing an entire card
         render because a metrics table is missing would be the wrong trade.
 
         Bucket count is checked, not assumed: the table is a ten-bucket
-        curve (K4 4.1) and a table of any other length would make this
+        curve (4.1) and a table of any other length would make this
         card's confidences incomparable with every other card's. A short
         table is logged and still used - the buckets that are present are
         real measurements - but the caller's per-value "matched no bucket"
@@ -1269,7 +1269,7 @@ class DecisionService:
                 if len(model.buckets) != CALIBRATION_BUCKETS:
                     logger.warning(
                         "calibration table has %d buckets, expected %d "
-                        "(K4 4.1); confidences outside the covered range "
+                        "(4.1); confidences outside the covered range "
                         "will be reported as uncalibrated",
                         len(model.buckets), CALIBRATION_BUCKETS)
         return table

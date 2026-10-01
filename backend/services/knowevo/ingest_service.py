@@ -1,5 +1,5 @@
 """
-ingest_assets service (T-02) - registry parsing, doc_asset_t registration,
+ingest_assets service - registry parsing, doc_asset_t registration,
 and the native Nexent ingestion client.
 
 Layered per the pipeline/ contract: the CLI (ingest_assets.py) owns argument
@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 # Column contract for registry.csv. Extra columns are preserved into
 # meta_data but never required; source_url and license_note may be empty
 # for offline-provided files (recorded honestly as null, never invented).
-# T-18b: published_at (business publication date, "YYYY-MM-DD") is the
+# published_at (business publication date, "YYYY-MM-DD") is the
 # document's *fact* time - it drives kg_relation_t.valid_at so version
 # pinning can separate versions. It is optional per row but when present it
 # must be a valid ISO date; blank means "not traceable" and is recorded as
@@ -162,7 +162,7 @@ def parse_registry(path: Path) -> list[RegistryRow]:
                 row.errors.append(f"split '{row.split}' not in {sorted(SPLITS)}")
             if not row.local_file:
                 row.errors.append("local_file empty (no corpus file to ingest)")
-            # T-18b: a malformed business date must be an explicit error, not
+            # a malformed business date must be an explicit error, not
             # silently dropped - a wrong valid_at poisons version pinning and
             # would only surface much later.
             if row.published_at and not _valid_iso_date(row.published_at):
@@ -176,7 +176,7 @@ def parse_registry(path: Path) -> list[RegistryRow]:
 def build_supersede_link(rows: list[RegistryRow], tenant_id: str,
                          lookup: dict[str, str]) -> list[dict[str, Any]]:
     """Version lineage: pair each newer guide with the asset_no of the
-    older edition it supersedes (2020 -> 2024 anchor pair for T-11).
+    older edition it supersedes (2020 -> 2024 anchor pair for).
 
     lookup: {asset_no: doc_asset_t.id} from a prior registration pass.
     Returns update dicts [{"id":..., "supersede_of":...}] the caller

@@ -1,4 +1,4 @@
-"""Production ES write path (T-08 follow-up): EsIndexWriter + ingest hook.
+"""Production ES write path (follow-up): EsIndexWriter + ingest hook.
 
 Layer 1 (always runs, all-offline fake ES / fake PG): the writer must
 create the production indices idempotently with an explicit strict

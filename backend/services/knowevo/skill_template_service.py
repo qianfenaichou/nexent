@@ -1,4 +1,4 @@
-"""KnowEvo skill-template service (T-20): mine parameterized SKILL.md
+"""KnowEvo skill-template service : mine parameterized SKILL.md
 templates from real decision-card history, store them in skill_template_t
 (zero-ALTER: INSERT/UPDATE DML only), instantiate (apply) them back into
 concrete SKILL.md text, and keep the reuse loop honest with counters.
@@ -22,7 +22,7 @@ honest but less eloquent. Persistence goes through a store seam
 tests) following the kg_service.py pattern; decision_card_t is read-only
 for this service.
 
-Interface contract: competition/tasks/T-20-brief.md; mechanism notes:
+Interface contract: competition/tasks/-brief.md; mechanism notes
 competition/docs/skill-mechanism.md (frontmatter contract - ``version`` is
 NOT a valid SKILL.md frontmatter key, it lives in the ``version`` column).
 """
@@ -234,7 +234,7 @@ class PgSkillTemplateStore:
 
         Deliberately NOT used by any request-scoped path: pattern induction
         pools real history when single-tenant support cannot reach the
-        threshold (the T-20 real DB holds 2 cards per tenant). Provenance
+        threshold (the real DB holds 2 cards per tenant). Provenance
         (mined_from ids) stays per-card traceable; the pipeline marks the
         candidate source with cross_tenant=True.
         """
@@ -316,7 +316,7 @@ class PgSkillTemplateStore:
 
 class SkillTemplateService:
     """Induce / store / apply / track reuse of parameterized SKILL.md
-    templates in skill_template_t (T-20).
+    templates in skill_template_t.
 
     ``store`` is the persistence seam (PgSkillTemplateStore in production,
     an in-memory fake in tests). ``llm`` is the injected async callable or

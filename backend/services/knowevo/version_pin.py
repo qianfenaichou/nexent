@@ -1,12 +1,12 @@
 """
-KnowEvo version-pinned traversal (T-09) - the algorithm core of B2.
+KnowEvo version-pinned traversal - the algorithm core of B2.
 
 Literature gap B2 (02-technical-plan 3.2): no prior work constrains a
 multi-hop graph walk to the facts that were valid *as of a named knowledge
 version*. This module is where that definition lives in code, on purpose:
 the pinned-walk predicate is a pure function over edge time windows so it
 can be locked by tests that touch neither a database nor an LLM, and so
-the T-10b ablation (pinned on/off) has one clean switch to flip.
+the ablation (pinned on/off) has one clean switch to flip.
 
 Definition (frozen, 02-tech-plan 3.2):
     Given version v (ontology version + fact cutoff t_v), a path
@@ -21,7 +21,7 @@ so retrieval alone is structurally wrong for version-sensitive questions.
 Constraining the walk itself is the honest fix.
 
 Contract: knowevo/backend/services/knowevo/decision_service.py.md;
-memo 04-K3; algorithm source 02-technical-plan 3.2.
+memo 04-; algorithm source 02-technical-plan 3.2.
 Design inspired by: graphiti's bi-temporal validity windows (attribution
 per 03-development-plan 4.2).
 """
@@ -35,7 +35,7 @@ from database.knowevo_db import valid_now
 
 # Re-exported so callers have one import for the whole version-pin story
 # (the predicate itself stays in knowevo_db where bi-temporal semantics
-# live in exactly one place - pitfall #9).
+# live in exactly one place).
 __all__ = [
     "VersionClock",
     "edge_in_version",
@@ -113,11 +113,11 @@ def resolve_version_clock(ontology_version: str | None,
                           ) -> VersionClock:
     """Resolve a version label into a concrete fact cutoff t_v.
 
-    Resolution order, most specific first (T-18b D1 added step 2):
+    Resolution order, most specific first (added step 2)
       1. an explicit ``as_of`` wins outright (deterministic demos/tests);
       2. the version row's ``fact_cutoff`` - the business-time upper bound
          of the facts that version covered, recorded when the version was
-         committed (T-18b). This is the *correct* t_v: it is the facts'
+         committed. This is the *correct* t_v: it is the facts'
          own time axis, not the wall-clock moment we published the version;
       3. the ``created_at`` of the matching row in ``versions`` - the
          moment that knowledge version came into being. Kept as the
@@ -148,7 +148,7 @@ def pin_predicate(model, clock: VersionClock | datetime):
     """The pinned-walk predicate as a SQLAlchemy filter expression.
 
     Delegates to ``valid_now(model, as_of)`` so the bi-temporal comparison
-    exists once in the codebase (pitfall #9: the temporal predicate must
+    exists once in the codebase (the temporal predicate must
     live in one place or the two copies drift). ``model`` is a mapped
     class (KgRelation / KgEntity); ``clock`` is a VersionClock or a raw
     datetime.

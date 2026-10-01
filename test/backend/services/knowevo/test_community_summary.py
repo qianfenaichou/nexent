@@ -5,7 +5,7 @@ Spec anchors: workspace design doc
 and the dual contract ``knowevo/backend/services/knowevo/community_summary.py.md``.
 
 Semantics pinned here (every asserted float / hash literal was verified by
-actually running the implementation first - pitfalls #150: never back-fill
+actually running the implementation first - : never back-fill
 expected values from mental simulation):
 
 - default clustering is deterministic greedy modularity (CNM-style) with
