@@ -1,5 +1,5 @@
 """
-KnowEvo K2 graph-building service (T-06): ontology-anchored extraction,
+KnowEvo graph-building service : ontology-anchored extraction,
 three-level alignment with external-key blocking, bi-temporal merge,
 pending-pool maintenance, and the thin offline pipeline entry.
 
@@ -7,12 +7,12 @@ Business logic only, following the ontology_service.py pattern: the LLM is
 injected as an async callable, persistence goes through a store seam
 (PgStore vs FakeStore in tests), and spans/entities travel as the frozen
 dataclasses in schemas.py. HTTP parsing/auth lives in the future
-knowledge_graph_app.py (T-12+); GraphStore and the MCP surface are T-07/T-09.
+knowledge_graph_app.py (+); GraphStore and the MCP surface are.
 
 Interface contract frozen in knowevo/backend/services/knowevo/
-kg_service.py.md; algorithm source: memo 03-K2 (02-technical-plan 2.3/2.4)
-and the P0 fixes: external primary-key blocking (P0-1) and ontology
-subgraph retrieval replacing the 15k full-injection bomb (P0-4).
+kg_service.py.md; algorithm source: memo 03-(02-technical-plan 2.3/2.4)
+and the P0 fixes: external primary-key blocking and ontology
+subgraph retrieval replacing the 15k full-injection bomb.
 Design inspired by: graphiti's bi-temporal merge model (supersede +
 invalid_at stamping), graphify's deterministic parsing (schema.py).
 """
@@ -21,6 +21,7 @@ import logging
 import re
 import time
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -46,30 +47,30 @@ logger = logging.getLogger(__name__)
 
 TIER_MID = "mid"
 
-# K2 §2: alignment thresholds default from the wiring task (T-03 already
+# alignment thresholds default from the wiring task (already
 # reads KW_ALIGN_TAU1/TAU2 into consts). calibrate_thresholds replaces
-# them per-domain; persisting the result back to env is a T-08 concern.
+# them per-domain; persisting the result back to env is a concern.
 DEFAULT_TAU1 = KW_ALIGN_TAU1
 DEFAULT_TAU2 = KW_ALIGN_TAU2
 
-# P0-4: top-k ontology classes injected per span, plus their parent chain.
+# top-k ontology classes injected per span, plus their parent chain.
 MAX_SUBGRAPH_CLASSES = 15
-# K1 §4: high-frequency threshold for pending -> proposal backflow.
+# high-frequency threshold for pending -> proposal backflow.
 PENDING_PROPOSE_MIN_MENTIONS = 3
-# K2 §2: LLM adjudication executes only at confidence >= 0.9.
+# LLM adjudication executes only at confidence >= 0.9.
 ADJUDICATE_EXECUTE_LINE = 0.9
 
-# External identity schemes that L0 blocking accepts (P0-1).
+# External identity schemes that L0 blocking accepts.
 EXT_SCHEMES = {"atc", "nmpa", "insurance", "alias_table"}
 
-# K2 §3.1: an extraction is INFERRED only when the LLM says so; tables and
+# an extraction is INFERRED only when the LLM says so; tables and
 # direct quotes are EXTRACTED.
 TAG_EXTRACTED = "EXTRACTED"
 TAG_INFERRED = "INFERRED"
 
 
 # ---------------------------------------------------------------------------
-# P0-4: ontology subgraph retrieval (lexical v0; embedding channel is T-08,
+# ontology subgraph retrieval (lexical v0; embedding channel is,
 # the caller shape is final)
 # ---------------------------------------------------------------------------
 
@@ -86,7 +87,7 @@ def retrieve_ontology_subgraph(chunk_text: str,
     span with no hits still sees plausible anchors. Returns display dicts
     (name, stable_id, parent, props, aliases) - never mutates the input.
 
-    This is the lexical v0 of P0-4; T-08 swaps the scorer for vector
+    This is the lexical v0 of; swaps the scorer for vector
     retrieval over an embedding index of the same class descriptors.
     """
     text = chunk_text or ""
@@ -158,7 +159,7 @@ def ontology_subgraph_text(subgraph: list[dict[str, Any]]) -> str:
 
 def chunk_plain_text(text: str, size: int = 600) -> list[EvidenceSpan]:
     """Deterministic paragraph splitter for offline smoke runs; the real
-    parse chain (T-02 native ingestion) owns production chunking, this
+    parse chain (native ingestion) owns production chunking, this
     helper only exists so the CLI can ingest plain .txt artifacts without
     inventing a parser contract."""
     paragraphs = [p for p in re.split(r"\n\s*\n", text or "") if p.strip()]
@@ -179,7 +180,7 @@ def chunk_plain_text(text: str, size: int = 600) -> list[EvidenceSpan]:
 
 
 # ---------------------------------------------------------------------------
-# Prompt rendering (bilingual YAML pair in backend/prompts/, T-06 owns)
+# Prompt rendering (bilingual YAML pair in backend/prompts/, owns)
 # ---------------------------------------------------------------------------
 
 _PROMPT_DIR = Path(__file__).resolve().parents[2] / "prompts"
@@ -290,7 +291,7 @@ def _parse_iso_date(value: str) -> Any | None:
 class PgStore:
     """Real-Postgres adapter over database.knowevo_db helpers."""
 
-    # ── ontology snapshot (read-only use of T-03/T-04 tables) ──────────
+    # ── ontology snapshot (read-only use of tables) ──────────
 
     async def load_ontology_snapshot(self, tenant_id):
         from database.knowevo_db import OntologyVersion, _get_db_session
@@ -370,7 +371,7 @@ class PgStore:
     async def entities_with_embedding(self, tenant_id):
         """L1 candidate fetch: all active rows carrying an embedding. The
         cosine runs in the service layer (no pgvector in the upstream PG
-        image); a T-07/T-09 task may push this into a GIN-indexed filter."""
+        image); a task may push this into a GIN-indexed filter."""
         from database.knowevo_db import KgEntity, _get_db_session
         with _get_db_session() as session:
             rows = session.query(KgEntity).filter(
@@ -567,7 +568,7 @@ class PgStore:
             return row.authority_level if row is not None else 3
 
     async def doc_published_at(self, tenant_id, doc_id):
-        """Business publication moment of a source document (T-18b D1).
+        """Business publication moment of a source document.
 
         Reads ``doc_asset_t.meta_data.published_at`` - the registry's
         traceable business date (journal issue / official release). A
@@ -656,7 +657,7 @@ class PgStore:
             session.flush()
             return count
 
-    # ── query surface (search/neighbors; T-07 extends to MCP) ──────────
+    # ── query surface (search/neighbors; extends to MCP) ──────────
 
     async def search_entities(self, tenant_id, query, limit):
         from database.knowevo_db import KgEntity, _get_db_session
@@ -717,7 +718,7 @@ class PgStore:
                                  finish_reasons=None):
         """Write one span's ledger row, optionally with call diagnostics.
 
-        T-24 (pitfalls #52/#55 沉淀机制): ``llm_calls`` /
+        ``llm_calls`` /
         ``empty_content_calls`` / ``reasoning_tokens`` / ``finish_reasons``
         are the span-level aggregate of the calls made while extracting this
         span. They default to 0 / 0 / 0 / None, so any caller that does not
@@ -750,11 +751,11 @@ def _relation_row_to_dict(r) -> dict[str, Any]:
 
 
 class KGService:
-    """K2 pipeline: anchored extraction -> three-level alignment -> merge.
+    """pipeline: anchored extraction -> three-level alignment -> merge.
 
     ``ontology`` is the active snapshot dict {classes, rel_types} used for
     anchoring; the CLI loads it once per batch from the store. ``llm`` is
-    the injected async callable (tests use fakes; T-08 wires the real tier
+    the injected async callable (tests use fakes; wires the real tier
     routing). ``ontology_service`` is what pending_to_proposals hands to.
     """
 
@@ -871,7 +872,7 @@ class KGService:
     # ── alignment ──────────────────────────────────────────────────────
 
     async def align(self, entity: Entity) -> AlignDecision:
-        """Three-level alignment (K2 2.3, P0-1).
+        """Three-level alignment.
 
         L0  external primary-key blocking: ATC/NMPA/insurance code or the
             alias table. A hit merges unconditionally - the authorities say
@@ -880,12 +881,12 @@ class KGService:
             cannot do.
         L1  vector candidates: sim > tau1 merges; (tau2, tau1] goes to L2;
             <= tau2 creates new. Skipped when the entity carries no
-            embedding (pre-T-08) - the entity then routes to L2.
+            embedding (pre) - the entity then routes to L2.
         L2  LLM adjudication against candidate evidence; confidence >= 0.9
             executes, otherwise L3.
         L3  human review pool (kg_pending_entity_t via add_pending).
         """
-        # L0: external identity primary keys (P0-1 core).
+        # L0: external identity primary keys (core).
         keys = list((entity.props or {}).get("ext_ids") or [])
         if entity.ext_id and entity.ext_scheme:
             keys.append({"value": entity.ext_id,
@@ -1000,7 +1001,7 @@ class KGService:
     def calibrate_thresholds(self, labeled_pairs: list[LabeledPair]
                              ) -> Thresholds:
         """ROC over human-labeled pairs: tau1 at false-merge rate <= 2%,
-        tau2 at recall >= 95% (K2 2.3 threshold calibration).
+        tau2 at recall >= 95% (2.3 threshold calibration).
 
         A pair is treated as "merged" when its similarity sits at or above
         the candidate threshold. tau1 is the strictest safe line: the
@@ -1056,7 +1057,7 @@ class KGService:
 
     async def merge_delta(self, extractions: list[ExtractionResult]
                           ) -> IngestReport:
-        """Apply extractions to the graph under the K2 3.2 conflict table.
+        """Apply extractions to the graph under the 3.2 conflict table.
 
         NEW       -> insert entity (or alias-merge on stable_id collision)
         ALIAS     -> attach alias + merge supplemental props
@@ -1145,7 +1146,7 @@ class KGService:
             await self.store.append_ext_id(self.tenant_id, target_sid,
                                            key.get("value"),
                                            key.get("scheme"))
-        # Supplemental props ride along on the merge (K2 3.2 ALIAS rule);
+        # Supplemental props ride along on the merge (3.2 ALIAS rule);
         # the survivor's existing values are never overwritten.
         extra_props = {k: v for k, v in (entity.props or {}).items()
                        if k not in ("embedding", "ext_ids")}
@@ -1172,7 +1173,7 @@ class KGService:
             "status": "active",
         }
         # Persist external identity keys so L0 blocking finds this row on
-        # later runs (the P0-1 authority anchor).
+        # later runs (the authority anchor).
         ext_ids = list(values["props"].get("ext_ids") or [])
         if (entity.ext_id and entity.ext_scheme
                 and not any(e.get("value") == entity.ext_id
@@ -1203,7 +1204,7 @@ class KGService:
         props: dict[str, Any] = {}
         if edge.evidence_id is not None:
             props["evidence_id"] = str(edge.evidence_id)
-        # T-18b D1: the edge's business time is its source document's
+        # the edge's business time is its source document's
         # publication date, not the ingest wall clock. Without an explicit
         # valid_at the column default (now()) makes every fact look like it
         # became true at ingestion, which is exactly what made version
@@ -1275,7 +1276,7 @@ class KGService:
         publication date (the caller counts these on the report; the column
         default then supplies the wall clock). This keeps "we know when it
         was published" strictly separate from "we only know when we filed
-        it" - the distinction D1 exists to preserve.
+        it" - the distinction exists to preserve.
         """
         if not evidence_id or not hasattr(self.store, "doc_published_at"):
             return None, False
@@ -1384,7 +1385,7 @@ class KGService:
 
     async def pending_to_proposals(self, min_mentions: int =
                                    PENDING_PROPOSE_MIN_MENTIONS) -> list[Any]:
-        """Hand high-frequency unmapped entities to the K1 channel
+        """Hand high-frequency unmapped entities to the channel
         (ontology_service.propose_from_pending), mark them proposed."""
         if self.store is None or self.ontology_service is None:
             return []
@@ -1398,13 +1399,13 @@ class KGService:
                                                    "proposed")
         return proposals
 
-    # ── query surface (thin v0; T-07/T-09 build the MCP tools) ─────────
+    # ── query surface (thin v0; build the MCP tools) ─────────
 
     async def search(self, query: str, hop: int = 1, top_k: int = 5,
                      ontology_version: str | None = None) -> dict[str, Any]:
         """Lexical name search + the 1..hop neighborhood of the hits. The
         retrieval ranking (BM25/vector) and version-pinned multi-hop are
-        T-07/T-09 work; this returns the raw current-view shape."""
+        work; this returns the raw current-view shape."""
         if self.store is None:
             return {"entities": [], "edges": [], "hop": hop,
                     "ontology_version": ontology_version}
@@ -1414,16 +1415,109 @@ class KGService:
         return {"entities": hits, "edges": edges, "hop": hop,
                 "ontology_version": ontology_version}
 
+    # ── document version evolution (alignment_service triggers it) ──
+
+    #: verdicts a changed span may carry into ``ingest_new_version``
+    _NEGATED_VERDICTS = frozenset(
+        {"delete", "deleted", "negated", "negation", "removed", "remove"})
+    _OMITTED_VERDICTS = frozenset(
+        {"unchanged", "omitted", "omission", "absent", "silent"})
+
+    @staticmethod
+    def _span_verdict(span: Any) -> tuple[str, list[str]]:
+        """Classify one changed span as negated / omitted / untouched.
+
+        A span may be a mapping or any object exposing the same names, so
+        the alignment layer keeps its own value type; only the keys below
+        are part of this interface.
+        """
+        def _get(key: str, default: Any = None) -> Any:
+            if isinstance(span, dict):
+                return span.get(key, default)
+            return getattr(span, key, default)
+
+        edge_ids = _get("edge_ids") or _get("superseded_edge_ids") or []
+        if not isinstance(edge_ids, (list, tuple)):
+            edge_ids = [edge_ids]
+        edge_ids = [str(e) for e in edge_ids]
+        verdict = str(_get("status") or _get("kind") or _get("verdict")
+                      or _get("change_type") or "").strip().lower()
+        if _get("negated") is True or verdict in KGService._NEGATED_VERDICTS:
+            return "negated", edge_ids
+        if (_get("omitted") is True
+                or verdict in KGService._OMITTED_VERDICTS):
+            return "omitted", edge_ids
+        return "untouched", edge_ids
+
     async def ingest_new_version(self, old_doc, new_doc, changed_spans):
-        """Controlled supersede on document version evolution. Owned by
-        T-11 (alignment_service triggers it); not implemented here."""
-        raise NotImplementedError("ingest_new_version belongs to T-11")
+        """Controlled supersede for one document revision round.
+
+        Spans the new edition **explicitly negates** are stamped out of the
+        current view (``invalid_at`` + supersede reason); rows are never
+        deleted, so the superseded reading stays reconstructable. Spans the
+        new edition merely **omits** keep their edges and are reported as
+        ``source_stale`` instead - a newer edition that fails to repeat a
+        fact is not evidence that the fact stopped holding.
+
+        Returns the ids of the edges that moved, so the calling round can
+        persist them and ``rollback`` can restore the previous view.
+        """
+        report: dict[str, Any] = {
+            "old_doc": None if old_doc is None else str(old_doc),
+            "new_doc": None if new_doc is None else str(new_doc),
+            "superseded_edge_ids": [],
+            "stale_edge_ids": [],
+            "untouched_edge_ids": [],
+            "rejected_edge_ids": [],
+            "note": "",
+        }
+        if self.store is None:
+            report["note"] = "no graph store configured; nothing superseded"
+            return report
+
+        negated: list[str] = []
+        stale: list[str] = []
+        untouched: list[str] = []
+        for span in changed_spans or []:
+            verdict, edge_ids = self._span_verdict(span)
+            if verdict == "negated":
+                negated.extend(edge_ids)
+            elif verdict == "omitted":
+                stale.extend(edge_ids)
+            else:
+                untouched.extend(edge_ids)
+
+        report["stale_edge_ids"] = stale
+        report["untouched_edge_ids"] = untouched
+        if not negated:
+            report["note"] = ("no explicitly negated span in this round; "
+                              "the current view is left untouched")
+            return report
+
+        parsed: list[uuid.UUID] = []
+        rejected: list[str] = []
+        for raw in dict.fromkeys(negated):
+            try:
+                parsed.append(uuid.UUID(raw))
+            except (ValueError, AttributeError, TypeError):
+                rejected.append(raw)
+        report["rejected_edge_ids"] = rejected
+        if not parsed:
+            report["note"] = "no usable edge id in the negated spans"
+            return report
+
+        await self.store.supersede(
+            self.tenant_id, parsed, datetime.now(timezone.utc),
+            reason=(f"document revision {report['old_doc']} -> "
+                    f"{report['new_doc']}"))
+        report["superseded_edge_ids"] = [str(e) for e in parsed]
+        return report
 
     async def evolution_trace(self, entity_id=None, decision_id=None,
                               limit: int = 50) -> "Timeline":
         """Knowledge-evolution timeline for an entity or a decision card.
 
-        T-09 owns this (the frozen kg_service contract lists it under the
+        owns this (the frozen kg_service contract lists it under the
         query surface, and the source comment pointed here). Two event
         sources, both already in the schema - no new table, no migration:
 
@@ -1447,7 +1541,7 @@ class KGService:
             # that helper returns only the primary key, and the timeline
             # needs the stamp. Values are extracted inside the session block
             # because the session commits and expires ORM rows on exit
-            # (pitfall #26).
+            #.
             from database.knowevo_db import DecisionCard, _get_db_session
             with _get_db_session() as session:
                 row = session.query(DecisionCard).filter(

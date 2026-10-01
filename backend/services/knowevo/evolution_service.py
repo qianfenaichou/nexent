@@ -1,4 +1,4 @@
-"""K5 evolution-round orchestration and version ledger (L4) - T-11.
+"""Evolution-round orchestration and version ledger (L4).
 
 Contract (frozen, authoritative): ``knowevo/backend/services/knowevo/
 evolution_service.py.md``. This module is the missing implementation of
@@ -15,14 +15,12 @@ nothing joining them:
 * the **action** end - ``graph_store.supersede`` stamps ``invalid_at`` +
   ``supersede_reason`` on the affected edges and never deletes a row.
 
-``kg_service.ingest_new_version`` was left as
-``NotImplementedError("ingest_new_version belongs to T-11")`` - i.e. the
-编排 step in the middle was never written. Without it the official
-"可进化" story is a description of two disconnected halves rather than a
-replayable action, and ``evolution_round_t`` (whose DDL has existed since
-``v2.5.5_kw_001``) stays empty.
+The middle step - ``kg_service.ingest_new_version`` - is what turns one into
+the other; ``evolution_round_t`` (whose DDL has existed since
+``v2.5.5_kw_001``) records each attempt so a round is replayable rather than
+implied.
 
-Scope discipline (contract: "本服务不直接做算法，只做编排与台账")
+Scope discipline (contract: "This service orchestrates and accounts, it does not implement algorithms")
 -----------------------------------------------------------------
 Every algorithm lives in its owner service. This module only:
 
@@ -310,7 +308,7 @@ class PgEvolutionStore:
             return [self._row_to_dict(r) for r in rows]
 
     async def get_eval_run(self, eval_run_id: str) -> dict[str, Any] | None:
-        """``eval_run_t`` row reduced to the K4 §3.1 eval-delta shape."""
+        """``eval_run_t`` row reduced to the eval-delta shape."""
         from database.knowevo_db import EvalRun, _get_db_session
 
         with _get_db_session() as session:
@@ -400,13 +398,13 @@ class PgEvolutionStore:
 
 
 class EvolutionService:
-    """Round orchestration over injected owner services (contract T-11).
+    """Round orchestration over injected owner services.
 
     ``alignment``, ``ontology`` and ``kg`` are the owner services; each is
     optional and a missing one degrades the corresponding step to
     ``skipped`` (see the module docstring). ``store`` is the persistence
     seam: :class:`PgEvolutionStore` in production, an in-memory fake in
-    tests. ``retest`` is the optional K4 hook used by ``settle`` to obtain
+    tests. ``retest`` is the optional hook used by ``settle`` to obtain
     an eval delta from an ``eval_run_t`` id.
     """
 
@@ -464,7 +462,7 @@ class EvolutionService:
         return round_id
 
     async def run_standard_update(self, round_id: str) -> RoundReport:
-        """Run the K5 chain for a ``standard_update`` round.
+        """Run the chain for a ``standard_update`` round.
 
         Order and owner service per the contract:
         ``detect_doc_change`` → ``impact_scope`` → ``propose_updates`` →
@@ -516,9 +514,9 @@ class EvolutionService:
                 steps.append(StepRecord(
                     "ingest_new_version", "ok",
                     f"{len(superseded_ids)} edge(s) superseded"))
-            except NotImplementedError as exc:
-                # The historical stub raised this; surface it as a real
-                # failure rather than an empty success.
+            except Exception as exc:  # noqa: BLE001
+                # A downstream that cannot complete leaves the step failed
+                # rather than reported as a silent empty success.
                 steps.append(StepRecord(
                     "ingest_new_version", "failed", str(exc)))
 
@@ -786,17 +784,18 @@ class EvolutionService:
         """Delegate the controlled supersede to the kg owner.
 
         ``kg_service.ingest_new_version`` is the contract's endpoint for
-        this. Its historical stub raised ``NotImplementedError``; that is
-        propagated so the step is recorded as *failed* rather than as an
-        empty success. The returned value is the list of edge ids the round
-        invalidated, which the ledger must remember for ``rollback``.
+        this. A downstream that raises is propagated, so the step is
+        recorded as *failed* rather than as an empty success. The returned
+        value is the list of edge ids the round invalidated, which the
+        ledger must remember for ``rollback``.
         """
         ingest = getattr(self.kg, "ingest_new_version", None)
         if ingest is None:
             raise NotImplementedError(
                 "kg service exposes no ingest_new_version")
         changed = self._changed_spans(scope)
-        report = await ingest(round_id, changed)
+        report = await ingest(self._pick(scope, "old_doc"),
+                              self._pick(scope, "new_doc"), changed)
         return self._edge_ids(report)
 
     async def _commit_ontology(self, scope: Any,

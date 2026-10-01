@@ -1,11 +1,11 @@
 """
-Unit and integration tests for services/knowevo/kg_service.py (T-06).
+Unit and integration tests for services/knowevo/kg_service.py.
 
-Layer 1 (always runs): pure-function behavior of the K2 pipeline -
-ontology subgraph retrieval (P0-4), plain-text chunking, table channel
+Layer 1 (always runs): pure-function behavior of the pipeline -
+ontology subgraph retrieval, plain-text chunking, table channel
 determinism, anchored parsing (unmappable -> pending), three-level
-alignment including the P0-1 external-key/alias-table branch that makes
-"格华止 = 二甲双胍" work, threshold calibration ROC semantics, the K2 3.2
+alignment including the external-key/alias-table branch that makes
+"格华止 = 二甲双胍" work, threshold calibration ROC semantics, the 3.2
 merge conflict table (NEW / ALIAS / CONTRA / CONTENDED), split round-trip,
 pending-pool accounting, and tenant isolation. No database and no LLM:
 the LLM is injected as a callable (fake in tests), persistence uses
@@ -14,7 +14,7 @@ FakeStore.
 Layer 2 (RUN_POSTGRES_INTEGRATION=1): real-Postgres run of extract ->
 merge_delta -> entity/relation/evidence rows, pending pool rows, and the
 kg_extract_run_t idempotency ledger. Same gate pattern as
-test_ontology_service.py (pitfalls #14 template).
+test_ontology_service.py.
 """
 import os
 import sys
@@ -120,7 +120,7 @@ class FakeStore:
         self.evidence: dict = {}
         self.pending: dict[str, dict] = {}    # key: (tenant, name)
         self.extract_runs: set[tuple[str, str]] = set()
-        self.extract_run_rows: list[dict] = []  # T-24 ledger rows
+        self.extract_run_rows: list[dict] = []  # ledger rows
         self.authority: dict = {}             # doc_id -> authority_level
         self.published: dict = {}             # doc_id -> publication time
 
@@ -233,6 +233,18 @@ class FakeStore:
                 return True
         return False
 
+    async def supersede(self, tenant_id, edge_ids, invalid_at, reason):
+        """Batch bi-temporal invalidation, mirroring PgStore's contract."""
+        wanted = set(edge_ids)
+        touched = []
+        for e in self.edges:
+            if (e["tenant"] == tenant_id and e["id"] in wanted
+                    and e.get("invalid_at") is None):
+                e["invalid_at"] = invalid_at
+                e["supersede_reason"] = reason
+                touched.append(e["id"])
+        return touched
+
     async def mark_contested(self, tenant_id, edge_id):
         for e in self.edges:
             if e["id"] == edge_id:
@@ -333,7 +345,7 @@ class FakeStore:
 
     async def record_extract_run(self, tenant_id, run_id, span_hash,
                                  channel, tokens_spent, **diagnostics):
-        # Mirrors PgStore: diagnostics are optional and additive (T-24).
+        # Mirrors PgStore: diagnostics are optional and additive.
         self.extract_runs.add((tenant_id, span_hash))
         self.extract_run_rows.append({
             "tenant_id": tenant_id, "run_id": run_id, "span_hash": span_hash,
@@ -351,7 +363,7 @@ def _entity(name, class_ref, **kwargs) -> Entity:
 
 
 # ---------------------------------------------------------------------------
-# Layer 1: subgraph retrieval (P0-4)
+# Layer 1: subgraph retrieval 
 # ---------------------------------------------------------------------------
 
 class TestOntologySubgraph:
@@ -549,13 +561,13 @@ class TestAnchoredParsing:
 
 
 # ---------------------------------------------------------------------------
-# Layer 1: three-level alignment (P0-1)
+# Layer 1: three-level alignment 
 # ---------------------------------------------------------------------------
 
 class TestAlignment:
     @pytest.mark.asyncio
     async def test_l0_external_key_merges_brand_to_generic(self):
-        """P0-1 regression: 格华止 (brand) meets 二甲双胍 (generic) through
+        """regression: 格华止 (brand) meets 二甲双胍 (generic) through
         the external key, never through similarity."""
         store = FakeStore()
         await store.insert_entity(TENANT_A, {
@@ -724,7 +736,7 @@ class TestCalibration:
 
 
 # ---------------------------------------------------------------------------
-# Layer 1: merge conflict table (K2 3.2)
+# Layer 1: merge conflict table (3.2)
 # ---------------------------------------------------------------------------
 
 class TestMergeDelta:
@@ -758,7 +770,7 @@ class TestMergeDelta:
 
     @pytest.mark.asyncio
     async def test_edge_valid_at_is_source_doc_business_time(self):
-        # T-18b D1: the edge's valid_at is its source document's business
+        # the edge's valid_at is its source document's business
         # publication date - not the merge wall clock, which is what made
         # version pinning always-true before the fix.
         store = FakeStore()
@@ -937,7 +949,7 @@ class TestMergeDelta:
 
     @pytest.mark.asyncio
     async def test_alias_merge_rides_supplemental_props(self):
-        """K2 3.2 ALIAS rule: incoming props merge in, but never overwrite
+        """3.2 ALIAS rule: incoming props merge in, but never overwrite
         the surviving entity's existing values."""
         store = FakeStore()
         svc = _svc(store=store)
@@ -957,7 +969,7 @@ class TestMergeDelta:
 
     @pytest.mark.asyncio
     async def test_contra_later_publication_wins_over_higher_authority(self):
-        """K2 3.2 CONTRA rule resolves time-first: a later publication
+        """3.2 CONTRA rule resolves time-first: a later publication
         supersedes an earlier one even when the earlier doc carries higher
         authority (recency is the primary key)."""
         store = FakeStore()
@@ -1220,12 +1232,59 @@ class TestQuerySurface:
         assert out["ontology_version"] == "v1.2.0"
 
     @pytest.mark.asyncio
-    async def test_future_owners_are_explicit_stubs(self):
-        # ingest_new_version stays T-11's; evolution_trace was T-09's and is
-        # now implemented (it returns a Timeline instead of raising).
-        svc = _svc(store=FakeStore())
-        with pytest.raises(NotImplementedError):
-            await svc.ingest_new_version(None, None, [])
+    async def test_ingest_new_version_ignores_omitted_spans(self):
+        """A newer edition failing to repeat a fact is not a withdrawal."""
+        store = FakeStore()
+        svc = _svc(store=store)
+        eid = (await store.insert_relation(
+            TENANT_A, {"src": "Drug:x", "dst": "Disease:y",
+                       "tag": "EXTRACTED"}))["id"]
+        report = await svc.ingest_new_version(
+            "doc-old", "doc-new",
+            [{"change_type": "UNCHANGED", "edge_ids": [str(eid)]}])
+
+        assert report["superseded_edge_ids"] == []
+        assert report["stale_edge_ids"] == [str(eid)]
+        assert store.edges[0].get("invalid_at") is None
+        assert "untouched" in report["note"]
+
+    @pytest.mark.asyncio
+    async def test_ingest_new_version_supersedes_explicit_negation(self):
+        """Explicit negation stamps invalid_at; the row is never deleted."""
+        store = FakeStore()
+        svc = _svc(store=store)
+        eid = (await store.insert_relation(
+            TENANT_A, {"src": "Drug:x", "dst": "Disease:y",
+                       "tag": "EXTRACTED"}))["id"]
+        report = await svc.ingest_new_version(
+            "doc-old", "doc-new",
+            [{"change_type": "DELETE", "edge_ids": [str(eid)]}])
+
+        assert report["superseded_edge_ids"] == [str(eid)]
+        row = store.edges[0]
+        assert row["invalid_at"] is not None
+        assert "doc-old" in row["supersede_reason"]
+        assert len(store.edges) == 1
+
+    @pytest.mark.asyncio
+    async def test_ingest_new_version_rejects_unusable_edge_ids(self):
+        """A malformed id is reported, never handed to the store."""
+        store = FakeStore()
+        svc = _svc(store=store)
+        report = await svc.ingest_new_version(
+            "doc-old", "doc-new",
+            [{"kind": "negated", "edge_ids": ["not-a-uuid"]}])
+
+        assert report["superseded_edge_ids"] == []
+        assert report["rejected_edge_ids"] == ["not-a-uuid"]
+        assert "no usable edge id" in report["note"]
+
+    @pytest.mark.asyncio
+    async def test_ingest_new_version_needs_a_store(self):
+        svc = _svc(store=None)
+        report = await svc.ingest_new_version("a", "b", [])
+        assert report["superseded_edge_ids"] == []
+        assert "no graph store" in report["note"]
 
     @pytest.mark.asyncio
     async def test_evolution_trace_is_implemented_for_entities(self):
@@ -1339,7 +1398,7 @@ class TestPgIntegration:
 
     @pytest.mark.asyncio
     async def test_discriminative_version_pin_on_real_db(self):
-        """T-18b D1 acceptance #4, on the real database.
+        """acceptance #4, on the real database.
 
         Seeds two dated documents through the real model layer, merges one
         edge per document through the real merge path, and shows the SAME
@@ -1368,12 +1427,12 @@ class TestPgIntegration:
             with _get_db_session() as session:
                 session.add(DocAsset(
                     id=doc_2021, tenant_id=tenant, asset_no="T18B-G-2020",
-                    title="T-18b 判别性验证 2020 指南", modality="text",
+                    title="判别性验证 2020 指南", modality="text",
                     doc_type="guideline", meta_data={
                         "published_at": "2021-04-01"}))
                 session.add(DocAsset(
                     id=doc_2025, tenant_id=tenant, asset_no="T18B-G-2024",
-                    title="T-18b 判别性验证 2024 指南", modality="text",
+                    title="判别性验证 2024 指南", modality="text",
                     doc_type="guideline", meta_data={
                         "published_at": "2025-01-01"}))
                 session.flush()
@@ -1427,8 +1486,8 @@ class TestPgIntegration:
 
 
 # ---------------------------------------------------------------------------
-# T-24 (kw_009): extraction diagnostics - span aggregation + ledger write
-# (pitfalls #52/#55 沉淀机制, product side). No database, no LLM.
+# (kw_009): extraction diagnostics - span aggregation + ledger write
+#. No database, no LLM.
 # ---------------------------------------------------------------------------
 
 class _UsageScriptedLLM:
@@ -1463,7 +1522,7 @@ class _DictLLM:
 
 
 class TestSpanDiagnosticsAggregation:
-    """pipeline/ingest_graph._SpanDiagnostics aggregation semantics (T-24)."""
+    """pipeline/ingest_graph._SpanDiagnostics aggregation semantics."""
 
     @pytest.mark.asyncio
     async def test_n_calls_with_m_blank_aggregate(self):
@@ -1608,9 +1667,9 @@ class TestRecordExtractRunDiagnostics:
 
 
 class TestSharedSeedTerms:
-    """T-26: one seed splitter for both KnowEvo chains.
+    """one seed splitter for both KnowEvo chains.
 
-    The production decision-card entry and the T-22 evaluation harness must
+    The production decision-card entry and the evaluation harness must
     seed the graph walk identically: the divergence between them (whole
     sentence vs word-level terms) is what made the panel refuse
     sentence-length questions the ablation could answer.
@@ -1622,7 +1681,7 @@ class TestSharedSeedTerms:
 
         assert ablation.extract_seed_terms is seed_terms.extract_seed_terms
         assert ablation.MAX_SEED_LOOKUPS == seed_terms.MAX_SEED_LOOKUPS, (
-            "the T-22 harness and the production card must share one "
+            "the harness and the production card must share one "
             "lookup bound, not two copies that can drift")
 
     def test_ascii_words_and_cjk_terms_are_produced(self):

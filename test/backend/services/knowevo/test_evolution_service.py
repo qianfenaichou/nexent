@@ -1,5 +1,5 @@
 """
-Unit tests for services/knowevo/evolution_service.py (T-11) - the K5
+Unit tests for services/knowevo/evolution_service.py - the 
 evolution-round orchestrator that joins the change-detection end
 (alignment_service / diff_guidelines) to the controlled-supersede end
 (graph_store.supersede), which ``kg_service.ingest_new_version`` had left
@@ -184,16 +184,16 @@ class FakeKg:
         self.edge_ids = list(edge_ids)
         self.calls: list[tuple] = []
 
-    async def ingest_new_version(self, round_id, changed_spans):
-        self.calls.append((str(round_id), list(changed_spans)))
+    async def ingest_new_version(self, old_doc, new_doc, changed_spans):
+        self.calls.append((old_doc, new_doc, list(changed_spans)))
         return {"superseded_edge_ids": list(self.edge_ids)}
 
 
 class StubKg:
-    """The historical stub shape: the method exists but is unimplemented."""
+    """A kg owner whose endpoint raises: the step must surface as failed."""
 
-    async def ingest_new_version(self, round_id, changed_spans):
-        raise NotImplementedError("ingest_new_version belongs to T-11")
+    async def ingest_new_version(self, old_doc, new_doc, changed_spans):
+        raise RuntimeError("kg owner unavailable")
 
 
 def _service(store, **kw):
@@ -269,8 +269,9 @@ class TestStandardUpdateChain:
             "human_confirm", "ingest_new_version", "commit_ontology_version",
             "mark_decisions_needs_rerun", "settle_cost"]
 
-        # the kg owner really was asked, with the changed spans
-        assert kg.calls == [(rid, ["s1", "s2"])]
+        # the kg owner really was asked, with the contract's three arguments.
+        # This scope carries no document pair, so both ends are None.
+        assert kg.calls == [(None, None, ["s1", "s2"])]
         # ontology version committed from the ontology-level ops
         assert ontology.committed == [(("CLS_ADD",), "standard_update")]
         # affected cards flagged, and remembered for rollback
@@ -278,6 +279,14 @@ class TestStandardUpdateChain:
         assert report.edges_superseded_ids == ["edge-a", "edge-b"]
         assert store.rows[rid]["ops_summary"]["_affected_card_ids"] == \
             ["c-1", "c-2"]
+
+    def test_ingest_new_version_forwards_the_document_pair(self):
+        """When the scope names the old/new document, both travel on."""
+        kg = FakeKg()
+        svc = _service(FakeStore(), kg=kg)
+        scope = {"old_doc": "d1", "new_doc": "d2", "changed_spans": ["s1"]}
+        asyncio.run(svc._ingest_new_version(scope, "round-1"))
+        assert kg.calls == [("d1", "d2", ["s1"])]
 
     def test_missing_downstreams_degrade_to_skipped_not_success(self):
         store = FakeStore()
@@ -298,8 +307,8 @@ class TestStandardUpdateChain:
                    if s.name != "mark_decisions_needs_rerun"
                    and s.name != "settle_cost")
 
-    def test_unimplemented_ingest_is_recorded_as_failed(self):
-        """The historical stub must surface as a failure, not empty success."""
+    def test_failing_ingest_is_recorded_as_failed(self):
+        """A raising kg owner must surface as a failure, not empty success."""
         store = FakeStore()
         svc = _service(store, alignment=FakeAlignment(), kg=StubKg())
         rid = asyncio.run(svc.start_round(Trigger(kind="standard_update")))
@@ -307,7 +316,7 @@ class TestStandardUpdateChain:
 
         step = report.step("ingest_new_version")
         assert step is not None and step.status == "failed"
-        assert "T-11" in step.detail
+        assert "unavailable" in step.detail
         assert report.edges_superseded_ids == []
 
     def test_alignment_failure_does_not_abort_the_round(self):
