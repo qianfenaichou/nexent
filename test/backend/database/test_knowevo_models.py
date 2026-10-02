@@ -1,5 +1,5 @@
 """
-Unit and integration tests for backend/database/knowevo_db.py (T-03).
+Unit and integration tests for backend/database/knowevo_db.py.
 
 Layer 1 (always runs): table metadata, bi-temporal predicate, and frozen
 const.py env-var assertions - no database required.
@@ -47,7 +47,7 @@ EXPECTED_TABLES = {
     "kg_pending_entity_t", "doc_asset_t", "doc_version_diff_t",
     "decision_card_t", "evolution_round_t",
     "skill_template_t", "eval_run_t",
-    "kg_extract_run_t",  # T-06: ingest run tracking (v2.5.5_kw_002 migration)
+    "kg_extract_run_t",  # Ingest run tracking (v2.5.5_kw_002 migration)
 }
 
 MODEL_NAMES = [
@@ -327,7 +327,7 @@ def _sample_row(model, tenant):
             config={"ablation_level": "full"}, metrics={"acc": 0.9},
         )
     if model is KgExtractRun:
-        # T-24: diagnostics default to 0 / 0 / 0 (finish_reasons nullable).
+        # Diagnostics default to 0 / 0 / 0 (finish_reasons nullable).
         # A literal (not dict(...)) keeps ruff C408 at the pre-change count.
         return {
             "tenant_id": tenant, "run_id": uuid_mod.uuid4(),
@@ -460,7 +460,7 @@ class TestMigrationFileContract:
 
 
 # ---------------------------------------------------------------------------
-# T-24 (kw_009): extraction diagnostics - model columns + idempotent migration
+# kw_009: extraction diagnostics - model columns + idempotent migration
 # ---------------------------------------------------------------------------
 
 class TestExtractRunDiagnosticsColumns:

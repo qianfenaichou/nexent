@@ -313,3 +313,43 @@ def test_w10_empty_name_rejected():
 
     with pytest.raises(ValidationError):
         app.SkillTemplateApplyRequest(name="", variables={})
+
+
+# ── route-mount guardrail (HTTP surface, not just handlers) ──────────
+#
+# The handler tests above call the endpoint functions directly, so they
+# cannot catch a route that never reached the mounted router. These tests
+# probe the real routing tables of both apps that include the knowevo
+# router; "not 404" is the mount proof (auth refusal 401/403 or a method
+# gate 405 still proves the path exists - only 404 means it does not).
+
+EVOLUTION_ROUTES = [
+    ("/api/knowevo/evolution/timeline", "get"),
+    ("/api/knowevo/evolution/rounds/r-1", "get"),
+]
+
+
+def _routing_client(app):
+    from fastapi.testclient import TestClient
+
+    return TestClient(app, raise_server_exceptions=False)
+
+
+@pytest.mark.parametrize("path,method", EVOLUTION_ROUTES)
+def test_evolution_routes_mounted_in_config_app(path, method):
+    from apps.config_app import app
+
+    response = getattr(_routing_client(app), method)(path)
+    assert response.status_code != 404, (
+        f"{method.upper()} {path} -> 404; the evolution routes are "
+        "unmounted (router not included or prefix doubled)")
+
+
+@pytest.mark.parametrize("path,method", EVOLUTION_ROUTES)
+def test_evolution_routes_mounted_in_runtime_app(path, method):
+    from apps.runtime_app import app
+
+    response = getattr(_routing_client(app), method)(path)
+    assert response.status_code != 404, (
+        f"{method.upper()} {path} -> 404; the evolution routes are "
+        "unmounted (router not included or prefix doubled)")

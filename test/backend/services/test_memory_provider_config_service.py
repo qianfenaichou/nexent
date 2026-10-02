@@ -1,3 +1,4 @@
+import contextlib
 import sys
 import types
 from unittest.mock import MagicMock, patch
@@ -5,6 +6,34 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 sys.path.insert(0, __import__("os").path.join(__import__("os").path.dirname(__file__), "../../.."))
+
+
+@contextlib.contextmanager
+def _import_scoped_stubs(modules):
+    """Keep the fake modules in ``sys.modules`` only inside the block.
+
+    The service under test binds its persistence layers at import time, so the
+    doubles have to be registered while it loads. Afterwards the service module
+    keeps its own references and the tests patch those objects directly, so the
+    registrations are dropped again on exit: a ``types.ModuleType`` stand-in has
+    no ``__path__``, and leaving it behind in ``sys.modules`` makes every later
+    ``from database.<module> import ...`` in the same run fail with
+    "ModuleNotFoundError: ... 'database' is not a package".
+
+    Entries that existed before the block are restored rather than deleted, so
+    a real package imported by an earlier test module survives untouched.
+    """
+    previous = {name: sys.modules.get(name) for name in modules}
+    sys.modules.update(modules)
+    try:
+        yield
+    finally:
+        for name, module in previous.items():
+            if module is None:
+                sys.modules.pop(name, None)
+            else:
+                sys.modules[name] = module
+
 
 database_pkg = types.ModuleType("database")
 config_db_mod = types.ModuleType("database.memory_provider_config_db")
@@ -19,12 +48,8 @@ param_db_mod.upsert_params = MagicMock(name="upsert_params")
 param_db_mod.delete_params = MagicMock(name="delete_params")
 database_pkg.memory_provider_config_db = config_db_mod
 database_pkg.memory_provider_config_param_db = param_db_mod
-sys.modules["database"] = database_pkg
-sys.modules["database.memory_provider_config_db"] = config_db_mod
-sys.modules["database.memory_provider_config_param_db"] = param_db_mod
 
 services_pkg = types.ModuleType("services")
-sys.modules["services"] = services_pkg
 
 plugin_loader_mod = types.ModuleType("services.memory_provider_plugin_loader")
 
@@ -59,12 +84,20 @@ class FakePluginLoader:
 
 
 plugin_loader_mod.PluginLoader = FakePluginLoader
-sys.modules["services.memory_provider_plugin_loader"] = plugin_loader_mod
 
-from backend.services.memory_provider_config_service import (
-    MemoryProviderConfigService,
-    _mask_value,
-)
+_STUBBED_MODULES = {
+    "database": database_pkg,
+    "database.memory_provider_config_db": config_db_mod,
+    "database.memory_provider_config_param_db": param_db_mod,
+    "services": services_pkg,
+    "services.memory_provider_plugin_loader": plugin_loader_mod,
+}
+
+with _import_scoped_stubs(_STUBBED_MODULES):
+    from backend.services.memory_provider_config_service import (
+        MemoryProviderConfigService,
+        _mask_value,
+    )
 
 
 @pytest.fixture
@@ -92,10 +125,10 @@ def test_create_provider_success(service):
             tenant_id="t1",
             provider_name="my-mem0",
             connection_type="plugin",
-            params={"plugin.name": "mem0", "plugin.api_key": "sk-123456789"},
+            params={"plugin.name": "mem0", "plugin.api_key": "test-api-key-123456789"},
             created_by="u1",
         )
-        assert result["params"]["plugin.api_key"] != "sk-123456789"
+        assert result["params"]["plugin.api_key"] != "test-api-key-123456789"
         m_insert.assert_called_once()
 
 
@@ -139,16 +172,16 @@ def test_create_provider_duplicate_name(service):
             service.create_provider(
                 tenant_id="t1", provider_name="dup",
                 connection_type="plugin",
-                params={"plugin.name": "mem0", "plugin.api_key": "sk-123456789"},
+                params={"plugin.name": "mem0", "plugin.api_key": "test-api-key-123456789"},
             )
 
 
 def test_get_provider_success(service):
     with patch.object(config_db_mod, "get_provider_config", return_value={"provider_config_id": 1}), \
-         patch.object(param_db_mod, "get_params", return_value={"plugin.name": "mem0", "plugin.api_key": "sk-123456789"}):
+         patch.object(param_db_mod, "get_params", return_value={"plugin.name": "mem0", "plugin.api_key": "test-api-key-123456789"}):
         result = service.get_provider(1)
         assert result is not None
-        assert result["params"]["plugin.api_key"] != "sk-123456789"
+        assert result["params"]["plugin.api_key"] != "test-api-key-123456789"
 
 
 def test_get_provider_not_found(service):
@@ -171,7 +204,7 @@ def test_list_providers_empty(service):
 def test_list_providers_with_providers(service):
     configs = [{"provider_config_id": 1}, {"provider_config_id": 2}]
     with patch.object(config_db_mod, "list_provider_configs", return_value=configs), \
-         patch.object(param_db_mod, "get_params", return_value={"plugin.name": "mem0", "plugin.api_key": "sk-123456789"}):
+         patch.object(param_db_mod, "get_params", return_value={"plugin.name": "mem0", "plugin.api_key": "test-api-key-123456789"}):
         results = service.list_providers("t1")
         assert len(results) == 2
 
@@ -179,9 +212,9 @@ def test_list_providers_with_providers(service):
 def test_list_providers_secret_masking(service):
     configs = [{"provider_config_id": 1}]
     with patch.object(config_db_mod, "list_provider_configs", return_value=configs), \
-         patch.object(param_db_mod, "get_params", return_value={"plugin.name": "mem0", "plugin.api_key": "sk-123456789"}):
+         patch.object(param_db_mod, "get_params", return_value={"plugin.name": "mem0", "plugin.api_key": "test-api-key-123456789"}):
         results = service.list_providers("t1")
-        assert results[0]["params"]["plugin.api_key"] != "sk-123456789"
+        assert results[0]["params"]["plugin.api_key"] != "test-api-key-123456789"
 
 
 def test_update_provider_success(service):
@@ -231,10 +264,10 @@ def test_delete_provider_failure(service):
 def test_get_enabled_providers_returns_unmasked(service):
     configs = [{"provider_config_id": 1, "enabled": True}]
     with patch.object(config_db_mod, "list_provider_configs", return_value=configs), \
-         patch.object(param_db_mod, "get_params", return_value={"plugin.name": "mem0", "plugin.api_key": "sk-123"}):
+         patch.object(param_db_mod, "get_params", return_value={"plugin.name": "mem0", "plugin.api_key": "test-key-123"}):
         results = service.get_enabled_providers("t1")
         assert len(results) == 1
-        assert results[0]["params"]["plugin.api_key"] == "sk-123"
+        assert results[0]["params"]["plugin.api_key"] == "test-key-123"
 
 
 def test_get_enabled_providers_only_enabled(service):
@@ -254,9 +287,9 @@ def test_mask_params_short_key():
 def test_mask_params_long_key():
     schema = [{"key": "api_key", "type": "secret"}]
     result = MemoryProviderConfigService._mask_params(
-        {"plugin.api_key": "sk-1234567890abcdef"}, schema
+        {"plugin.api_key": "test-api-key-1234567890abcdef"}, schema
     )
-    assert result["plugin.api_key"] == "sk-***cdef"
+    assert result["plugin.api_key"] == "tes***cdef"
 
 
 def test_mask_params_secret_type():
@@ -287,7 +320,7 @@ def test_mask_value_short():
 
 
 def test_mask_value_long():
-    assert _mask_value("sk-1234567890") == "sk-***7890"
+    assert _mask_value("test-api-key-1234567890") == "tes***7890"
 
 
 def test_mask_value_empty():
@@ -296,7 +329,7 @@ def test_mask_value_empty():
 
 def test_validate_params_valid(service):
     service._validate_params(
-        {"plugin.name": "mem0", "plugin.api_key": "sk-123"}, "mem0"
+        {"plugin.name": "mem0", "plugin.api_key": "test-key-123"}, "mem0"
     )
 
 

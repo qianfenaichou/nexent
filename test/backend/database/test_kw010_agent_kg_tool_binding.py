@@ -1,5 +1,5 @@
 """
-Guardrail for v2.5.5_kw_010_agent_kg_tool_binding.sql (T-23 chat wiring).
+Guardrail for v2.5.5_kw_010_agent_kg_tool_binding.sql (chat tool-binding seed).
 
 Layer 1 (always runs): static contract of the migration file. The seed exists
 because ``ag_tool_info_t``/``ag_tool_instance_t`` had no knowevo rows, so the

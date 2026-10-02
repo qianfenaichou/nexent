@@ -1,6 +1,7 @@
 """Focused unit tests for skill repository service."""
 
 import base64
+import contextlib
 import sys
 import types
 from datetime import datetime
@@ -16,24 +17,37 @@ _BACKEND_ROOT = _REPO_ROOT / "backend"
 if str(_BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(_BACKEND_ROOT))
 
-_MOCKED_MODULE_NAMES = [
-    "database.skill_repository_db",
-    "database.group_db",
-    "database.skill_db",
-    "database.user_tenant_db",
-    "management.services.skill.service",
-    "services.notification_service",
-    "utils.str_utils",
-]
-_ORIGINAL_MODULES = {
-    name: sys.modules.get(name)
-    for name in _MOCKED_MODULE_NAMES
-}
+@contextlib.contextmanager
+def _import_scoped_stubs(modules):
+    """Keep fake modules in ``sys.modules`` only while the module under test loads.
+
+    The service under test binds its persistence and collaboration layers at
+    import time, so the doubles have to be registered while it loads. Afterwards
+    the service module keeps its own references and the tests patch those
+    objects directly, so the registrations are dropped again on exit: leaving a
+    stand-in registered until teardown would make later collection-time imports
+    of the real modules (for example ``management.services.skill.service``)
+    resolve to the fake and fail with an ImportError.
+
+    Entries that existed before the block are restored rather than deleted, so a
+    real module imported by an earlier test module survives untouched.
+    """
+    previous = {name: sys.modules.get(name) for name in modules}
+    sys.modules.update(modules)
+    try:
+        yield
+    finally:
+        for name, module in previous.items():
+            if module is None:
+                sys.modules.pop(name, None)
+            else:
+                sys.modules[name] = module
 
 _consts_package = sys.modules.get("consts")
 if _consts_package is not None and not hasattr(_consts_package, "__path__"):
     _consts_package.__path__ = []
 
+_consts_agent_repository_stub = None
 if "consts.agent_repository" not in sys.modules:
     consts_agent_repository_mock = types.ModuleType("consts.agent_repository")
     consts_agent_repository_mock.OWNERSHIP_ALL = "all"
@@ -54,7 +68,7 @@ if "consts.agent_repository" not in sys.modules:
         "rejected",
         "shared",
     }
-    sys.modules["consts.agent_repository"] = consts_agent_repository_mock
+    _consts_agent_repository_stub = consts_agent_repository_mock
 
 consts_const_module = sys.modules.get("consts.const")
 if consts_const_module is not None:
@@ -77,11 +91,9 @@ _skill_repo_db_mock.list_skill_repository_summaries = MagicMock()
 _skill_repo_db_mock.reset_skill_repository_status = MagicMock(return_value=0)
 _skill_repo_db_mock.update_skill_repository_by_id = MagicMock(return_value=1)
 _skill_repo_db_mock.update_skill_repository_status_by_id = MagicMock(return_value=1)
-sys.modules["database.skill_repository_db"] = _skill_repo_db_mock
 
 _group_db_mock = MagicMock()
 _group_db_mock.query_group_ids_by_user = MagicMock(return_value=[])
-sys.modules["database.group_db"] = _group_db_mock
 
 _utils_str_utils_mock = types.ModuleType("utils.str_utils")
 _utils_str_utils_mock.convert_string_to_list = MagicMock(
@@ -91,15 +103,12 @@ _utils_str_utils_mock.convert_string_to_list = MagicMock(
         if item.strip().isdigit()
     ]
 )
-sys.modules["utils.str_utils"] = _utils_str_utils_mock
 
 _skill_db_mock = MagicMock()
 _skill_db_mock.get_skill_by_name = MagicMock(return_value=None)
-sys.modules["database.skill_db"] = _skill_db_mock
 
 _user_tenant_db_mock = MagicMock()
 _user_tenant_db_mock.get_user_tenant_by_user_id = MagicMock()
-sys.modules["database.user_tenant_db"] = _user_tenant_db_mock
 
 
 class _SkillServiceMock:
@@ -170,43 +179,52 @@ class _SkillServiceMock:
 
 _skill_service_module_mock = types.ModuleType("management.services.skill.service")
 _skill_service_module_mock.SkillService = _SkillServiceMock
-sys.modules["management.services.skill.service"] = _skill_service_module_mock
 
 _notification_service_mock = MagicMock()
-sys.modules["services.notification_service"] = _notification_service_mock
 
-import consts.exceptions as exceptions_module
+_stubbed_modules = {
+    "database.skill_repository_db": _skill_repo_db_mock,
+    "database.group_db": _group_db_mock,
+    "utils.str_utils": _utils_str_utils_mock,
+    "database.skill_db": _skill_db_mock,
+    "database.user_tenant_db": _user_tenant_db_mock,
+    "management.services.skill.service": _skill_service_module_mock,
+    "services.notification_service": _notification_service_mock,
+}
+if _consts_agent_repository_stub is not None:
+    _stubbed_modules["consts.agent_repository"] = _consts_agent_repository_stub
 
+with _import_scoped_stubs(_stubbed_modules):
+    import consts.exceptions as exceptions_module
 
-def _ensure_exception(name):
-    exception = getattr(exceptions_module, name, None)
-    if exception is None:
-        exception = type(name, (Exception,), {})
-        setattr(exceptions_module, name, exception)
-    return exception
+    def _ensure_exception(name):
+        exception = getattr(exceptions_module, name, None)
+        if exception is None:
+            exception = type(name, (Exception,), {})
+            setattr(exceptions_module, name, exception)
+        return exception
 
+    ForbiddenError = _ensure_exception("ForbiddenError")
+    SkillException = _ensure_exception("SkillException")
+    SkillDuplicateError = getattr(exceptions_module, "SkillDuplicateError", None)
+    try:
+        _has_duplicate_names = hasattr(SkillDuplicateError(["Skill A"]), "duplicate_names")
+    except Exception:
+        _has_duplicate_names = False
+    if not _has_duplicate_names:
+        class SkillDuplicateError(Exception):
+            def __init__(self, duplicate_names):
+                self.duplicate_names = duplicate_names
+                super().__init__(str(duplicate_names))
 
-ForbiddenError = _ensure_exception("ForbiddenError")
-SkillException = _ensure_exception("SkillException")
-SkillDuplicateError = getattr(exceptions_module, "SkillDuplicateError", None)
-try:
-    _has_duplicate_names = hasattr(SkillDuplicateError(["Skill A"]), "duplicate_names")
-except Exception:
-    _has_duplicate_names = False
-if not _has_duplicate_names:
-    class SkillDuplicateError(Exception):
-        def __init__(self, duplicate_names):
-            self.duplicate_names = duplicate_names
-            super().__init__(str(duplicate_names))
+        exceptions_module.SkillDuplicateError = SkillDuplicateError
 
-    exceptions_module.SkillDuplicateError = SkillDuplicateError
+    from backend.services import skill_repository_service as srs
 
-from backend.services import skill_repository_service as srs
-
-from consts.notification import (
-    EVENT_TYPE_REPOSITORY_REVIEW_PENDING,
-    RESOURCE_TYPE_SKILL_REPOSITORY,
-)
+    from consts.notification import (
+        EVENT_TYPE_REPOSITORY_REVIEW_PENDING,
+        RESOURCE_TYPE_SKILL_REPOSITORY,
+    )
 
 
 @pytest.fixture(autouse=True)
@@ -215,14 +233,6 @@ def reset_notification_mocks():
     srs.create_repository_pending_review_notification.reset_mock()
     srs.deactivate_notifications.reset_mock()
     yield
-
-
-def teardown_module():
-    for name, original in _ORIGINAL_MODULES.items():
-        if original is None:
-            sys.modules.pop(name, None)
-        else:
-            sys.modules[name] = original
 
 
 def setup_function():
