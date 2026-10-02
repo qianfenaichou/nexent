@@ -1,6 +1,6 @@
 # alignment_semantic.py —— K5 语义聚类对齐器（idf 余弦 + 最优匹配 + 置换检验 + BH-FDR）
 **归属任务**: 2026-09-23 算法优化轮（session B · work order §3.2 / review-feedback §5.3 C-1..C-4）· 依赖: alignment_service（复用 `topic_tokens` / `normalize_title` / `assign`）
-**依据**: [02-技术方案.md](../../../../../02-技术方案.md) · [verification-reports/t21-alignment-caliber.md](../../../../../nexent/competition/docs/verification-reports/t21-alignment-caliber.md)（topic 级 caliber B）
+**依据**: [02-技术方案.md](../../../../../docs/02-技术方案.md) · [verification-reports/t21-alignment-caliber.md](../../../../../nexent/competition/docs/verification-reports/t21-alignment-caliber.md)（topic 级 caliber B）
 
 > **契约偏差说明（2026-09-24 补立）**：本模块是 2026-09-23 新模块（566 行语义聚类对齐器），此前双份契约树（根 `knowevo/` 与仓内副本 `nexent/knowevo/`）均无它的 `*.py.md`。本文件与 `nexent/knowevo/...` 副本**同步立约**，内容一致；相对链接按层级调整（根副本 4 级 / 仓内副本 5 级），与 `graph_store.py.md` 先例一致。契约是冻结面：只准新写，不准改其他契约。
 

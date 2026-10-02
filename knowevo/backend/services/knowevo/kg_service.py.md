@@ -3,7 +3,7 @@
 > **2026-09-30 A4 生产接线 增量回填（加法 seam）**：`KGService.__init__` 在冻结签名之后追加可选尾参 `conflict_observer: Any | None = None`——**加法扩展，默认 None 时 merge 行为与旧版零变化**。observer 仅在 `_merge_edge` 的既有冲突分支后被调用（payload = `{existing, incoming, tenant_id}`），异常 debug 吞掉、绝不翻转 supersede/contested 决策。配套适配层 `conflict_adapter.py`（见其契约）。方法名、返回形状（`IngestReport`）、CONTRA/CONTENDED 规则表语义不变。
 
 **归属任务**: T-06（流水线）/ T-07（存储接线）· 依赖: ontology_service(active 本体)、graph_store、T-02 语料
-**依据**: [备忘录 03-K2](../../../../../02-技术方案.md)
+**依据**: [备忘录 03-K2](../../../../../docs/02-技术方案.md)
 
 ## 职责
 证据段级抽取（LLM 通道+表格确定性通道）→ 实体对齐三级 → bi-temporal 合并 → 待审池维护 → 更新成本记账。**存储访问全部经 GraphStore**。
