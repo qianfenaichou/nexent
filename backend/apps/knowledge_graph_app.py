@@ -1,4 +1,4 @@
-"""HTTP endpoints for the KnowEvo ontology workbench (T-05a).
+"""HTTP endpoints for the KnowEvo ontology workbench.
 
 Layer rule (knowevo/backend/apps/knowledge_graph_app.py.md): this module
 only parses input, checks tenant RBAC, and delegates to
@@ -22,23 +22,23 @@ from utils.auth_utils import get_current_user_context
 logger = logging.getLogger(__name__)
 
 # Prefix without /api: create_app(root_path="/api") mounts every router
-# under /api, so the effective endpoint is /api/knowevo/... (T-08 wiring
-# fix: this router previously declared "/api/knowevo", doubling the prefix).
+# under /api, so the effective endpoint is /api/knowevo/... This router
+# previously declared "/api/knowevo", which doubled the prefix.
 router = APIRouter(prefix="/knowevo", tags=["knowevo"])
 
 REVIEW_ACTIONS = {"confirm", "reject", "reparent"}
 
-# Decision-card seed lookup width (T-19): the total number of seed entities
-# one card may walk from - the same cap the MCP tool applies. T-26: the
-# seeds are now collected word by word (whole-question match first, see
+# Decision-card seed lookup width: the total number of seed entities one
+# card may walk from - the same cap the MCP tool applies. Seeds are now
+# collected word by word (whole-question match first, see
 # _decision_seed_ids), and this cap keeps the walk's fan-out unchanged.
 DECISION_SEED_TOP_K = 5
 
 
 def _ontology_service() -> OntologyService:
     """One service instance per request, wired to the real PgStore
-    (pitfalls #49 fix: previously store was hardcoded None, so every
-    ontology endpoint answered empty).
+    (the store used to be hardcoded None, so every ontology endpoint
+    answered empty).
 
     The PgStore import stays lazy (function body, same discipline as
     _decision_service) so the module imports cleanly in unit tests without
@@ -52,7 +52,7 @@ def _ontology_service() -> OntologyService:
 
 
 def _decision_service(tenant_id: str):
-    """One LLM-bound DecisionService per request (T-19 card route).
+    """One LLM-bound DecisionService per request (decision-card route).
 
     Lazy imports on purpose: PgJsonbGraphStore opens a DB session pool
     and build_llm_callable pulls the OpenAI-model wiring, and neither
@@ -73,12 +73,13 @@ def _decision_service(tenant_id: str):
 
 def _require_workbench_context(authorization: str | None) -> tuple[str, str, str]:
     """Parse the session, then require the RESOURCE.KNOWLEDGE_GRAPH MANAGE
-    permission (RBAC rows are a T-08 wiring item; until then every role
-    check falls back to refusing non-tenant callers only)."""
+    permission (the RBAC rows for that resource are not seeded yet, so until
+    that wiring lands every role check falls back to refusing non-tenant
+    callers only)."""
     user_id, tenant_id, role = get_current_user_context(authorization)
-    # Upstream permission rows do not carry KNOWLEDGE_GRAPH yet (T-08 seeds
-    # them). ADMIN-tier roles keep working through the KB MANAGE permission
-    # so the workbench is not locked out before wiring.
+    # Upstream permission rows do not carry KNOWLEDGE_GRAPH yet (the RBAC
+    # seed for them is pending). ADMIN-tier roles keep working through the KB
+    # MANAGE permission so the workbench is not locked out before wiring.
     if (not check_role_permission(role, "RESOURCE", "KNOWLEDGE_GRAPH", "MANAGE")
             and not check_role_permission(role, "RESOURCE", "KB", "MANAGE")):
         raise HTTPException(
@@ -116,7 +117,7 @@ async def list_proposals(
     status: str | None = None,
 ):
     """Pending-review queue slice for one session (page_size capped at the
-    40-per-session batch ceiling, K1 ss3)."""
+    40-per-session batch ceiling)."""
     _, tenant_id, _ = _require_workbench_context(authorization)
     svc = _ontology_service()
     try:
@@ -201,7 +202,7 @@ async def version_metrics(
     version: str,
     authorization: str | None = Header(None),
 ):
-    """K0 four metrics (cov/red/dep/align) for one committed version."""
+    """Four metrics (cov/red/dep/align) for one committed version."""
     _, tenant_id, _ = _require_workbench_context(authorization)
     svc = _ontology_service()
     metrics = await svc.version_metrics(tenant_id, version)
@@ -216,15 +217,15 @@ async def ontology_diff(
     from_version: str = Query(alias="from"),
     to_version: str = Query(alias="to"),
 ):
-    """Ops replay between two committed versions (T-12 diff view feeds
-    off this too)."""
+    """Ops replay between two committed versions (the ontology diff view
+    feeds off this too)."""
     _, tenant_id, _ = _require_workbench_context(authorization)
     svc = _ontology_service()
     ops = await svc.diff(from_version, to_version, tenant_id=tenant_id)
     return {"from": from_version, "to": to_version, "ops": ops}
 
 
-# ── decision card (T-19) ──────────────────────────────────────────────
+# ── decision card ─────────────────────────────────────────────────────
 
 
 class DecisionCardRequest(BaseModel):
@@ -248,7 +249,7 @@ class DecisionCardRequest(BaseModel):
             "Pin the card to an explicit fact-time instant (business time); "
             "None = latest. Distinct from ``ontology_version``: that pins a "
             "committed ontology version, this pins the facts' own time axis "
-            "through the same T-18b clock entry the ablation arms use. It is "
+            "through the same fact-time clock entry the ablation arms use. It is "
             "what a 2020-era vs 2024-era comparison needs, and it is the only "
             "way to reach clock_source='explicit' from this surface."
         ),
@@ -262,13 +263,12 @@ class DecisionCardRequest(BaseModel):
 async def _decision_seed_ids(store, tenant_id: str, question: str) -> list[str]:
     """Word-level seeds for the card walk; the whole-question match first.
 
-    T-26 (pitfall #60): this route used to hand the WHOLE question to
-    ``entity_lookup``, which is ``KgEntity.name ILIKE '%<query>%'``. A
-    sentence is never a substring of an entity name, so every
-    sentence-length question produced 0 seeds and the deterministic
-    "no evidence" refusal - while the identical question reached the graph
-    through the evaluation chain, which seeds word by word. Both chains now
-    share one splitter (``services.knowevo.seed_terms``).
+    This route used to hand the WHOLE question to ``entity_lookup``, which
+    is ``KgEntity.name ILIKE '%<query>%'``. A sentence is never a substring of
+    an entity name, so every sentence-length question produced 0 seeds and the
+    deterministic "no evidence" refusal - while the identical question reached
+    the graph through the evaluation chain, which seeds word by word. Both
+    chains now share one splitter (``services.knowevo.seed_terms``).
 
     Order matters: the direct whole-question lookup runs first so a short
     entity-style question (``糖尿病前期``) keeps its exact seed, then each
@@ -313,8 +313,8 @@ async def render_decision_card(
 
     Same pipeline the MCP tool runs (seeds -> version-pinned walk ->
     fused evidence chain -> render), so the panel, the evaluation harness
-    and the Agent see byte-identical cards. Honest-degradation contract
-    (T-09) is preserved at this boundary: no evidence means the
+    and the Agent see byte-identical cards. The honest-degradation contract is
+    preserved at this boundary: no evidence means the
     deterministic INSUFFICIENT_EVIDENCE card with zero LLM calls, never
     a rendered guess; a graph failure is a 5xx, not a fake refusal.
 
@@ -377,7 +377,7 @@ async def render_decision_card(
 
 
 def _skill_template_service(tenant_id: str):
-    """Read-only SkillTemplateService for the list route (T-20 wiring).
+    """Read-only SkillTemplateService backing the list route.
 
     Same lazy-import discipline as _decision_service: the service opens
     a DB session pool on first use, which must not happen at app-import
@@ -395,12 +395,11 @@ async def list_skill_templates(
 ):
     """Read-only skill-template listing for the /skillTemplate panel.
 
-    Closes T-20's pending-wiring item: the integration round shipped the
-    frontend against exactly this contract but could not add the route
-    itself (the T-20 brief authorized no HTTP surface and this file was
-    T-19's territory then). Read-only by design - skill_template_t is
-    only mutated by the mining pipeline and the apply path, never from
-    this boundary. A store failure is a 502, not a fake empty list.
+    The frontend was shipped against exactly this contract before the route
+    existed, so the response shape must not drift. Read-only by design -
+    skill_template_t is only mutated by the mining pipeline and the apply
+    path, never from this boundary. A store failure is a 502, not a fake
+    empty list.
     """
     _, tenant_id, _ = _require_workbench_context(authorization)
     svc = _skill_template_service(tenant_id)
@@ -536,7 +535,7 @@ async def apply_skill_template(
     return result
 
 
-# ── alignment (T-21) ──────────────────────────────────────────────────
+# ── alignment ─────────────────────────────────────────────────────────
 
 
 class AlignmentDiffRequest(BaseModel):
@@ -572,7 +571,7 @@ class AlignmentDiffRequest(BaseModel):
 
 
 def _alignment_service(tenant_id: str, llm=None, max_llm_calls: int = 20):
-    """One AlignmentService per request (T-21 routes).
+    """One AlignmentService per request (the alignment routes).
 
     Same lazy-import discipline as _decision_service: alignment opens DB
     sessions lazily and never at app-import time. The LLM is optional and

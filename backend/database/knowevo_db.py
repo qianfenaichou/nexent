@@ -57,14 +57,14 @@ class OntologyVersion(KnowevoTableBase):
     status = Column(String(16), nullable=False, server_default=text("'draft'"),
                     doc="draft | published | deprecated")
     snapshot = Column(JSONB, nullable=False, doc="Full ontology snapshot")
-    applied_ops = Column(JSONB, nullable=False, doc="Applied operation log (K0 1.2)")
-    metrics = Column(JSONB, doc="K0 four metrics {cov, red, dep, align}")
+    applied_ops = Column(JSONB, nullable=False, doc="Applied operation log")
+    metrics = Column(JSONB, doc="Four coverage metrics {cov, red, dep, align}")
     created_by = Column(String(64))
     created_at = Column(TIMESTAMP(timezone=True), server_default=text("now()"))
 
 
 class OntologyChangeProposal(KnowevoTableBase):
-    """Two-level review queue entry (K1): one proposed change per row."""
+    """Two-level review queue entry: one proposed change per row."""
     __tablename__ = "ontology_change_proposal_t"
     __table_args__ = (
         Index("ix_ocp_queue", "tenant_id", "status", "round_id"),
@@ -78,9 +78,9 @@ class OntologyChangeProposal(KnowevoTableBase):
                     doc="class:stable_id / rel:rel_type / prop:prop_id")
     op = Column(String(16), nullable=False, doc="CLS_ADD | PROP_ADD | REL_UPD | ...")
     payload = Column(JSONB, nullable=False, doc="Proposal body with evidence anchors")
-    confidence = Column(Float, doc="K1 3.3 ranking feature")
-    impact = Column(Integer, doc="K1 3.3 ranking feature")
-    novelty = Column(Float, doc="K1 3.3 ranking feature")
+    confidence = Column(Float, doc="Proposal ranking feature")
+    impact = Column(Integer, doc="Proposal ranking feature")
+    novelty = Column(Float, doc="Proposal ranking feature")
     trigger_source = Column(String(24), nullable=False,
                             doc="seed_bootstrap | pending_pool | standard_update | manual")
     status = Column(String(16), nullable=False, server_default=text("'pending'"),
@@ -92,7 +92,7 @@ class OntologyChangeProposal(KnowevoTableBase):
 
 
 class KgEntity(KnowevoTableBase):
-    """Graph entity, bi-temporal (K2 3.1): valid_at/invalid_at are business
+    """Graph entity, bi-temporal: valid_at/invalid_at are business
     time, retrieved_at/superseded_at are system time."""
     __tablename__ = "kg_entity_t"
     __table_args__ = (
@@ -175,7 +175,7 @@ class KgEvidence(KnowevoTableBase):
 
 
 class KgPendingEntity(KnowevoTableBase):
-    """Unmappable entity pool; feeds ontology proposals (K1 source)."""
+    """Unmappable entity pool; feeds ontology proposals."""
     __tablename__ = "kg_pending_entity_t"
     __table_args__ = (
         UniqueConstraint("tenant_id", "name", name="uq_kg_pending_entity_tenant_name"),
@@ -223,7 +223,7 @@ class DocAsset(KnowevoTableBase):
 
 
 class DocVersionDiff(KnowevoTableBase):
-    """Three-stage diff output between two document versions (K5.1)."""
+    """Three-stage diff output between two document versions."""
     __tablename__ = "doc_version_diff_t"
     __table_args__ = {"schema": SCHEMA}
 
@@ -239,7 +239,7 @@ class DocVersionDiff(KnowevoTableBase):
 
 
 class DecisionCard(KnowevoTableBase):
-    """Persisted decision card (K3 section 3 schema)."""
+    """Persisted decision card."""
     __tablename__ = "decision_card_t"
     __table_args__ = (
         Index("ix_dc_stamp", "payload", postgresql_using="gin",
@@ -303,7 +303,7 @@ class SkillTemplate(KnowevoTableBase):
 
 
 class EvalRun(KnowevoTableBase):
-    """One evaluation run (K4); report page reads this directly."""
+    """One evaluation run; report page reads this directly."""
     __tablename__ = "eval_run_t"
     __table_args__ = {"schema": SCHEMA}
 
@@ -315,15 +315,15 @@ class EvalRun(KnowevoTableBase):
     metrics = Column(JSONB, nullable=False,
                      doc="{acc, pass2, pass3, trace_machine, trace_human, p95, tokens, cny}")
     calibration = Column(JSONB)
-    judge_agreement = Column(Float, doc="K4 4 calibration / audit agreement")
+    judge_agreement = Column(Float, doc="Calibration / audit agreement")
     task_ref = Column(String(16))
     created_at = Column(TIMESTAMP(timezone=True), server_default=text("now()"))
 
 
 class KgExtractRun(KnowevoTableBase):
-    """T-06 run bookkeeping: one row per extracted span (span-hash unique),
+    """Ingest run bookkeeping: one row per extracted span (span-hash unique),
     making the ingest_graph pipeline idempotent across crash/resume. This is
-    an internal run ledger, not a domain table - added by T-06 via migration
+    an internal run ledger, not a domain table - created by migration
     v2.5.5_kw_002 (the 12 domain tables above stay untouched)."""
     __tablename__ = "kg_extract_run_t"
     __table_args__ = (
@@ -342,10 +342,10 @@ class KgExtractRun(KnowevoTableBase):
                      doc="llm | table")
     status = Column(String(16), nullable=False, server_default=text("'done'"))
     tokens_spent = Column(Integer, server_default=text("0"))
-    # T-24 extraction diagnostics (migration v2.5.5_kw_009): span-level
-    # aggregate that separates "no content" from "no entities" (pitfalls
-    # #52/#55). Additive columns with server defaults so pre-kw_009 rows stay
-    # readable (0 / 0 / 0, finish_reasons NULL).
+    # Extraction diagnostics (migration v2.5.5_kw_009): a span-level
+    # aggregate that separates "the model returned no content" from "the
+    # content held no entities". Additive columns with server defaults so
+    # pre-kw_009 rows stay readable (0 / 0 / 0, finish_reasons NULL).
     llm_calls = Column(Integer, nullable=False, server_default=text("0"),
                        doc="LLM calls issued for this span")
     empty_content_calls = Column(Integer, nullable=False,
@@ -360,7 +360,7 @@ class KgExtractRun(KnowevoTableBase):
 
 
 # Ordered registry so tests can iterate all tables deterministically.
-# 13 entries: the 12 frozen domain tables + the T-06 run ledger.
+# 13 entries: the 12 frozen domain tables + the ingest run ledger.
 KNOWEVO_MODELS = [
     OntologyVersion,
     OntologyChangeProposal,
