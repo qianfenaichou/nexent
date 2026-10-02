@@ -1,3 +1,143 @@
+<div align="center">
+
+# KnowEvo
+
+**Domain Knowledge-Asset Cognition & Decision Intelligence · 领域知识资产认知与决策智能体**
+
+*Turn dormant documents into versioned knowledge — answer with evidence, evolve with standards.*
+
+![Platform](https://img.shields.io/badge/based%20on-Nexent%20v2.6.0-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+![Tests](https://img.shields.io/badge/tests-1327%20passed%20%2F%2033%20skipped-brightgreen)
+[![Upstream](https://img.shields.io/badge/fork%20of-ModelEngine%2FNexent-gray?logo=github)](https://github.com/ModelEngine-Group/nexent)
+
+</div>
+
+KnowEvo is a domain knowledge-asset cognition and decision agent built on **ModelEngine Nexent v2.6.0**. It activates an organization's dormant documents — guidelines, specifications, manuals that nobody can reliably query — into a **versioned knowledge-graph asset**, then serves answers as **decision cards with complete evidence chains**, and keeps the whole asset **evolving incrementally as the underlying standards change**.
+
+Three properties distinguish it from a plain RAG stack:
+
+1. **Every answer carries a knowledge version stamp.** Questions are answered as-of a knowledge clock; a query about last year's guideline honestly refuses when the pinned version has no evidence, and answers when the current one does (bi-temporal version pinning).
+2. **Retrieval and reasoning are dual-driven.** Factoid questions route to a retrieval path (knowledge base + graph search); multi-document, multi-hop questions route to a reasoning path (beam search over the versioned graph). The two paths are Skills, not hardcoded prompts.
+3. **Evolution is a pipeline, not a re-index.** A standards update triggers change detection → affected-scope computation → a minimal sufficient update proposal → human review → a new graph version. Old versions stay queryable.
+
+## ✨ Features
+
+| Feature | Description |
+|---------|-------------|
+| **📦 Asset Pipeline (L1)** | Ingestion through the Nexent pipeline with fallback parsers, plus a registry that tracks document ID, modality, authority level, publish date and lineage |
+| **🧠 Semi-Automatic Ontology & Versioned Graph (L2)** | Seed-guided ontology proposals with an explicit human-review budget, anchored extraction, three-stage entity alignment, and a bi-temporal property graph in PostgreSQL JSONB with recursive-CTE multi-hop |
+| **🎴 Dual-Drive Decision Cards (L3)** | Route → retrieve or reason → fuse the evidence chain → render a decision card with knowledge-version stamp, uncertainty notes and honest refusals |
+| **🔄 Standards-Aligned Evolution (L4)** | Change detection → affected scope → minimal sufficient update set → human confirmation; conflict detection/adjudication records; trajectories distilled into reusable Skill templates |
+| **🔧 9 Custom MCP Tools** | `kg_search`, `asset_search`, `kg_stats`, `kg_multi_hop`, `kg_evolution_trace`, `ontology_diff`, `evidence_verify`, `decision_card_render`, `skill_template_apply` — one FastMCP instance, dual-registered into the platform Local MCP pipeline and a standalone SSE service, tool sets guaranteed identical on both faces |
+| **📝 4 SKILLs, Least Privilege** | `domain-asset-cognition` (entry router) + `retrieval-path` / `reasoning-path` / `evidence-assembly`; each SKILL's frontmatter declares only the tools that layer needs |
+| **🔍 ES Hybrid Retrieval** | Entity retrieval prefers Elasticsearch hybrid search and degrades gracefully (identical results) to PostgreSQL lexical retrieval when ES is absent or unhealthy |
+| **🏭 GraphStore Dual-Backend Factory** | All graph queries converge behind a single `GraphStore` interface; `make_graph_store()` builds the configured backend (`pg_jsonb` by default, an in-memory backend as the second option) and rejects unknown backend names instead of silently binding one |
+
+## 🔎 Numbers you can check
+
+All figures below come from committed artifacts (JSON reports, database snapshots, test receipts) in the evaluation workspace — see [Reproduce](#-reproduce-the-evaluation).
+
+- **Test baseline**: `1327 passed / 33 skipped` (0 failures) on the PostgreSQL-integrated KnowEvo suite.
+- **Corpus → graph (medical domain)**: 58 public documents → 112 qualified segments → **1,019 entities / 1,337 relations / 136 evidence rows** → 33 traceable decision cards.
+- **Cross-domain migration**: the same pipeline re-run unchanged on government (36/36 segments), finance (32/32) and manufacturing (30/40 valid segments) corpora.
+- **Five-arm ablation** (20 questions × 3 runs, 112-segment graph): pure RAG 0.7069 → +graph retrieval 0.7500; the full A1–A4 + version-pin matrix ships in the report JSON.
+- **Graph performance**: multi-hop query p95 = 12.5 ms on a 20k-entity / 30k-edge proof of concept; indexed bulk write path 54.15× faster than the naive baseline (124.1 s → 2.3 s).
+- **Provenance**: evidence spans are verbatim-faithful at 238/238; model-attributed relation-evidence citations measure 0.9263 strict agreement under an independent judge.
+- **Offline mechanism probes**: the algorithm probes run with no LLM and fixed seeds, in under a second, and are re-runnable by anyone.
+
+## 🚀 Quick Start
+
+### Requirements
+
+- Docker 24+ and Docker Compose v2+
+- 16 GB RAM recommended
+- A model-gateway API key (configured in `deploy/env/.env`; only needed for LLM-backed features — tests and mechanism probes run without one)
+
+### Deploy
+
+```bash
+git clone https://github.com/qianfenaichou/nexent.git
+cd nexent
+
+# Linux / macOS
+bash deploy/knowevo/up.sh
+
+# Windows (PowerShell)
+.\deploy\knowevo\up.ps1
+```
+
+Then open `http://localhost:3000`, create a tenant and administrator, register your models, and create the KnowEvo agent. The full walkthrough — tenant initialization, model registration, agent/Skill/MCP configuration — is in **[`competition/docs/reproduce-README.md`](competition/docs/reproduce-README.md)**.
+
+### Reproduce the evaluation
+
+The same document is the entry point for reproducing every number in this README: deployment → tenant setup → unit/integration suite → ablation pipeline → offline probes → database snapshot verification. Code-level and mechanism-level reproduction needs no credentials; end-to-end LLM evaluation uses your own gateway key.
+
+> Note: the `competition/` directory (evaluation workspace: reports, probe scripts, screenshots, receipts) ships with the project archive rather than the git tree. Unpack it as described in the reproduce README.
+
+## 📸 Screenshots
+
+Real platform captures; the chat and decision-card shots are interlocked with rows in the database (each card ID is queryable).
+
+| Chat QA with live tool calls | Decision card with evidence chain |
+|---|---|
+| ![Chat QA on the running platform](competition/deliverables/T-27-chat-qa-1.png) | ![Decision card with version stamp and expandable evidence chain](competition/deliverables/T-23-decision-card.png) |
+
+| Same question, knowledge clock 2021 → honest refusal | Same question, knowledge clock 2025 → recommendation with evidence |
+|---|---|
+| ![Version pinned to 2021 clock: insufficient evidence](competition/deliverables/T-23-version-compare-2021clock.png) | ![Version pinned to 2025 clock: recommendation with evidence chain](competition/deliverables/T-23-version-compare-2025clock.png) |
+
+## 🧩 What changed vs upstream
+
+This repository is a fork of **[ModelEngine-Group/Nexent](https://github.com/ModelEngine-Group/nexent)** (MIT License). The upstream platform base is used unmodified; our changes concentrate in:
+
+- `backend/services/knowevo/` — the KnowEvo service layer (graph store, ontology, decision, evolution, retrieval)
+- `deploy/sql/migrations/` — the KnowEvo schema migrations (`v2.5.5_kw_001` … `kw_013`)
+- `backend/tool_collection/mcp/` + `mcp_servers/knowevo_mcp/` — the custom MCP tool family
+- `knowevo/` — interface contract documents for the service layer
+- `frontend/features/` — knowledge graph, decision card, skill gallery and evolution board panels
+- `competition/` — the evaluation workspace (corpus registry, experiment reports, probes, receipts)
+
+Everything upstream — zero-code agent generation, multi-model integration, memory, marketplace, multi-tenancy — remains available and is documented in the upstream README below.
+
+## 🙏 Acknowledgements & License
+
+Built on [Nexent](https://github.com/ModelEngine-Group/nexent) by ModelEngine-Group. All upstream LICENSE and attribution are preserved. This fork is distributed under the same [MIT License](LICENSE).
+
+---
+
+## 中文简介（核心段落）
+
+**KnowEvo · 领域知识资产认知与决策智能体**，基于 ModelEngine Nexent v2.6.0 构建。它把组织侧「检索不到、分不清版本、答不可溯源」的沉睡文档，激活为**带版本戳的知识图谱资产**；问答以**带完整证据链的决策卡**形式输出；并随上游标准/规范的更新**增量进化**，旧版本持续可查。
+
+**核心特性**：
+
+- **L1 资产化管道**：摄取 + 专项解析兜底 + 资产登记（编号/模态/权威级/发布时间/血缘）
+- **L2 半自动本体 + 版本化图谱**：种子引导提案 + 人审预算、三级实体对齐、PG JSONB 双时态图存储、递归 CTE 多跳
+- **L3 检索-推理双驱动决策卡**：事实题走检索路，多跳题走版本钉住的推理路，输出带知识版本戳与诚实拒绝的决策卡
+- **L4 标准对齐进化**：变更检测 → 受影响面 → 最小充分更新集 → 人审确认，冲突裁决留痕，轨迹沉淀为 Skill 模板
+- **9 个自研 MCP 工具**（单一 FastMCP 实例双注册）+ **4 个最小权限 SKILL** + **ES 混合检索**（无 ES 时逐位退化 PG 词法）+ **GraphStore 双后端工厂**
+
+**快速开始**：
+
+```bash
+git clone https://github.com/qianfenaichou/nexent.git
+cd nexent
+bash deploy/knowevo/up.sh        # Windows: .\deploy\knowevo\up.ps1
+```
+
+评测复现入口链见 **[`competition/docs/reproduce-README.md`](competition/docs/reproduce-README.md)**（部署 → 租户/模型 → 测试套件 → 消融管线 → 离线探针 → 快照核对；代码与机制层无需任何密钥即可复现）。
+
+**可核验数字**：测试基线 1327 passed / 33 skipped；医疗域 58 份语料 → 112 合格段 → 1,019 实体 / 1,337 关系 / 136 证据 → 33 张可溯源决策卡；五臂消融 A1 纯 RAG 0.7069 → A2 +图检索 0.7500；多跳查询 p95 = 12.5 ms（2 万实体/3 万边 PoC）。
+
+本仓库 fork 自 [ModelEngine-Group/Nexent](https://github.com/ModelEngine-Group/nexent)（MIT），平台底座零修改，改动集中于 KnowEvo 服务层、迁移、MCP 工具族、契约文档与评测工作区；上游许可证与署名完整保留。
+
+---
+
+（上游原 README 内容）
+
+---
+
 ![Nexent Banner](./assets/NexentBanner.png)
 
 [![Website](https://img.shields.io/badge/Website-blue?logo=icloud&logoColor=white)](https://nexent.tech)
