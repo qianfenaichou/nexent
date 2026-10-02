@@ -164,7 +164,7 @@ export function InstantiateModal({
           className="mb-2"
           type={result.reason === "forbidden" ? "error" : "info"}
           showIcon
-          message={
+          title={
             result.reason === "route_pending"
               ? t("skillGallery.clientPreview.title", {
                   defaultValue: "本地预览实例（服务端 apply 未接线）",

@@ -53,7 +53,7 @@ export function DecisionCardMessage({ card }: { card: DecisionCardPayload }) {
           className="mt-2"
           type="warning"
           showIcon
-          message={t("decisionCard.decision.insufficientNote", {
+          title={t("decisionCard.decision.insufficientNote", {
             defaultValue: "证据不足，按纪律不生成候选。",
           })}
         />

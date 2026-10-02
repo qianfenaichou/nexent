@@ -6,8 +6,9 @@
 // pending rather than omitted (contract rule). Reserved _-prefixed keys
 // (see opsSummary.ts) are never painted as op counts.
 //
-// Failure honesty (workorder W5 / L10-R1):
+// Failure honesty:
 //   pending_wiring -> "route not registered"
+//   unauthorized   -> 401 / expired login (re-login, not "missing")
 //   forbidden      -> 403 tenant/RBAC (cross-tenant read refused)
 //   other          -> generic unavailable; never invents steps
 import { useTranslation } from "react-i18next";
@@ -25,6 +26,74 @@ const STEP_COLOR: Record<EvolutionStepStatus, string> = {
   pending: "gold",
 };
 
+type FailureCopy = {
+  alertType: "error" | "warning";
+  titleKey: string;
+  titleDefault: string;
+  bodyKey: string;
+  bodyDefault: string;
+  /** Retrying only helps when the failure is not a standing permission. */
+  allowRetry: boolean;
+};
+
+// One entry per LoadFailureKind. Keying the map by the union means a new
+// kind fails the type check here instead of falling through to copy that
+// describes a different failure.
+const FAILURE_COPY: Record<LoadFailureKind, FailureCopy> = {
+  pending_wiring: {
+    alertType: "warning",
+    titleKey: "evolutionBoard.detail.unavailable.title",
+    titleDefault: "轮次详情待接线",
+    bodyKey: "evolutionBoard.detail.unavailable.body",
+    bodyDefault:
+      "GET /api/knowevo/evolution/rounds/{id} 尚未注册。不展示虚构步骤。",
+    allowRetry: true,
+  },
+  unauthorized: {
+    alertType: "warning",
+    titleKey: "evolutionBoard.detail.unauthorized.title",
+    titleDefault: "登录已失效，无法读取该轮次",
+    bodyKey: "evolutionBoard.detail.unauthorized.body",
+    bodyDefault:
+      "服务返回 401：当前登录凭据已过期或无效，请重新登录后再打开该轮次。不是轮次缺失。",
+    allowRetry: true,
+  },
+  forbidden: {
+    alertType: "error",
+    titleKey: "evolutionBoard.detail.forbidden.title",
+    titleDefault: "无权读取该轮次",
+    bodyKey: "evolutionBoard.detail.forbidden.body",
+    bodyDefault:
+      "服务返回 403：该轮次属于其他租户或当前角色无权读取。不是空数据。",
+    allowRetry: false,
+  },
+  not_found: {
+    alertType: "error",
+    titleKey: "evolutionBoard.detail.missing.title",
+    titleDefault: "轮次不存在",
+    bodyKey: "evolutionBoard.detail.missing.body",
+    bodyDefault:
+      "服务返回 404：未找到该 round_id 的演进记录。不展示虚构步骤。",
+    allowRetry: true,
+  },
+  server: {
+    alertType: "warning",
+    titleKey: "evolutionBoard.detail.unavailable.title",
+    titleDefault: "轮次详情不可用",
+    bodyKey: "evolutionBoard.detail.errorBody",
+    bodyDefault: "请求失败（网络或服务端错误）。不展示虚构步骤。",
+    allowRetry: true,
+  },
+  network: {
+    alertType: "warning",
+    titleKey: "evolutionBoard.detail.unavailable.title",
+    titleDefault: "轮次详情不可用",
+    bodyKey: "evolutionBoard.detail.errorBody",
+    bodyDefault: "请求失败（网络或服务端错误）。不展示虚构步骤。",
+    allowRetry: true,
+  },
+};
+
 function FailureAlert({
   kind,
   onRetry,
@@ -33,53 +102,15 @@ function FailureAlert({
   onRetry?: () => void;
 }) {
   const { t } = useTranslation();
-  const isWiring = kind === "pending_wiring";
-  const isForbidden = kind === "forbidden";
-  const isMissing = kind === "not_found";
+  const copy = FAILURE_COPY[kind];
   return (
     <Alert
-      type={isForbidden || isMissing ? "error" : "warning"}
+      type={copy.alertType}
       showIcon
-      message={
-        isWiring
-          ? t("evolutionBoard.detail.unavailable.title", {
-              defaultValue: "轮次详情待接线",
-            })
-          : isForbidden
-            ? t("evolutionBoard.detail.forbidden.title", {
-                defaultValue: "无权读取该轮次",
-              })
-            : isMissing
-              ? t("evolutionBoard.detail.missing.title", {
-                  defaultValue: "轮次不存在",
-                })
-              : t("evolutionBoard.detail.unavailable.title", {
-                  defaultValue: "轮次详情不可用",
-                })
-      }
-      description={
-        isWiring
-          ? t("evolutionBoard.detail.unavailable.body", {
-              defaultValue:
-                "GET /api/knowevo/evolution/rounds/{id} 尚未注册（工单 L10-W5）。不展示虚构步骤。",
-            })
-          : isForbidden
-            ? t("evolutionBoard.detail.forbidden.body", {
-                defaultValue:
-                  "服务返回 403：该轮次属于其他租户或当前角色无权读取（工单 W5 跨租户闸）。不是空数据。",
-              })
-            : isMissing
-              ? t("evolutionBoard.detail.missing.body", {
-                  defaultValue:
-                    "服务返回 404：该 round_id 不在演进台账中（路由已接线）。不展示虚构步骤。",
-                })
-              : t("evolutionBoard.detail.errorBody", {
-                  defaultValue:
-                    "请求失败（网络或服务端错误）。不展示虚构步骤。",
-                })
-      }
+      title={t(copy.titleKey, { defaultValue: copy.titleDefault })}
+      description={t(copy.bodyKey, { defaultValue: copy.bodyDefault })}
       action={
-        onRetry && !isForbidden ? (
+        copy.allowRetry && onRetry ? (
           <Button size="small" onClick={onRetry}>
             {t("common.retry", { defaultValue: "重试" })}
           </Button>
@@ -158,32 +189,39 @@ export function RoundDetailPanel({
         ) : null}
       </div>
 
-      <Descriptions size="small" column={2} className="mb-3">
-        <Descriptions.Item
-          label={t("evolutionBoard.detail.at", { defaultValue: "时间" })}
-        >
-          {report.at ?? report.created_at ?? "-"}
-        </Descriptions.Item>
-        <Descriptions.Item
-          label={t("evolutionBoard.detail.tokens", { defaultValue: "tokens" })}
-        >
-          {report.cost?.tokens ?? "-"}
-        </Descriptions.Item>
-        <Descriptions.Item
-          label={t("evolutionBoard.detail.humanMinutes", {
-            defaultValue: "人审分钟",
-          })}
-        >
-          {report.cost?.human_minutes ?? "-"}
-        </Descriptions.Item>
-        <Descriptions.Item
-          label={t("evolutionBoard.detail.edgesSuperseded", {
-            defaultValue: "失效边数",
-          })}
-        >
-          {report.edges_superseded_ids?.length ?? 0}
-        </Descriptions.Item>
-      </Descriptions>
+      <Descriptions
+        size="small"
+        column={2}
+        className="mb-3"
+        items={[
+          {
+            key: "at",
+            label: t("evolutionBoard.detail.at", { defaultValue: "时间" }),
+            children: report.at ?? report.created_at ?? "-",
+          },
+          {
+            key: "tokens",
+            label: t("evolutionBoard.detail.tokens", {
+              defaultValue: "tokens",
+            }),
+            children: report.cost?.tokens ?? "-",
+          },
+          {
+            key: "humanMinutes",
+            label: t("evolutionBoard.detail.humanMinutes", {
+              defaultValue: "人审分钟",
+            }),
+            children: report.cost?.human_minutes ?? "-",
+          },
+          {
+            key: "edgesSuperseded",
+            label: t("evolutionBoard.detail.edgesSuperseded", {
+              defaultValue: "失效边数",
+            }),
+            children: report.edges_superseded_ids?.length ?? 0,
+          },
+        ]}
+      />
 
       <Text strong className="mb-2 block">
         {t("evolutionBoard.detail.ops", { defaultValue: "操作计数" })}

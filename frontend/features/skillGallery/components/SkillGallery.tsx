@@ -119,7 +119,7 @@ export function SkillGallery() {
         <Alert
           type="error"
           showIcon
-          message={t("skillGallery.loadFailed.title", {
+          title={t("skillGallery.loadFailed.title", {
             defaultValue: "模板列表加载失败",
           })}
           description={t("skillGallery.loadFailed.body", {

@@ -37,18 +37,27 @@ export function AlignmentDiffDetail({ row }: { row: AlignmentDiffRow | null }) {
           })}
         </Tag>
       </div>
-      <Descriptions size="small" column={1} className="mb-2">
-        <Descriptions.Item
-          label={t("evolutionBoard.detail.at", { defaultValue: "时间" })}
-        >
-          {row.created_at ?? "-"}
-        </Descriptions.Item>
-        <Descriptions.Item label="diff_id">
-          <Text code className="text-xs">
-            {row.diff_id}
-          </Text>
-        </Descriptions.Item>
-      </Descriptions>
+      <Descriptions
+        size="small"
+        column={1}
+        className="mb-2"
+        items={[
+          {
+            key: "at",
+            label: t("evolutionBoard.detail.at", { defaultValue: "时间" }),
+            children: row.created_at ?? "-",
+          },
+          {
+            key: "diffId",
+            label: "diff_id",
+            children: (
+              <Text code className="text-xs">
+                {row.diff_id}
+              </Text>
+            ),
+          },
+        ]}
+      />
       <Text strong className="mb-1 block">
         {t("evolutionBoard.alignDetail.changeCounts", {
           defaultValue: "变更计数",

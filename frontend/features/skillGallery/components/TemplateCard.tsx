@@ -71,7 +71,7 @@ export function TemplateCard({
         aria-label={`${t("skillGallery.instantiate", { defaultValue: "一键实例化" })} ${template.name}`}
         onClick={() => onInstantiate(template)}
       >
-        <Space direction="vertical" size={4} className="w-full">
+        <Space orientation="vertical" size={4} className="w-full">
           <Space size={4} wrap>
             <Tag>{template.domain ?? "-"}</Tag>
             <Tag>v{template.version}</Tag>

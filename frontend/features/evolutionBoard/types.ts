@@ -1,4 +1,4 @@
-// KnowEvo evolution-board types (L10). Mirrors EvolutionService.RoundSummary /
+// KnowEvo evolution-board types. Mirrors EvolutionService.RoundSummary /
 // RoundReport / StepRecord (backend/services/knowevo/evolution_service.py) and
 // the wired alignment /ontology diff + /alignment/diff/list payloads. Fields
 // stay optional where the store column is nullable - never invent values.
@@ -14,7 +14,7 @@ export interface EvolutionStep {
 export type EvolutionRoundStatus =
   "running" | "settled" | "rolled_back" | "failed" | string;
 
-/** Timeline row from EvolutionService.timeline (planned HTTP: /evolution/timeline). */
+/** Timeline row from EvolutionService.timeline (GET /api/knowevo/evolution/timeline). */
 export interface EvolutionRoundSummary {
   round_id: string;
   at?: string | null;
@@ -35,9 +35,8 @@ export interface EvolutionRoundReport extends EvolutionRoundSummary {
 }
 
 /**
- * Document-version diff row from GET /api/knowevo/alignment/diff/list
- * (wired). Serves as the timeline's real, reachable event source until the
- * evolution-round ledger HTTP route lands.
+ * Document-version diff row from GET /api/knowevo/alignment/diff/list.
+ * One of the two timeline event sources, next to the evolution-round rows.
  */
 export interface AlignmentDiffRow {
   diff_id: string;

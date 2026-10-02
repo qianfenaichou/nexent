@@ -65,7 +65,7 @@ function CandidateCard({
           className="mt-2"
           type="warning"
           showIcon
-          message={t("decisionCard.candidate.risks", { defaultValue: "风险" })}
+          title={t("decisionCard.candidate.risks", { defaultValue: "风险" })}
           description={
             <ul className="m-0 list-disc pl-4">
               {candidate.risks.map((risk, idx) => (
@@ -136,7 +136,7 @@ export default function DecisionCardPanel() {
       </div>
 
       <Card size="small">
-        <Space direction="vertical" className="w-full" size={8}>
+        <Space orientation="vertical" className="w-full" size={8}>
           <Input.TextArea
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
@@ -208,7 +208,7 @@ export default function DecisionCardPanel() {
       <Alert
         type="info"
         showIcon
-        message={t("decisionCard.disclaimer", {
+        title={t("decisionCard.disclaimer", {
           defaultValue: "本系统提供认知辅助，不构成处方建议",
         })}
       />
@@ -274,7 +274,7 @@ export default function DecisionCardPanel() {
               className="mt-3"
               type="warning"
               showIcon
-              message={t("decisionCard.decision.insufficient", {
+              title={t("decisionCard.decision.insufficient", {
                 defaultValue: "证据不足",
               })}
               description={card.uncertainty_notes?.join("；") || undefined}
@@ -310,7 +310,7 @@ export default function DecisionCardPanel() {
               className="mt-4"
               type="warning"
               showIcon
-              message={t("decisionCard.uncertainty", {
+              title={t("decisionCard.uncertainty", {
                 defaultValue: "不确定性说明",
               })}
               description={
@@ -338,7 +338,7 @@ export default function DecisionCardPanel() {
           className="mt-3"
           type="error"
           showIcon
-          message={t("decisionCard.renderFailed", {
+          title={t("decisionCard.renderFailed", {
             defaultValue: "决策卡生成失败",
           })}
           description={t("decisionCard.renderFailedHint", {

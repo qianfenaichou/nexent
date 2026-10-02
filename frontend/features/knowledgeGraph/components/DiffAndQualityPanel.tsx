@@ -93,21 +93,29 @@ export function DiffAndQualityPanel() {
         <h3 className="mb-3 font-medium">
           {t("knowledgeGraph.diff.title", { defaultValue: "版本 Diff" })}
         </h3>
-        <Space className="mb-3">
-          <Input
-            size="small"
-            style={{ width: 110 }}
-            value={from}
-            onChange={(e) => setFrom(e.target.value)}
-            addonBefore={t("knowledgeGraph.diff.from", { defaultValue: "从" })}
-          />
-          <Input
-            size="small"
-            style={{ width: 110 }}
-            value={to}
-            onChange={(e) => setTo(e.target.value)}
-            addonBefore={t("knowledgeGraph.diff.to", { defaultValue: "到" })}
-          />
+        <Space wrap className="mb-3">
+          <Space.Compact>
+            <Space.Addon>
+              {t("knowledgeGraph.diff.from", { defaultValue: "从" })}
+            </Space.Addon>
+            <Input
+              size="small"
+              style={{ width: 110 }}
+              value={from}
+              onChange={(e) => setFrom(e.target.value)}
+            />
+          </Space.Compact>
+          <Space.Compact>
+            <Space.Addon>
+              {t("knowledgeGraph.diff.to", { defaultValue: "到" })}
+            </Space.Addon>
+            <Input
+              size="small"
+              style={{ width: 110 }}
+              value={to}
+              onChange={(e) => setTo(e.target.value)}
+            />
+          </Space.Compact>
           <Button size="small" type="primary" onClick={() => void runDiff()}>
             {t("knowledgeGraph.diff.run", { defaultValue: "回放" })}
           </Button>
@@ -157,17 +165,17 @@ export function DiffAndQualityPanel() {
         <h3 className="mb-3 font-medium">
           {t("knowledgeGraph.quality.title", { defaultValue: "K0 质量面板" })}
         </h3>
-        <Space className="mb-3">
+        <Space.Compact className="mb-3">
+          <Space.Addon>
+            {t("knowledgeGraph.quality.version", { defaultValue: "版本" })}
+          </Space.Addon>
           <Input
             size="small"
             style={{ width: 110 }}
             value={metricsVersion}
             onChange={(e) => setMetricsVersion(e.target.value)}
-            addonBefore={t("knowledgeGraph.quality.version", {
-              defaultValue: "版本",
-            })}
           />
-        </Space>
+        </Space.Compact>
         {metricsLoading ? (
           <div className="flex justify-center py-8">
             <Spin />

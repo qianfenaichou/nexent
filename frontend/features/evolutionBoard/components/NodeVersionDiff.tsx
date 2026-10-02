@@ -23,30 +23,33 @@ import type {
   OntologyDiffResult,
   OntologyMetrics,
 } from "@/types/knowledgeGraph";
+import type { DescriptionsProps } from "antd";
 import { evolutionBoardService } from "../service";
 import { toDiffOpView } from "../diffColor";
 import type { DiffOpView } from "../types";
 
 const { Text, Title } = Typography;
 
+type DescriptionItem = NonNullable<DescriptionsProps["items"]>[number];
+
 function payloadPairs(payload: Record<string, unknown>): [string, unknown][] {
   return Object.entries(payload).filter(([, v]) => v !== undefined);
 }
 
-function MetricCell({
-  label,
-  value,
-}: {
-  label: string;
-  value: number | undefined | null;
-}) {
-  return (
-    <Descriptions.Item label={label}>
-      {value === undefined || value === null
-        ? "-"
-        : Number(value).toFixed(4).replace(/0+$/, "").replace(/\.$/, "")}
-    </Descriptions.Item>
-  );
+function metricValue(value: number | undefined | null): string {
+  return value === undefined || value === null
+    ? "-"
+    : Number(value).toFixed(4).replace(/0+$/, "").replace(/\.$/, "");
+}
+
+// `key` is passed separately from `label`: the labels embed the two version
+// strings, so comparing a version with itself would otherwise repeat a key.
+function metricItem(
+  key: string,
+  label: string,
+  value: number | undefined | null
+): DescriptionItem {
+  return { key, label, children: metricValue(value) };
 }
 
 export function NodeVersionDiff() {
@@ -137,29 +140,37 @@ export function NodeVersionDiff() {
       <Text type="secondary" className="mb-3 block text-xs">
         {t("evolutionBoard.nodeDiff.subtitle", {
           defaultValue:
-            "绿=新增 / 灰=废弃 / 金=变更。来源 GET /api/knowevo/ontology/diff（已接线）。点选节点只看该节点的 op 与 payload。",
+            "绿=新增 / 灰=废弃 / 金=变更。来源 GET /api/knowevo/ontology/diff。点选节点只看该节点的 op 与 payload。",
         })}
       </Text>
 
       <Space wrap className="mb-3">
-        <Input
-          addonBefore={t("evolutionBoard.nodeDiff.from", {
-            defaultValue: "from",
-          })}
-          value={from}
-          onChange={(e) => setFrom(e.target.value)}
-          style={{ width: 160 }}
-          aria-label={t("evolutionBoard.nodeDiff.from", {
-            defaultValue: "from",
-          })}
-        />
-        <Input
-          addonBefore={t("evolutionBoard.nodeDiff.to", { defaultValue: "to" })}
-          value={to}
-          onChange={(e) => setTo(e.target.value)}
-          style={{ width: 160 }}
-          aria-label={t("evolutionBoard.nodeDiff.to", { defaultValue: "to" })}
-        />
+        <Space.Compact>
+          <Space.Addon>
+            {t("evolutionBoard.nodeDiff.from", { defaultValue: "from" })}
+          </Space.Addon>
+          <Input
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+            style={{ width: 160 }}
+            aria-label={t("evolutionBoard.nodeDiff.from", {
+              defaultValue: "from",
+            })}
+          />
+        </Space.Compact>
+        <Space.Compact>
+          <Space.Addon>
+            {t("evolutionBoard.nodeDiff.to", { defaultValue: "to" })}
+          </Space.Addon>
+          <Input
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+            style={{ width: 160 }}
+            aria-label={t("evolutionBoard.nodeDiff.to", {
+              defaultValue: "to",
+            })}
+          />
+        </Space.Compact>
         <Button type="primary" onClick={() => void runDiff()} loading={loading}>
           {t("evolutionBoard.nodeDiff.run", { defaultValue: "对比" })}
         </Button>
@@ -184,22 +195,27 @@ export function NodeVersionDiff() {
         ) : null}
       </Space>
 
-      <Descriptions size="small" column={4} className="mb-3">
-        <MetricCell label={`${from} cov`} value={metrics.from?.cov} />
-        <MetricCell label={`${to} cov`} value={metrics.to?.cov} />
-        <MetricCell label={`${from} red`} value={metrics.from?.red} />
-        <MetricCell label={`${to} red`} value={metrics.to?.red} />
-        <MetricCell label={`${from} dep`} value={metrics.from?.dep} />
-        <MetricCell label={`${to} dep`} value={metrics.to?.dep} />
-        <MetricCell label={`${from} align`} value={metrics.from?.align} />
-        <MetricCell label={`${to} align`} value={metrics.to?.align} />
-      </Descriptions>
+      <Descriptions
+        size="small"
+        column={4}
+        className="mb-3"
+        items={[
+          metricItem("from-cov", `${from} cov`, metrics.from?.cov),
+          metricItem("to-cov", `${to} cov`, metrics.to?.cov),
+          metricItem("from-red", `${from} red`, metrics.from?.red),
+          metricItem("to-red", `${to} red`, metrics.to?.red),
+          metricItem("from-dep", `${from} dep`, metrics.from?.dep),
+          metricItem("to-dep", `${to} dep`, metrics.to?.dep),
+          metricItem("from-align", `${from} align`, metrics.from?.align),
+          metricItem("to-align", `${to} align`, metrics.to?.align),
+        ]}
+      />
 
       {error ? (
         <Alert
           type="error"
           showIcon
-          message={t("evolutionBoard.nodeDiff.error", {
+          title={t("evolutionBoard.nodeDiff.error", {
             defaultValue: "版本 diff 请求失败，可重试",
           })}
           action={

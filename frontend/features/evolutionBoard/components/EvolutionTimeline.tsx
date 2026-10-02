@@ -1,10 +1,11 @@
 "use client";
 
-// Evolution timeline: document-version events (wired alignment/diff/list)
-// stacked above the evolution-round ledger rows when that HTTP route lands.
-// Honesty (workorder)
+// Evolution timeline: document-version events (alignment/diff/list)
+// stacked above the evolution-round ledger rows (evolution/timeline).
+// Honesty:
 //   roundsFailure=pending_wiring -> Alert (route missing), not an empty list
 //   rounds=[] and no failure     -> empty state
+//   roundsFailure=unauthorized   -> 401 / expired login, re-login
 //   roundsFailure=forbidden      -> 403 tenant/RBAC notice
 // Never invent round rows.
 import { useMemo, useState } from "react";
@@ -36,6 +37,61 @@ function changeCountTags(counts?: Record<string, number>) {
   ));
 }
 
+type RoundsFailureCopy = {
+  alertType: "error" | "warning";
+  titleKey: string;
+  titleDefault: string;
+  bodyKey: string;
+  bodyDefault: string;
+  /** A standing permission refusal gains nothing from a retry click. */
+  allowRetry: boolean;
+};
+
+const GENERIC_FAILURE: RoundsFailureCopy = {
+  alertType: "error",
+  titleKey: "evolutionBoard.timeline.roundsError.title",
+  titleDefault: "演进轮次加载失败",
+  bodyKey: "evolutionBoard.timeline.roundsError.body",
+  bodyDefault:
+    "请求未成功（网络或服务端错误）。不展示虚构轮次；下方文档 diff 不受影响。",
+  allowRetry: true,
+};
+
+// Keyed by the full LoadFailureKind union: adding a kind without copy here
+// is a type error rather than a message that describes the wrong failure.
+const ROUNDS_FAILURE_COPY: Record<LoadFailureKind, RoundsFailureCopy> = {
+  pending_wiring: {
+    alertType: "warning",
+    titleKey: "evolutionBoard.timeline.roundsPending.title",
+    titleDefault: "演进轮次台账接口暂不可用",
+    bodyKey: "evolutionBoard.timeline.roundsPending.body",
+    bodyDefault:
+      "GET /api/knowevo/evolution/timeline 返回 404/405（接线后语义=路由缺失或不可用，不是空数据）。本区块不编造轮次；文档版本 diff 时间轴不受影响。",
+    allowRetry: true,
+  },
+  unauthorized: {
+    alertType: "warning",
+    titleKey: "evolutionBoard.timeline.roundsUnauthorized.title",
+    titleDefault: "登录已失效，无法读取演进轮次",
+    bodyKey: "evolutionBoard.timeline.roundsUnauthorized.body",
+    bodyDefault:
+      "服务返回 401：当前登录凭据已过期或无效，请重新登录后重试。不是空列表，请勿当成无数据。",
+    allowRetry: true,
+  },
+  forbidden: {
+    alertType: "error",
+    titleKey: "evolutionBoard.timeline.roundsForbidden.title",
+    titleDefault: "无权读取演进轮次",
+    bodyKey: "evolutionBoard.timeline.roundsForbidden.body",
+    bodyDefault:
+      "服务返回 403：当前会话租户/RBAC 不允许读取该演进台账。不是空列表，请勿当成无数据。",
+    allowRetry: false,
+  },
+  not_found: GENERIC_FAILURE,
+  server: GENERIC_FAILURE,
+  network: GENERIC_FAILURE,
+};
+
 function RoundsFailureAlert({
   kind,
   onRetry,
@@ -44,59 +100,16 @@ function RoundsFailureAlert({
   onRetry?: () => void;
 }) {
   const { t } = useTranslation();
-  if (kind === "pending_wiring") {
-    return (
-      <Alert
-        className="mb-3"
-        type="warning"
-        showIcon
-        message={t("evolutionBoard.timeline.roundsPending.title", {
-          defaultValue: "演进轮次台账接口暂不可用",
-        })}
-        description={t("evolutionBoard.timeline.roundsPending.body", {
-          defaultValue:
-            "GET /api/knowevo/evolution/timeline 返回 404/405（接线后语义=路由缺失或不可用，不是空数据）。本区块不编造轮次；文档版本 diff 时间轴不受影响。",
-        })}
-        action={
-          onRetry ? (
-            <Button size="small" onClick={onRetry}>
-              {t("common.retry", { defaultValue: "重试" })}
-            </Button>
-          ) : null
-        }
-      />
-    );
-  }
-  if (kind === "forbidden") {
-    return (
-      <Alert
-        className="mb-3"
-        type="error"
-        showIcon
-        message={t("evolutionBoard.timeline.roundsForbidden.title", {
-          defaultValue: "无权读取演进轮次",
-        })}
-        description={t("evolutionBoard.timeline.roundsForbidden.body", {
-          defaultValue:
-            "服务返回 403：当前会话租户/RBAC 不允许读取该演进台账（工单 W5 跨租户闸）。不是空列表，请勿当成无数据。",
-        })}
-      />
-    );
-  }
+  const copy = ROUNDS_FAILURE_COPY[kind];
   return (
     <Alert
       className="mb-3"
-      type="error"
+      type={copy.alertType}
       showIcon
-      message={t("evolutionBoard.timeline.roundsError.title", {
-        defaultValue: "演进轮次加载失败",
-      })}
-      description={t("evolutionBoard.timeline.roundsError.body", {
-        defaultValue:
-          "请求未成功（网络或服务端错误）。不展示虚构轮次；下方文档 diff 不受影响。",
-      })}
+      title={t(copy.titleKey, { defaultValue: copy.titleDefault })}
+      description={t(copy.bodyKey, { defaultValue: copy.bodyDefault })}
       action={
-        onRetry ? (
+        copy.allowRetry && onRetry ? (
           <Button size="small" onClick={onRetry}>
             {t("common.retry", { defaultValue: "重试" })}
           </Button>
@@ -132,7 +145,7 @@ export function EvolutionTimeline({
         : alignmentDiffs.map((row) => ({
             key: `diff:${row.diff_id}`,
             color: "blue" as const,
-            children: (
+            content: (
               <button
                 type="button"
                 aria-current={selectedId === row.diff_id ? "true" : undefined}
@@ -165,7 +178,7 @@ export function EvolutionTimeline({
         : (rounds ?? []).map((row) => ({
             key: `round:${row.round_id}`,
             color: timelineStatusColor(row.status),
-            children: (
+            content: (
               <button
                 type="button"
                 aria-current={selectedId === row.round_id ? "true" : undefined}
@@ -232,7 +245,7 @@ export function EvolutionTimeline({
       <Text type="secondary" className="mb-3 block text-xs">
         {t("evolutionBoard.timeline.subtitle", {
           defaultValue:
-            "文档版本 diff（GET /api/knowevo/alignment/diff/list，已接线）；演进轮次台账（GET /api/knowevo/evolution/timeline，异常分型 Alert，有数据才列出）。",
+            "文档版本 diff 取自 GET /api/knowevo/alignment/diff/list；演进轮次取自 GET /api/knowevo/evolution/timeline，读取失败按类型提示，有数据才列出。",
         })}
       </Text>
 

@@ -162,7 +162,7 @@ export function OntologyTreePanel({ committedRow }: Props) {
         <Alert
           type="error"
           showIcon
-          message={t("knowledgeGraph.tree.loadFailed", {
+          title={t("knowledgeGraph.tree.loadFailed", {
             defaultValue: "加载本体数据失败，请刷新后重试",
           })}
         />
@@ -178,7 +178,7 @@ export function OntologyTreePanel({ committedRow }: Props) {
             <Alert
               type="error"
               showIcon
-              message={t("knowledgeGraph.tree.renderFailed", {
+              title={t("knowledgeGraph.tree.renderFailed", {
                 defaultValue: "树渲染失败",
               })}
             />

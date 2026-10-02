@@ -1,18 +1,21 @@
-// KnowEvo evolution-board API client (L10). Thin wrapper over fetchWithAuth.
+// KnowEvo evolution-board API client. Thin wrapper over fetchWithAuth.
 //
 // DATA-SOURCE STATUS (do not fabricate rows):
 //   WIRED   GET /api/knowevo/alignment/diff/list      - document-version events
 //   WIRED   GET /api/knowevo/ontology/diff?from&to     - three-color node ops
 //   WIRED   GET /api/knowevo/ontology/versions/{v}/metrics
-//   PENDING GET /api/knowevo/evolution/timeline        - EvolutionService.timeline
-//   PENDING GET /api/knowevo/evolution/rounds/{id}     - EvolutionService.round_detail
-// The pending endpoints map 1:1 onto EvolutionService methods that already
-// exist in backend/services/knowevo/evolution_service.py; only the HTTP
-// route (knowledge_graph_app.py) is missing.
+//   WIRED   GET /api/knowevo/evolution/timeline        - EvolutionService.timeline
+//   WIRED   GET /api/knowevo/evolution/rounds/{id}     - EvolutionService.round_detail
+// Both evolution routes live on the knowevo router in
+// backend/apps/knowledge_graph_app.py and call these exact EvolutionService
+// methods; the knowevo routing-table guardrail tests keep them mounted.
+// A live 404/405 still classifies as "route unavailable" below, so a
+// stale deployment degrades to the pending-wiring Alert, never fake rows.
 //
 // listRounds / roundDetail return a discriminated union so the UI can
-// separate "empty list" from "route not wired" from "403 tenant refusal"
-// (workorder L10-R1 / W5 P0: cross-tenant reads must surface as forbidden).
+// separate "empty list" from "route not wired" from "session expired" and
+// "tenant refusal": a cross-tenant read has to surface as forbidden, and a
+// stale login as unauthorized, never as an absence of data.
 import { ApiError } from "@/services/api";
 import { fetchWithAuth } from "@/lib/auth";
 import { classifyLoadFailure, type LoadFailureKind } from "./errorClass";
@@ -89,7 +92,7 @@ export const evolutionBoardService = {
     return readResponse<OntologyMetrics>(res);
   },
 
-  /** PENDING wiring: EvolutionService.timeline(tenant_id, since). */
+  /** EvolutionService.timeline(tenant_id, since) on GET /evolution/timeline. */
   async listRounds(since?: string): Promise<RoundsLoad> {
     try {
       const qs = new URLSearchParams();
@@ -107,8 +110,9 @@ export const evolutionBoardService = {
   },
 
   /**
-   * EvolutionService.round_detail(round_id). Wired (L10-W5/α) with a
-   * tenant gate: 403 = other tenant, 404 = unknown round (not "pending").
+   * EvolutionService.round_detail(round_id) on GET /evolution/rounds/{id},
+   * behind a tenant gate: 401 = the login behind the call has expired,
+   * 403 = other tenant, 404 = unknown round (not "pending").
    */
   async roundDetail(roundId: string): Promise<RoundDetailLoad> {
     try {

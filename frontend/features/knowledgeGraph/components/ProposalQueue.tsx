@@ -209,7 +209,7 @@ export function ProposalQueue({
       <Alert
         type="error"
         showIcon
-        message={t("knowledgeGraph.queue.loadFailed", {
+        title={t("knowledgeGraph.queue.loadFailed", {
           defaultValue: "加载提案队列失败",
         })}
         action={
@@ -314,7 +314,7 @@ export function ProposalQueue({
       ) : (
         <Alert
           type="success"
-          message={t("knowledgeGraph.queue.batchDone", {
+          title={t("knowledgeGraph.queue.batchDone", {
             defaultValue: "本批已审完",
           })}
           description={`${t("knowledgeGraph.queue.confirmedCount", { defaultValue: "已确认" })} ${reviewedStats.confirmed} / ${t("knowledgeGraph.queue.rejectedCount", { defaultValue: "已否决" })} ${reviewedStats.rejected}`}

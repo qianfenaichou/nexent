@@ -191,7 +191,7 @@ export default function SkillTemplatePanel() {
         <Alert
           type="error"
           showIcon
-          message={t("skillTemplate.loadFailed.title", {
+          title={t("skillTemplate.loadFailed.title", {
             defaultValue: "模板列表加载失败",
           })}
           description={t("skillTemplate.loadFailed.body", {
@@ -208,7 +208,7 @@ export default function SkillTemplatePanel() {
         <Alert
           type="warning"
           showIcon
-          message={t("skillTemplate.pendingWiring.title", {
+          title={t("skillTemplate.pendingWiring.title", {
             defaultValue: "数据源待接线",
           })}
           description={t("skillTemplate.pendingWiring.body", {

@@ -1,9 +1,9 @@
 "use client";
 
-// Evolution board (L10): timeline + three-color node-level version compare.
-// Route (pending wiring): /evolutionBoard.
-// Honesty (workorder / red line #6)
-//   - no HTTP route for rounds  -> Alert=pending-wiring (never fake rows)
+// Evolution board: timeline + three-color node-level version compare.
+// Route: /evolutionBoard.
+// Honesty red line:
+//   - timeline list 404/405     -> Alert=pending-wiring (never fake rows)
 //   - route OK + empty list     -> empty state
 //   - 403                       -> forbidden (tenant / RBAC), not "empty"
 import { useCallback, useEffect, useState } from "react";
@@ -131,7 +131,7 @@ export default function EvolutionBoardPage() {
         <Text className="text-sm text-neutral-500">
           {t("evolutionBoard.subtitle", {
             defaultValue:
-              "时间轴（文档 diff + 演进轮次）· 三色 diff · 节点级版本对比。与 L7 演进闭环共用 EvolutionService 台账口径。",
+              "时间轴（文档 diff + 演进轮次）· 三色 diff · 节点级版本对比，与演进闭环共用同一份轮次记录。",
           })}
         </Text>
       </div>
@@ -140,7 +140,7 @@ export default function EvolutionBoardPage() {
         <Alert
           type="error"
           showIcon
-          message={t("evolutionBoard.alignmentError", {
+          title={t("evolutionBoard.alignmentError", {
             defaultValue:
               "文档版本 diff 列表加载失败（GET /api/knowevo/alignment/diff/list）",
           })}
