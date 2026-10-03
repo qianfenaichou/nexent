@@ -1,6 +1,6 @@
 # CONTEXT.md —— KnowEvo 领域术语表
 
-> 全队（含 AI 编码任务）统一语言。术语冲突时以本表为准；新术语在首次出现时补进本表（domain-modeling 纪律：glossary only，无实现细节）。
+> 全队统一语言。术语冲突时以本表为准；新术语在首次出现时补进本表（domain-modeling 纪律：glossary only，无实现细节）。
 
 ## 知识层
 

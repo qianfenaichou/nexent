@@ -13,7 +13,7 @@ knowevo/
 │   ├── apps/                         ← L1-L4 HTTP 边界（Nexent 分层铁律：apps 只做解析/鉴权）
 │   │   ├── knowledge_graph_app.py.md
 │   │   └── asset_app.py.md
-│   ├── services/knowevo/             ← 全部业务逻辑（06 层核心；实存 23 份契约，2026-10-01 补登）
+│   ├── services/knowevo/             ← 全部业务逻辑（06 层核心；实存 23 份契约）
 │   │   ├── ontology_service.py.md    （K1 本体流水线）
 │   │   ├── kg_service.py.md          （K2 图谱+GraphStore 抽象）
 │   │   ├── graph_store.py.md         （A1 存储适配器）
@@ -63,7 +63,7 @@ knowevo/
 | L5 看板 | 三面板 | frontend/SPEC | —（设计见 frontend/SPEC.md） |
 | 横切 | 评测/成本/存储 | eval/ + K8 + GraphStore | ADR-0005 / 0007 / 0001 |
 
-## 硬规则（每个编码任务开工前重读）
+## 硬规则（实现与修改前必读）
 
 1. 分层：apps 解析鉴权 → services 业务 → database ORM；注释仅英文；行宽 119（ruff）；prompt 双语成对。
 2. 只动自包含新文件；接线（router/常量/依赖注册）统一在共享接线文件集中修改。
