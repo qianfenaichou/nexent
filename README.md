@@ -6,14 +6,14 @@
 
 *Turn dormant documents into versioned knowledge — answer with evidence, evolve with standards.*
 
-![Platform](https://img.shields.io/badge/based%20on-Nexent%20v2.6.0-blue)
+![Platform](https://img.shields.io/badge/based%20on-Nexent%20v2.5.1-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Tests](https://img.shields.io/badge/tests-1327%20passed%20%2F%2033%20skipped-brightgreen)
 [![Upstream](https://img.shields.io/badge/fork%20of-ModelEngine%2FNexent-gray?logo=github)](https://github.com/ModelEngine-Group/nexent)
 
 </div>
 
-KnowEvo is a domain knowledge-asset cognition and decision agent built on **ModelEngine Nexent v2.6.0**. It activates an organization's dormant documents — guidelines, specifications, manuals that nobody can reliably query — into a **versioned knowledge-graph asset**, then serves answers as **decision cards with complete evidence chains**, and keeps the whole asset **evolving incrementally as the underlying standards change**.
+KnowEvo is a domain knowledge-asset cognition and decision agent built on **ModelEngine Nexent v2.5.1**（this fork's baseline, per the repository `VERSION` file）. It activates an organization's dormant documents — guidelines, specifications, manuals that nobody can reliably query — into a **versioned knowledge-graph asset**, then serves answers as **decision cards with complete evidence chains**, and keeps the whole asset **evolving incrementally as the underlying standards change**.
 
 Three properties distinguish it from a plain RAG stack:
 
@@ -108,7 +108,7 @@ Built on [Nexent](https://github.com/ModelEngine-Group/nexent) by ModelEngine-Gr
 
 ## 中文简介（核心段落）
 
-**KnowEvo · 领域知识资产认知与决策智能体**，基于 ModelEngine Nexent v2.6.0 构建。它把组织侧「检索不到、分不清版本、答不可溯源」的沉睡文档，激活为**带版本戳的知识图谱资产**；问答以**带完整证据链的决策卡**形式输出；并随上游标准/规范的更新**增量进化**，旧版本持续可查。
+**KnowEvo · 领域知识资产认知与决策智能体**，基于 ModelEngine Nexent v2.5.1（fork 基线，以仓内 `VERSION` 为准）构建。它把组织侧「检索不到、分不清版本、答不可溯源」的沉睡文档，激活为**带版本戳的知识图谱资产**；问答以**带完整证据链的决策卡**形式输出；并随上游标准/规范的更新**增量进化**，旧版本持续可查。
 
 **核心特性**：
 
