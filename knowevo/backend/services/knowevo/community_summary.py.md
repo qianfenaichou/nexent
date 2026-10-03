@@ -11,7 +11,7 @@
 
 ## 接口冻结
 
-> **设计注记（2026-09-30）**：`cluster_greedy_modularity` 的优化目标是**简单图**（无向边 `(src,dst)` 去重）；`modularity()` 的报告值按**多重图**计边（对外报告 Q=0.6237 即此口径）。同 pair 多关系图上二者不等；后续版本拟统一为简单图。`bridge_claims` = canonical edge key 去重后字典序前 `max_claims` 条的 claim 文本——**不同 edge key 可共享同一 claim 文本**（允许重复）；fingerprint 含 `bridge_claims` 列表，改文本去重会改指纹。
+> **设计注记（2026-09-30）**：`cluster_greedy_modularity` 的优化目标是**简单图**（无向边 `(src,dst)` 去重）；`modularity()` 是**混合口径**：`m` 与 `E_c` 按边表逐条计数（同 pair 的平行边各计一次），`K_c` 却取自 `_adjacency` 的邻居集合（已去重，即简单图度）。所以在存在同 pair 多关系的图上，该报告值既不等于纯简单图口径也不等于纯多重图口径（三口径的差异与实测值见 `competition/docs/verification-reports/review-p2-triage-2026-09-30.md` §1.1）；引用模块度 Q 必须注明口径。后续版本拟统一为简单图。`bridge_claims` = canonical edge key 去重后字典序前 `max_claims` 条的 claim 文本——**不同 edge key 可共享同一 claim 文本**（允许重复）；fingerprint 含 `bridge_claims` 列表，改文本去重会改指纹。
 
 
 ```python
