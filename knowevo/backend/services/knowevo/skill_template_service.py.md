@@ -1,6 +1,6 @@
 # skill_template_service.py —— K6 Skill 工作流模板沉淀（L4）
-**归属任务**: T-13 · 依赖: decision_service（轨迹数据）、skill_template_t（T-03）
-**依据**: [备忘录 07-K6](../../../../../docs/02-技术方案.md)
+**依赖**: decision_service（轨迹数据）、skill_template_t
+**依据**: Skill 模板归纳设计评审结论（决策轨迹 → 可复用模板，详见正文职责节）
 
 ## 职责
 轨迹收集 → n-gram 模式统计 → 人工圈选服务端 → LLM 概括成模板 → 入库与 Nexent Skill 仓库同步 → 复用度量统计 → 检索注入。
@@ -22,7 +22,7 @@ class SkillTemplateService:
     async def induce_template(self, pattern: Pattern) -> SkillTemplate:
         """Large-tier LLM: pattern + representative trajectories + parameterization
         guide → SKILL.md (frontmatter + body with {domain}/{task_type}/
-        {relation_template}/{domain_rules} variables). schema per memo 07 §2."""
+        {relation_template}/{domain_rules} variables). schema per data contract below."""
 
     # ── 入库与同步 ──────────────────────────────────────────
     async def publish(self, template: SkillTemplate) -> None:
@@ -30,18 +30,18 @@ class SkillTemplateService:
         (instance, progressive disclosure). Master/instance split:
         re-render on master edit."""
     async def instantiate(self, template_id: UUID, variables: dict[str, str]) -> SkillInstance:
-        """Cross-industry reuse: swap {domain}=government etc. (T-15 path)."""
+        """Cross-industry reuse: swap {domain}=government etc."""
 
     # ── 检索注入 (任务签名匹配) ──────────────────────────────
     async def match(self, question: str, top_k: int = 2) -> list[SkillInstance]:
         """Signature match via embedding (threshold 0.7) or edit distance.
         Inject as skill suggestion to entry Skill (progressive disclosure)."""
 
-    # ── 复用度量 (备忘录 07 §3) ──────────────────────────────
+    # ── 复用度量 ──────────────────────────────
     async def record_reuse(self, template_id: UUID, run_outcome: RunOutcome) -> None: ...
     async def reuse_stats(self) -> ReuseReport:
         """R (reuse count), S (success rate vs bare baseline), D (median edit
-        distance). 答辩目标: R>=3, S>=baseline+5pp, D<=0.2."""
+        distance). 复用目标: R>=3, S>=baseline+5pp, D<=0.2."""
 ```
 
 ## 数据契约
@@ -50,4 +50,4 @@ class SkillTemplateService:
 
 ## 验收锚点
 - `pytest test/backend/services/knowevo/test_skill_template_service.py -v`：n-gram 频率过滤、模板渲染变量替换、instantiate 跨行业、复用统计三指标。
-- T-13 端到端：≥2 模板入库 + 1 次注入调用成功 + 复用统计面板出数。
+- 端到端：≥2 模板入库 + 1 次注入调用成功 + 复用统计面板出数。

@@ -1,11 +1,11 @@
 # community_summary.py —— L5 社区摘要内核：聚类 + 确定性骨架 + global 路由
-**归属任务**: L5 社区摘要层（2026-09-29 新建）· 依据: `nexent/competition/docs/tech-optimization-2026-09-28/l5-community-summary-design-2026-09-29.md` + `KnowEvo提分总纲.md` §L5
+**新建**: 2026-09-29（L5 社区摘要层）· 依据: L5 社区摘要层设计（详见正文职责节）
 
 ## 职责
 
 把 KnowEvo 图视图聚成**社区**，为每社区产出**确定性骨架摘要**（无 LLM），并暴露一条 **global 检索 seam**：把聚合类问题排成社区命中，再展开成**有序 entity id 列表**（L6 图路形状）。纯函数、stdlib-only、零 DB、零 LLM、零 ES。与 `rrf_fusion` / `update_planner` / `budget_curve` 同款诚实分层。
 
-**生产接线不在本模块**（归 T-08/后续）：内核与 `schemas` / `kg_service` / `ingest_service` 无任何 import 关系，接线前默认检索/路由行为零变化。`cluster_fn` 是注入式 seam（聚类 callable 由调用方提供），不是生产挂点。
+**生产接线不在本模块**（属后续接线工作）：内核与 `schemas` / `kg_service` / `ingest_service` 无任何 import 关系，接线前默认检索/路由行为零变化。`cluster_fn` 是注入式 seam（聚类 callable 由调用方提供），不是生产挂点。
 
 **反向证据约束（契约级）**：Zeng et al. 2025（**arXiv:2506.06331**）指出 GraphRAG 评测存在 unrelated questions + evaluation biases 两缺陷，无偏复测后增益远比先前报告温和。故本模块**不宣称**摘要涨点；任何增益主张必须走设计 §5 的 E2 式消融，无增益如实报 null。
 
@@ -15,7 +15,7 @@
 
 
 ```python
-DEFAULT_DEPTH = 3          # 对齐 graph_store.multi_hop / KW_MULTIHOP_*（memo 10）
+DEFAULT_DEPTH = 3          # 对齐 graph_store.multi_hop / KW_MULTIHOP_*
 DEFAULT_BEAM = 3
 DEFAULT_TOP_ENTITIES = 5
 DEFAULT_MAX_CLAIMS = 3
@@ -126,13 +126,13 @@ ROUTE_GLOBAL = "G"   # additive only; R/M/RM 与默认 Route.route=ROUTE_BOTH �
 
 ## `kg_summary_t` 草案
 
-见设计 §6（迁移名预定 `v2.5.5_kw_012_knowevo_community_summary.sql`）。**本契约不冻结任何 SQL**；落库归 T-08/后续。
+见 `kg_summary_t` 落地迁移 `deploy/sql/migrations/v2.5.5_kw_012_kg_summary.sql`。**本契约不冻结任何 SQL**；落库属后续工作。
 
 ## 诚实边界
 
 - 本模块不拉检索、不调模型、不写库；社区/摘要质量完全由调用方与消融实验保证。
 - LLM 摘要质量 = `insufficient_data`（协议 stub 未跑模型）；真实聚合题增益 = `insufficient_data`，必须走 E2 式消融并遵守 Zeng null 路径。
-- 生产调用点接线归 T-08；本契约不冻结任何调用点。
+- 生产调用点接线属后续工作；本契约不冻结任何调用点。
 
 ## 验收锚点
 

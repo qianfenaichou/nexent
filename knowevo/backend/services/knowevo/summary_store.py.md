@@ -1,10 +1,10 @@
 # summary_store.py —— L5 社区摘要持久化 store：kg_summary_t 幂等写 + 版本读
-**归属任务**: T-08 后续项（2026-09-30 新建）· 依据: `nexent/competition/docs/tech-optimization-2026-09-28/l5-community-summary-design-2026-09-29.md` §6（表草案）+ 踩坑 #129/#108 前置纪律族
+**新建**: 2026-09-30 · 依据: L5 社区摘要持久化设计（表草案见下文 kg_summary_t 节）
 **迁移**: `deploy/sql/migrations/v2.5.5_kw_012_kg_summary.sql`（DDL 唯一事实源；本模块不建表、不跑迁移）
 
 ## 职责
 
-把 L5 内核（`community_summary.py`）产出的每社区摘要持久化到 `nexent.kg_summary_t`，并按 (tenant, ontology version) 读回。**只做持久化**：不聚类、不调模型、不做检索接线；`schemas.Route` 分支与 `global_route` 的生产调用点仍归 T-08——当前没有任何运行路径 import 本模块，默认检索/路由行为零变化。
+把 L5 内核（`community_summary.py`）产出的每社区摘要持久化到 `nexent.kg_summary_t`，并按 (tenant, ontology version) 读回。**只做持久化**：不聚类、不调模型、不做检索接线；`schemas.Route` 分支与 `global_route` 的生产调用点属后续接线——当前没有任何运行路径 import 本模块，默认检索/路由行为零变化。
 
 session 纪律对齐 `graph_store` / `doc_asset_service`：每次调用一个 session（context manager 退出即一次 commit），**异常不吞**。`session_factory` 可注入（离线测试用），默认解析共享 `_get_db_session`。
 
@@ -59,13 +59,13 @@ class SummaryStore:
 - SummaryRecord：`member_ids` 非空升序且 `skeleton.community_id == member_ids[0]`（保证内核 Community 可精确重建）；`level` ≥ 0；`fingerprint` 是 64 位小写 sha256 hex；`graph_snapshot_at` 为 datetime 或 None。
 - 门纪律（与迁移 CHECK `ck_kgs_llm_gate` 是同一条规则的两端）：`kind='skeleton'` 行的 `summary_text` / `model` / `llm_protocol_version` / `llm_gate_passed` 必须全 None（一列一语义）；`kind='llm'` 行必须有非空 `summary_text`、非空 `llm_protocol_version`、`llm_gate_passed is True`——**门失败的 LLM 输出不落 llm 行**（落 skeleton 行，`LLM_SUMMARY_PROTOCOL.on_gate_fail`）。`model` 若给出必须非空。
 
-### 前置纪律（坑 #129 族）
+### 前置纪律
 
-无 published 版本 / 无摄取图的租户会**静默产出零社区 → 零行**，与管线故障不可区分。生成/读取摘要前先答「该租户有没有 published 本体版本」（同构于坑 #108「连库前先答连的哪套」）。
+无 published 版本 / 无摄取图的租户会**静默产出零社区 → 零行**，与管线故障不可区分。生成/读取摘要前先答「该租户有没有 published 本体版本」。
 
 ## 表与迁移
 
-`nexent.kg_summary_t` 由 `v2.5.5_kw_012_kg_summary.sql` 定义（设计 §6 草案的落地版，差异均有 WHY 注释）：新增 `ontology_version` 列并入 UNIQUE；`member_ids` 更名 `member_stable_ids`；新增 `model` 列；UNIQUE 扩为 (tenant_id, ontology_version, community_id, level)；两个 CHECK（kind 两值词表内联 + `ck_kgs_llm_gate` 门纪律）；索引 `ix_kgs_fp(tenant_id, fingerprint)`；草案的 `ix_kgs_tenant` 被 UNIQUE 前缀取代（读路径恒为版本内）。迁移由 runner（`deploy/common/run-sql-migrations.sh`）自动登记 `nexent.schema_migrations`（文件名 + checksum），无需手工注册。ORM 模型 `KgSummary` 定义在本模块（单文件自持；**不进** `KNOWEVO_MODELS`——那是 12 张冻结域表 + T-06 run ledger 的清单，本模块也不在任何 create-all 路径上）。
+`nexent.kg_summary_t` 由 `v2.5.5_kw_012_kg_summary.sql` 定义（表草案的落地版，差异均有 WHY 注释）：新增 `ontology_version` 列并入 UNIQUE；`member_ids` 更名 `member_stable_ids`；新增 `model` 列；UNIQUE 扩为 (tenant_id, ontology_version, community_id, level)；两个 CHECK（kind 两值词表内联 + `ck_kgs_llm_gate` 门纪律）；索引 `ix_kgs_fp(tenant_id, fingerprint)`；草案的 `ix_kgs_tenant` 被 UNIQUE 前缀取代（读路径恒为版本内）。迁移由 runner（`deploy/common/run-sql-migrations.sh`）自动登记 `nexent.schema_migrations`（文件名 + checksum），无需手工注册。ORM 模型 `KgSummary` 定义在本模块（单文件自持；**不进** `KNOWEVO_MODELS`——那是 12 张冻结域表 + 摄取 run 台账的清单，本模块也不在任何 create-all 路径上）。
 
 ## 诚实边界
 
@@ -78,4 +78,3 @@ class SummaryStore:
 - `pytest test/backend/services/knowevo/test_summary_store.py -q`：离线层全绿（迁移静态断言 / SummaryRecord 校验 / fake session 幂等覆盖往返 / 版本共存与租户隔离 / 排序确定性 / 异常不吞）；
 - 全量回归：`pytest ../test/backend/services/knowevo/ -q` 基线不降；
 - `ruff check backend/services/knowevo` 0 违例；
-- 契约双副本逐字节一致（根 `knowevo/` + 仓内 `nexent/knowevo/`）。

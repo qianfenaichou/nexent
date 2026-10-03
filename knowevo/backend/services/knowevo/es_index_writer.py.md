@@ -1,5 +1,5 @@
-# es_index_writer.py —— T-08 后续之二：摄取落库后的实体 ES upsert 生产写路径
-**归属任务**: T-08 后续项之二（2026-09-30 新建）· 依据: M2 先例 `competition/experiments/entity_lookup_es_integration.py` / `asset_search_m2_real_es.py`（只读参考）+ `es_raw_list.py.md`（query 侧孪生件）
+# es_index_writer.py —— 摄取落库后的实体 ES upsert 生产写路径
+**新建**: 2026-09-30 · 依据: ES 实体检索集成先例（只读参考）+ `es_raw_list.py.md`（query 侧孪生件）
 
 ## 职责
 
@@ -33,7 +33,7 @@ def build_es_index_writer(core=None) -> EsIndexWriter | None: ...
 
 ## 语义（冻结）
 
-**显式 strict mapping**（`entity_mapping` / `asset_mapping`，M2 先例同形状）：`dynamic: "strict"`；BM25 面 = 实体 `name`/`aliases.alias`、资产 `title`；其余 keyword/integer/float/boolean；实体 `props` 为 `enabled: false` 只透传（动态映射猜子键炸 shard，坑 #153 族）；资产 `metadata` 显式子字段 + `dynamic: true` 透传（2026-09-29 实测自由文本解析炸 shard）。**mapping 不声明 `embedding` 字段**（见诚实边界）。
+**显式 strict mapping**（`entity_mapping` / `asset_mapping`，M2 先例同形状）：`dynamic: "strict"`；BM25 面 = 实体 `name`/`aliases.alias`、资产 `title`；其余 keyword/integer/float/boolean；实体 `props` 为 `enabled: false` 只透传（动态映射猜子键炸 shard）；资产 `metadata` 显式子字段 + `dynamic: true` 透传（2026-09-29 实测自由文本解析炸 shard）。**mapping 不声明 `embedding` 字段**（见诚实边界）。
 
 **IK 探测（`probe_ik`，三态入审计）**：一次 `GET _cat/plugins`（`cat.plugins(format="json")`）查 `analysis-ik`——`present`（用 `ik_max_word`/`ik_smart`）、`absent`（standard）、`error`（任何探测失败降级 standard，绝不阻塞）；结果缓存在 `audit["ik_probe"]`/`audit["ik_enabled"]`；构造注入 `ik_enabled` 时短路探测（audit 记 `injected`）。
 
@@ -60,5 +60,4 @@ def build_es_index_writer(core=None) -> EsIndexWriter | None: ...
 
 - `pytest test/backend/services/knowevo/test_es_index_writer.py -v`：36 用例离线全绿（mapping 形状 / IK 三态 + 注入短路 + 缓存 / ensure_indices 幂等与既有索引零改动 / bulk 幂等重发同 payload + 租户强制 + 坏卡丢弃 + 跨租户 `_id` 不碰撞 + bulk 错误计数 / PG 导出字段恰为 mapping 面 / 开关三态 / 摄取挂钩失败隔离 + dry-run 不触发）；
 - 挂钩回归：`test_ingest_graph_empty_span_guard.py` 全绿（默认关 → 零副作用）；
-- 全量回归：`pytest ../test/backend/services/knowevo/ -q` 基线不降 + `ruff check backend/services/knowevo mcp_servers` 0 新违例；
-- 契约双副本 IDENTICAL（根 `knowevo/` + 仓内副本）。
+- 全量回归：`pytest ../test/backend/services/knowevo/ -q` 基线不降 + `ruff check backend/services/knowevo mcp_servers` 0 新违例。

@@ -1,5 +1,5 @@
 # graph_retrieve.py —— L6-M2 图路组合函数：种子 → 逐跳 BFS → 确定性序
-**归属任务**: L6-M2 生产接线（2026-09-30 新建）· 依据: `nexent/competition/docs/tech-optimization-2026-09-28/l6-m2-recon-2026-09-29.md` §1.4/§2.2/§6 + `l6-es-rrf-design-2026-09-29.md` §3.2
+**新建**: 2026-09-30（L6-M2 生产接线）· 依据: L6 ES+RRF 检索设计（详见正文职责节）
 
 ## 职责
 
@@ -51,10 +51,9 @@ async def graph_route_cards(store, tenant_id, query, *,
 
 - 本模块不做相关性打分，只做结构序；融合语义（跨路共识）归 `rrf_fusion`。
 - PG ilike 兜底行序非契约（`graph_store.py` `_entity_lookup_ilike` 无 ORDER BY）——本模块的排序**不依赖** lookup 内序，只消费其成员与 ES-first 序。
-- 生产写路径/索引归属 T-08；本契约不冻结任何调用点（调用点 = `kg_fusion.fused_entity_cards`，见其契约）。
+- 生产写路径/索引属后续接线；本契约不冻结任何调用点（调用点 = `kg_fusion.fused_entity_cards`，见其契约）。
 
 ## 验收锚点
 
 - `pytest test/backend/services/knowevo/test_graph_retrieve.py -v`：13 用例离线全绿（双层 hop 标注 / 度数手算 / `(hop,-degree,id)` 全序 / lookup 序不破平 / 空种子零 neighbors / 空白 query / 跨路径去重最小 hop / seed_top_k·hop 透传 / 校验异常 / ordering_key 全序与缺键行为）；
 - 全量回归：`pytest ../test/backend/services/knowevo/ -q` 基线不降 + `ruff check backend/services/knowevo mcp_servers` 0 新违例；
-- 契约双副本 IDENTICAL（根 `knowevo/` + 仓内副本）。

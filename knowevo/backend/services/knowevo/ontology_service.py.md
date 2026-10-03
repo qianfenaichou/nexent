@@ -1,13 +1,13 @@
 # ontology_service.py —— K1 本体半自动构建流水线（L2 核心）
-**归属任务**: T-04（构建）/ T-05（确认 UI 的服务端）/ T-11（增量提案）· 依赖: `knowevo_models.py`(T-03)
-**依据**: [备忘录 02-K1](../../../../../docs/02-技术方案.md) · [01-K0](../../../../../docs/02-技术方案.md)
+**依赖**: `knowevo_models.py`
+**依据**: [架构决策记录](../../../docs/adr/0001-0008-已冻结架构决策.md)（ADR-0002 种子引导两级提案 / ADR-0008 弃用优先）
 
 ## 职责
 种子提取 → 两级提案 → 规则校验 → 排序入队 → 确认环服务端 → 版本化提交 → 质量指标计算。全部业务逻辑在本层；`knowledge_graph_app.py` 只做 HTTP 解析/鉴权。
 
 ## 接口冻结（函数签名）
 
-> **2026-09-28 L3 增量方法回填**：实现在冻结方法之后新增公共方法 `resolve_auto_accept_line(tenant_id, alpha=DEFAULT_ALPHA) -> tuple[float, dict]`（L3 conformal 自适应接收阈值）：从 `ontology_change_proposal_t` 读本租户人工 rejected 提案置信度作 bad 类校准集，经 `conformal.py`（stdlib-only 单侧 split-conformal）求分位数线——可交换性下保证 P(rejected 类提案越线) ≤ α；校准类太小（k>n 数学自守）→ 诚实回退固定线 `AUTO_ACCEPT_LINE`，返回 meta 标明 `method`（conformal/fixed_fallback）+ `n_calibration` + `alpha`。**调用注意**：该线必须配合严格大于（`>`）比较消费（ties 仅在 `>` 下保持保守）；现有 `auto_accept` 用 `>=`，接入前须先调整。`auto_accept`/`AUTO_ACCEPT_LINE` 本体零改动、无生产调用方 → 默认行为零变化。依据：`competition/docs/tech-optimization-2026-09-28/KnowEvo提分总纲.md` §二 L3。
+> **2026-09-28 L3 增量方法回填**：实现在冻结方法之后新增公共方法 `resolve_auto_accept_line(tenant_id, alpha=DEFAULT_ALPHA) -> tuple[float, dict]`（L3 conformal 自适应接收阈值）：从 `ontology_change_proposal_t` 读本租户人工 rejected 提案置信度作 bad 类校准集，经 `conformal.py`（stdlib-only 单侧 split-conformal）求分位数线——可交换性下保证 P(rejected 类提案越线) ≤ α；校准类太小（k>n 数学自守）→ 诚实回退固定线 `AUTO_ACCEPT_LINE`，返回 meta 标明 `method`（conformal/fixed_fallback）+ `n_calibration` + `alpha`。**调用注意**：该线必须配合严格大于（`>`）比较消费（ties 仅在 `>` 下保持保守）；现有 `auto_accept` 用 `>=`，接入前须先调整。`auto_accept`/`AUTO_ACCEPT_LINE` 本体零改动、无生产调用方 → 默认行为零变化。
 
 ```python
 class OntologyService:
@@ -24,7 +24,7 @@ class OntologyService:
     async def propose_schema(self, confirmed_classes: list[ClassRef], evidence: list[Evidence]) -> list[SchemaProposal]:
         """Props/rel-types per confirmed class. Large-tier model."""
 
-    # ── 校验 (V1-V9, 备忘录 02 §4) ───────────────────────────
+    # ── 校验 (V1-V9) ───────────────────────────
     def autofix(self, proposals: list[P]) -> list[P]:
         """V1-V5,V9 auto-repair/reject; V6/V7/V8 flagged for human review."""
     def validate_cycle(self, parent_map: dict[str, str]) -> bool: ...
@@ -52,15 +52,15 @@ class OntologyService:
 
 ## 数据契约
 - `ConceptProposal` = `{name, aliases[], parent_stable_id?, evidence_spans[], confidence, rationale, impact_hint}`
-- `Op`（操作码枚举）= `CLS_ADD|CLS_UPD|CLS_DEPRECATE|CLS_DEL|PROP_ADD|PROP_UPD|PROP_DEPRECATE|REL_ADD|REL_UPD|REL_DEPRECATE|AXIOM_ADD|AXIOM_DEL`（备忘录 01-K0 §1.1）
+- `Op`（操作码枚举）= `CLS_ADD|CLS_UPD|CLS_DEPRECATE|CLS_DEL|PROP_ADD|PROP_UPD|PROP_DEPRECATE|REL_ADD|REL_UPD|REL_DEPRECATE|AXIOM_ADD|AXIOM_DEL`
 - 本体序列化注入上限 15000 token（L4 遗留值），超限走"active 类+高频属性"裁剪器。
 
 ## 伪代码锚点
-见备忘录 02-K1 §6（build_ontology_round 主循环）。增量入口：`propose_from_pending` 与 K5 的 `trigger_source=standard_update` 共用 `ontology_change_proposal_t` 队列。
+见上文「接口冻结」各阶段注释（build_ontology_round 主循环）。增量入口：`propose_from_pending` 与 K5 的 `trigger_source=standard_update` 共用 `ontology_change_proposal_t` 队列。
 
 ## 验收锚点
 - `pytest test/backend/services/knowevo/test_ontology_service.py -v`：种子提取、排序、auto_accept 线、V1 环检测、版本 commit+diff 往返一致、K0 指标 SQL 正确性（对 fixture 小本体手算对照）。
-- 效率对照实验数据出口：`quality_metrics` + 人工基线记录表（备忘录 02 §5）。
+- 效率对照实验数据出口：`quality_metrics` + 人工基线记录表。
 
 ## 禁改清单
-上游 `backend/services/` 既有文件；本文件为新文件。接线项：无（router 挂载归 knowledge_graph_app → T-03/T-08）。
+上游 `backend/services/` 既有文件；本文件为新文件。接线项：无（router 挂载归 knowledge_graph_app）。

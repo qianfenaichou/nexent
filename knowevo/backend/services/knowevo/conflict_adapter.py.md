@@ -1,6 +1,6 @@
 # conflict_adapter.py —— A4 生产接线适配层（加法 seam）
-**归属任务**: A4 生产接线与 E10 真实语料（2026-09-30）· 依赖: `conflict_kernel`（内核契约）、`schemas.ConflictAdjudication`（冻结 wire 三元组）
-**依据**: `competition/docs/tech-optimization-2026-09-28/a4-wire-assessment-2026-09-30.md`（接线评估唯一权威）+ `a4-conflict-design-2026-09-30.md` §7
+**依赖**: `conflict_kernel`（内核契约）、`schemas.ConflictAdjudication`（冻结 wire 三元组）
+**依据**: A4 接线评估结论 + A4 冲突消解设计（详见正文职责节）
 
 ## 职责
 

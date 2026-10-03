@@ -1,5 +1,5 @@
 # kg_fusion.py —— L6-M2 kg_search 三路融合工厂（rrf_fusion 的第一个生产消费者）
-**归属任务**: L6-M2 生产接线（2026-09-30 新建）· 依据: `nexent/competition/docs/tech-optimization-2026-09-28/l6-m2-recon-2026-09-29.md` §6/§7 + `l6-es-rrf-design-2026-09-29.md` §3
+**新建**: 2026-09-30（L6-M2 生产接线）· 依据: L6 ES+RRF 三路融合设计（详见正文职责节）
 
 ## 职责
 
@@ -54,4 +54,3 @@ async def fused_entity_cards(client, store, tenant_id, query, *,
 
 - `pytest test/backend/services/knowevo/test_kg_fusion.py -v`：10 用例离线全绿（手算 RRF 三路序与 ranks/first_seen 审计 / dense 槽理由与零伪造 / graph 元数据随行 / bm25 调用参数透传 / 全空融合 / client None ValueError / 路内异常传播 / None 列表视空 / 双跑确定 / k 转发校验）；
 - 全量回归：`pytest ../test/backend/services/knowevo/ -q` 基线不降 + `ruff check backend/services/knowevo mcp_servers` 0 新违例；
-- 契约双副本 IDENTICAL（根 `knowevo/` + 仓内副本）。

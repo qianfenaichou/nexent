@@ -1,11 +1,11 @@
 # rrf_fusion.py —— L6 三路 RRF 秩融合内核
-**归属任务**: L6 ES 三路 RRF（2026-09-29 新建）· 依据: `nexent/competition/docs/tech-optimization-2026-09-28/l6-es-rrf-design-2026-09-29.md` + `KnowEvo提分总纲.md` §L6
+**新建**: 2026-09-29（L6 ES 三路 RRF）· 依据: L6 三路 RRF 融合设计（详见正文职责节）
 
 ## 职责
 
 BM25 + dense + 图召回三路有序列表的 **RRF（Reciprocal Rank Fusion, Cormack et al. SIGIR 2009）** 秩融合内核。纯函数、stdlib-only、零 DB、零 LLM、零 ES。只吃名次不吃分数——这是选 RRF 替代平台加权归一分（`elasticsearch_core.hybrid_search` 的 `w*norm_acc+(1-w)*norm_sem`）的根本理由：分数跨路不可比、max-归一对离群分敏感、w 是拍脑袋常数、且平台无第三路图召回。
 
-**生产接线不在本模块**（归 T-08/后续；与 `update_planner.py` L7 同款诚实分层）：内核与 `ingest_service`/`vectordatabase_app` 无任何 import 关系，接线前默认检索行为零变化。`retrieve_three_way` 是注入式 seam（三路 callable 由调用方提供），不是生产挂点。
+**生产接线不在本模块**（属后续接线；与 `update_planner.py` 同款诚实分层）：内核与 `ingest_service`/`vectordatabase_app` 无任何 import 关系，接线前默认检索行为零变化。`retrieve_three_way` 是注入式 seam（三路 callable 由调用方提供），不是生产挂点。
 
 ## 接口冻结
 
@@ -57,7 +57,7 @@ def retrieve_three_way(
 
 ## authority_weights 与 RRF 并存（冻结分层）
 
-权威先验（`e1_retrieval.DEFAULT_AUTHORITY_WEIGHTS`，乘性 `ranked_score = bm25 * w(authority_level)`）**只作用在各路列表构造内**（进 fuse 前）；**RRF 层禁止再乘 authority**——乘回融合分会破坏秩融合的尺度无关性。E1 离线评测路径（T-18d authority prior + per_doc_quota）不被本模块修改；两者共享同一张权重表但互不 import 对方实现。调用方在 `why` 里标注「权威是否已在路内应用」（束=可审计）。
+权威先验（`e1_retrieval.DEFAULT_AUTHORITY_WEIGHTS`，乘性 `ranked_score = bm25 * w(authority_level)`）**只作用在各路列表构造内**（进 fuse 前）；**RRF 层禁止再乘 authority**——乘回融合分会破坏秩融合的尺度无关性。E1 离线评测路径（authority prior + per_doc_quota）不被本模块修改；两者共享同一张权重表但互不 import 对方实现。调用方在 `why` 里标注「权威是否已在路内应用」（束=可审计）。
 
 ## 图路 seam（L6 增量 #1）
 
@@ -67,19 +67,19 @@ def retrieve_three_way(
 
 - 本模块不拉任何检索、不估任何分数；三路列表质量完全由调用方保证。
 - 与平台加权归一分的对照只在合成探针里做机制验证（`competition/experiments/probe_l6_rrf.py`），不构成真实库检索质量结论。
-- 生产调用点接线归 T-08；本契约不冻结任何调用点。
+- 生产调用点接线属后续工作；本契约不冻结任何调用点。
 
 ## 验收锚点
 
 - `pytest test/backend/services/knowevo/test_rrf_fusion.py -v`：33 用例离线全绿（手算 RRF 例 / 空表·单路·两路退化 / 平局 best_rank+id 破平 / 路内与跨路重复 id / id 抽取四形 / k 校验（TypeError/ValueError 分型）/ 路序置换 / `retrieve_three_way` 注入与 None 兜底）；
 - 冻结探针：`python3 competition/experiments/probe_l6_rrf.py` → `competition/deliverables/probe_l6_rrf.json`（`content_sha256` 自校验配方见该 JSON；无时间戳字段，双跑逐字节一致）；
-- 全量回归收据：见 L6 任务报告（pytest 基线不降 + ruff 0 新违例）。
+- 全量回归：pytest 基线不降 + ruff 0 新违例。
 
-## 融合 id 空间（2026-09-29 冻结，T-08 必读）
+## 融合 id 空间（2026-09-29 冻结）
 
 `fuse()` **不做**跨空间映射。同一调用内所有路 id **必须**已映射到同一空间：
 - **kg_search 语境** = 图实体空间 `stable_id`
 - **asset_search 语境** = 资产空间 `AssetHit.id`（图路二期）
 - **禁止** `document.id` 与 `stable_id` 同 fuse（静默拼接是错误）
 
-完整裁决：`competition/docs/tech-optimization-2026-09-28/l6-m2-id-space-decision-2026-09-29.md`。
+完整裁决即上述四条：同调用同空间、kg 用 `stable_id`、asset 用 `AssetHit.id`、`document.id` 禁与 `stable_id` 同 fuse。

@@ -1,5 +1,5 @@
 # budget_curve.py —— L8 人审预算-质量曲线内核
-**归属任务**: L8 内核（2026-09-29 新建）· 依据: `nexent/competition/docs/tech-optimization-2026-09-28/KnowEvo提分总纲.md` §L8 + `nexent/competition/docs/tech-optimization-2026-09-28/l8-budget-quality-protocol-2026-09-29.md`（协议唯一权威）
+**新建**: 2026-09-29（L8 内核）· 依据: 人审预算-质量曲线协议（协议唯一权威为本文档，详见正文职责节）
 
 ## 职责
 

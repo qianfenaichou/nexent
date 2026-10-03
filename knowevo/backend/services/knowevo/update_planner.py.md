@@ -1,9 +1,9 @@
 # update_planner.py —— L7 演进闭环内核：VOI 最小充分更新集
-**归属任务**: L7 内核（2026-09-29 新建）· 依据: `archive/旧计划书/05-项目综合评估与优化路线-独立评审.md` §3.3（:126-141）+ `nexent/competition/docs/tech-optimization-2026-09-28/KnowEvo提分总纲.md` §L7
+**新建**: 2026-09-29（L7 内核）· 依据: 最小充分更新集（VOI 框架）设计，详见正文职责节
 
 ## 职责
 
-演进闭环的算法内核：对一轮变更的受影响面（本体提案 P_aff ∪ 决策卡 D_aff），选**最小**人工确认/重算集合 U，使「未纳入 U 的项保持旧结论」的期望质量损失 ≤ ε。纯函数、stdlib-only、零 DB、零 LLM。与 L8 人审预算曲线共用同一 VOI 框架（一次设计两处空白 E1+A2）：本模块的 `per_item_voi` 完整暴露每项 VOI（含未选）供 L8 直接复用。数据装配（ΔS/E_aff/D_aff/P_aff → `UpdateCandidate`，含每个 p_change 的估计）归调用方；**生产接线不在本模块**（归 T-08/后续；与 asset_search M1 同款诚实分层——本内核与 `evolution_service.py` 无任何 import 关系，接线前不影响任何现有行为）。
+演进闭环的算法内核：对一轮变更的受影响面（本体提案 P_aff ∪ 决策卡 D_aff），选**最小**人工确认/重算集合 U，使「未纳入 U 的项保持旧结论」的期望质量损失 ≤ ε。纯函数、stdlib-only、零 DB、零 LLM。与 L8 人审预算曲线共用同一 VOI 框架（一次设计两处空白 E1+A2）：本模块的 `per_item_voi` 完整暴露每项 VOI（含未选）供 L8 直接复用。数据装配（ΔS/E_aff/D_aff/P_aff → `UpdateCandidate`，含每个 p_change 的估计）归调用方；**生产接线不在本模块**（属后续接线；与 asset_search 同款诚实分层——本内核与 `evolution_service.py` 无任何 import 关系，接线前不影响任何现有行为）。
 
 ## 接口冻结
 
@@ -70,7 +70,7 @@ def plan_minimal_update(
 
 - 本模块**不估计任何概率**：p_change 由调用方从变更重叠/对齐冲突等信号估出，impact 由调用方从引用计数取得；本模块只做规划。
 - cost 单位任意但全表须一致（人时或 token 二选一），`total_rebuild_cost` 同单位；跨单位混算是调用方错误，本模块不折算。
-- 生产调用点接线归 T-08/后续；本契约不冻结任何调用点。
+- 生产调用点接线属后续工作；本契约不冻结任何调用点。
 
 ## 验收锚点
 

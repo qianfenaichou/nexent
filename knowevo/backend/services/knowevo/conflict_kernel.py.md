@@ -1,11 +1,11 @@
 # conflict_kernel.py —— A4 知识冲突消解内核
-**归属任务**: A4 内核（2026-09-30 新建）· 依据: `archive/旧计划书/05-项目综合评估与优化路线-独立评审.md` §3.4（:145-153）+ `nexent/competition/docs/tech-optimization-2026-09-28/KnowEvo提分总纲.md` §A4 + 同目录 `a4-conflict-design-2026-09-30.md`（设计唯一权威）
+**新建**: 2026-09-30（A4 内核）· 依据: A4 冲突消解设计（检测→分类→消解三段，设计唯一权威为本文档接口冻结节）
 
 ## 职责
 
 知识冲突消解的算法内核：把「contested 边不自动合并 / never silently overwrite」的**原则**落成**可回放算法**——检测（同键 + 值矛盾 + valid_at 重叠）→ 分类（四类归因词表冻结）→ 消解（权威优先级 + bi-temporal 版本时钟 + 可选 LLM seam）。输出**每条冲突的裁决记录**（可溯源、可回放）。纯函数、stdlib-only、零 DB、零 LLM。
 
-与既有锚点的分工（**本模块不改它们**）：`schemas.ConflictAdjudication` / `conflict_adjudications` / `contested` / `conflict_signal` 是**接线面**（schemas.py:426-476, :672-732）；`graph_store` 的 `valid_at`/`invalid_at`/`supersede()` 是**持久化面**（其注释明确 conflict resolution is the service layer's job）；`version_pin.VersionClock` 是**时钟源**；`decision_service` 已有 contested 标记与 `conflict_adjudications` 回填（:1071）。本内核只做裁决计算，`to_wire()` 投影出 schemas 冻结三元组供后续 T-08 接线直接回填。
+与既有锚点的分工（**本模块不改它们**）：`schemas.ConflictAdjudication` / `conflict_adjudications` / `contested` / `conflict_signal` 是**接线面**（schemas.py:426-476, :672-732）；`graph_store` 的 `valid_at`/`invalid_at`/`supersede()` 是**持久化面**（其注释明确 conflict resolution is the service layer's job）；`version_pin.VersionClock` 是**时钟源**；`decision_service` 已有 contested 标记与 `conflict_adjudications` 回填（:1071）。本内核只做裁决计算，`to_wire()` 投影出 schemas 冻结三元组供后续接线直接回填。
 
 ## 接口冻结
 
@@ -138,7 +138,7 @@ L5 回答「这个社区聚合说了什么」（检索/聚合面）；A4 回答�
 ## 诚实边界
 
 - **不估计权威等级**：rank 由调用方从 `doc_asset_t` 等处装配；本模块只按给定映射/字段比较。
-- **不接生产写路径**：不写库、不调 `supersede`、不动 `schemas`/`decision_service`；接线归 T-08/后续。
+- **不接生产写路径**：不写库、不调 `supersede`、不动 `schemas`/`decision_service`；接线属后续工作。
 - **不提取 value**：关系极性/属性值由调用方填入 `value`；双空 value 的同键事实不构成值矛盾。
 - **成对而非成组**：3 路矛盾产出 3 条成对记录，不做组合归并。
 - **探针数字是合成种植面**（48/48 分类正确）**不可外推**真实语料；真实 E10 = `insufficient_data`。

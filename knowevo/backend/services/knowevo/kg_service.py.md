@@ -2,8 +2,8 @@
 
 > **2026-09-30 A4 生产接线 增量回填（加法 seam）**：`KGService.__init__` 在冻结签名之后追加可选尾参 `conflict_observer: Any | None = None`——**加法扩展，默认 None 时 merge 行为与旧版零变化**。observer 仅在 `_merge_edge` 的既有冲突分支后被调用（payload = `{existing, incoming, tenant_id}`），异常 debug 吞掉、绝不翻转 supersede/contested 决策。配套适配层 `conflict_adapter.py`（见其契约）。方法名、返回形状（`IngestReport`）、CONTRA/CONTENDED 规则表语义不变。
 
-**归属任务**: T-06（流水线）/ T-07（存储接线）· 依赖: ontology_service(active 本体)、graph_store、T-02 语料
-**依据**: [备忘录 03-K2](../../../../../docs/02-技术方案.md)
+**依赖**: ontology_service(active 本体)、graph_store、项目语料
+**依据**: [架构决策记录](../../../docs/adr/0001-0008-已冻结架构决策.md)（ADR-0004 bi-temporal 自研 / ADR-0008 弃用优先）
 
 ## 职责
 证据段级抽取（LLM 通道+表格确定性通道）→ 实体对齐三级 → bi-temporal 合并 → 待审池维护 → 更新成本记账。**存储访问全部经 GraphStore**。
@@ -22,7 +22,7 @@ class KGService:
     def fewshot_for(self, span: EvidenceSpan) -> list[Example]:
         """3 static + 2 dynamic (retrieved from confirmed-examples pool)."""
 
-    # ── 三级对齐 (备忘录 03 §2) ──────────────────────────────
+    # ── 三级对齐 ──────────────────────────────
     async def align(self, entity: Entity) -> AlignDecision:
         """L1: cosine>tau1(0.80) auto-merge → alias edge
            L2: 0.60-0.80 LLM adjudicate (merge/new + reason)
@@ -30,9 +30,9 @@ class KGService:
            Record alias_type: brand|generic|abbr on merge."""
     async def calibrate_thresholds(self, labeled_pairs: list[LabeledPair]) -> Thresholds:
         """200 human-labeled pairs → ROC → tau1(false-merge<=2%)/tau2(recall>=95%).
-        T-06 first-week experiment; result updates KW_ALIGN_* env."""
+        Calibration experiment; result updates KW_ALIGN_* env."""
 
-    # ── 合并冲突 (备忘录 03 §3.2 规则表) ─────────────────────
+    # ── 合并冲突 (规则表) ─────────────────────
     async def merge_delta(self, extractions: list[ExtractionResult]) -> IngestReport:
         """NEW→insert; CONTRA→supersede by (valid_at, authority_level);
         CONTENDED→mark contested + human queue. Never silently overwrite."""
@@ -45,7 +45,7 @@ class KGService:
     async def pending_to_proposals(self, min_mentions: int = 3) -> None:
         """Hand off high-frequency unmappables → ontology_service.propose_from_pending."""
 
-    # ── 文档版本演进 (K2 §3.3, 由 alignment_service 触发) ────
+    # ── 文档版本演进 (由 alignment_service 触发) ────
     async def ingest_new_version(self, old_doc: UUID, new_doc: UUID,
                                  changed_spans: list[SpanRef]) -> VersionIngestReport:
         """Controlled supersede: explicit-negated→invalid_at stamp;
@@ -56,16 +56,16 @@ class KGService:
                     ontology_version: str | None = None) -> KGSearchResult: ...
     async def evolution_trace(self, entity_id: str | None, decision_id: str | None) -> Timeline: ...
 ```
-> **2026-09-28 L2 增量参数回填**：`evolution_trace` 实现在冻结签名之后追加了可选尾部参数 `limit: int = 50`（事件截断上限），加法扩展、方法名与返回形状（`Timeline`）不变。依据：`competition/docs/verification-reports/l2-mcp-shape-deviation-2026-09-28.md`。
+> **2026-09-28 L2 增量参数回填**：`evolution_trace` 实现在冻结签名之后追加了可选尾部参数 `limit: int = 50`（事件截断上限），加法扩展、方法名与返回形状（`Timeline`）不变。
 
 
 ## 数据契约
 - `ExtractionResult` = `{entities: [{name, aliases, class_ref, props, tag, evidence_id}], edges: [{src, dst, rel_type, claim, tag, evidence_id}], pending: [...]}`
-- `IngestReport` = `{added, merged, superseded, contended, tokens_spent, wall_seconds}`（cost-ledger 自动记账的入口结构）
+- `IngestReport` = `{added, merged, superseded, contended, tokens_spent, wall_seconds}`（成本自动记账的入口结构）
 
 ## 批处理入口
-`pipeline/ingest_graph.py`（T-06 CLI）：`python -m services.knowevo.pipeline.ingest_graph --docs <ids|batch.json> --domain healthcare`。断点续跑（extract_run 幂等：span hash 去重）。
+`pipeline/ingest_graph.py`（CLI）：`python -m services.knowevo.pipeline.ingest_graph --docs <ids|batch.json> --domain healthcare`。断点续跑（extract_run 幂等：span hash 去重）。
 
 ## 验收锚点
 - `pytest test/backend/services/knowevo/test_kg_service.py -v`：锚定失败→pending 流转、三级对齐各分支、CONTRA 时效性+权威度 tie-break、表格通道与 LLM 通道输出 schema 一致、split 往返。
-- T-06 抽检：首批 20 份文档抽取结果人工抽检 50 条，信噪比 ≥70%（否则触发 K1 降级：中→大档，重算 K8 预算）。
+- 抽检：首批 20 份文档抽取结果人工抽检 50 条，信噪比 ≥70%（否则触发 K1 降级：中→大档，重算 K8 预算）。

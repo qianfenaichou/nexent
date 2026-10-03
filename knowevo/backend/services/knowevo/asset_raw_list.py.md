@@ -1,5 +1,5 @@
 # asset_raw_list.py —— asset_search 融合二期资产 ES 原始列表适配器
-**归属任务**: T-08 融合二期（2026-09-30 新建）· 依据: `nexent/competition/docs/tech-optimization-2026-09-28/t08-phase2-recon-2026-09-30.md` §2.2-A + `l6-m2-id-space-decision-2026-09-29.md` §2
+**新建**: 2026-09-30 · 依据: asset_search 融合二期设计结论（资产 id 空间冻结裁决，详见正文职责节）
 
 ## 职责
 
@@ -10,9 +10,9 @@
 1. `asset_bm25_hits` —— asset 融合的 BM25 原始名次列表；
 2. `asset_dense_hits` —— dense 槽位，**本回合诚实返回 `[]`**（资产索引无 `embedding` 字段；`es_index_writer` 冻结 dense 写回理由）。
 
-**查询构造禁走 `accurate_search`**（坑 #170 族）：其加权查询打 KB 的 `title`/`content`，资产索引无 `content` 会静默零命中。本模块自建 `multi_match` over `title`（`operator=and`）+ 强制 tenant filter，走 raw `client.search`。
+**查询构造禁走 `accurate_search`**：其加权查询打 KB 的 `title`/`content`，资产索引无 `content` 会静默零命中。本模块自建 `multi_match` over `title`（`operator=and`）+ 强制 tenant filter，走 raw `client.search`。
 
-环境变量在本模块读取（**不改 `backend/consts/const.py`**）：`ELASTICSEARCH_HOST` / `ELASTICSEARCH_API_KEY` + `KW_ASSET_ES_INDEX`（默认 `knowevo_assets_m2`——asset_search M2 探针灌装的验收用最小索引）。生产索引命名见 A0 决策票 `t08-es-index-name-decision-2026-09-30.md`；**本回合不建生产索引、不改 `es_raw_list` 默认**。
+环境变量在本模块读取（**不改 `backend/consts/const.py`**）：`ELASTICSEARCH_HOST` / `ELASTICSEARCH_API_KEY` + `KW_ASSET_ES_INDEX`（默认 `knowevo_assets_m2`——asset_search 探针灌装的验收用最小索引）。生产索引命名留待后续决策；**本模块不建生产索引、不改 `es_raw_list` 默认**。
 
 ## 接口冻结
 
@@ -52,11 +52,10 @@ def build_asset_raw_client(core=None) -> AssetRawListClient | None: ...
 ## 诚实边界
 
 - dense 槽空 → 融合两路满员**今天做不到**；点火门（`asset_fusion`）保证单路不表演。
-- `knowevo_assets_m2` 是验收用最小索引（standard analyzer、无 IK、无 dense、title 唯一实质检索面）；索引生命周期与写路径归 T-08 后续/运维授权。
+- `knowevo_assets_m2` 是验收用最小索引（standard analyzer、无 IK、无 dense、title 唯一实质检索面）；索引生命周期与写路径属后续运维决策。
 - 本模块不做跨 id 空间映射；`document.id` 不得与 `AssetHit.id` 同 fuse。
 
 ## 验收锚点
 
 - `pytest test/backend/services/knowevo/test_asset_raw_list.py -v`：10 用例离线全绿（id 空间塑形与丢弃 / `_id` 与 `document.id` 回退 / 租户 filter 强制 + 索引与 size 透传 / 空白 query 零调用 / dense 恒空与 multimodal 守卫 / 工厂 env 门与索引覆盖）；
-- 全量回归：`pytest ../test/backend/services/knowevo/ -q` 基线不降 + `ruff check backend/services/knowevo mcp_servers` 0 新违例；
-- 契约双副本 IDENTICAL（根 `knowevo/` + 仓内副本）。
+- 全量回归：`pytest ../test/backend/services/knowevo/ -q` 基线不降 + `ruff check backend/services/knowevo mcp_servers` 0 新违例。

@@ -1,6 +1,6 @@
 # conformal.py —— L3 单侧 split-conformal 自适应接收线内核
-**归属任务**: L3 conformal（2026-09-28 新建）· 2026-09-30 双轴审查 P1-2 补契约
-**依据**: `nexent/competition/docs/tech-optimization-2026-09-28/KnowEvo提分总纲.md` §二 L3
+**新建**: 2026-09-28（L3 conformal；2026-09-30 复核轮补契约）
+**依据**: 自适应接收线设计评审（详见正文职责节）；方法源见下行
 **方法源**: Vovk et al., *Algorithmic Learning in a Random World*（split/conformal prediction）；stdlib-only，**零新增依赖**（`math` / `collections.abc`）
 
 ## 职责
@@ -55,4 +55,3 @@ def conformal_accept_line(bad_scores: Iterable[float],
 
 - `pytest test/backend/services/knowevo/test_conformal_accept.py -v`：12 用例离线全绿（分位数手算 / n=18 None vs n=19 有线 / 空集 None / alpha 越界 ValueError / 宽松 float 转换 / 蒙特卡洛越线率 ≤ alpha+tol / `resolve_auto_accept_line` 消费面 conformal vs fixed_fallback 双路径 + meta 形状）；
 - 全量回归：`pytest ../test/backend/services/knowevo/ -q` 基线不降 + `ruff check backend/services/knowevo` 0 违例；
-- 契约双副本 IDENTICAL（根 `knowevo/` + 仓内副本）。

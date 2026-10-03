@@ -1,5 +1,5 @@
 # asset_fusion.py —— asset_search 两路融合工厂（点火门 ≥2 路）
-**归属任务**: T-08 融合二期（2026-09-30 新建）· 依据: `t08-phase2-recon-2026-09-30.md` §2.2-B + `l6-m2-id-space-decision-2026-09-29.md` §2 + L6-M2 verify §6-③
+**新建**: 2026-09-30 · 依据: asset_search 融合二期设计结论（统一 `AssetHit.id` 空间 + 点火门，详见正文职责节）
 
 ## 职责
 
@@ -8,7 +8,7 @@
 - **bm25** = `AssetRawListClient.asset_bm25_hits`：同步 SDK 调用经 `asyncio.to_thread` 下放工作线程；
 - **dense** = `AssetRawListClient.asset_dense_hits`：本回合诚实空表，冻结理由常量随 `AssetFusionOutcome.dense_reason` 入审计。
 
-**点火门（反表演规则，L6-M2 verify §6-③）**：仅当 **≥2 路非空** 才把 fuse 结果交给调用方（`fired=True`）；单路（哪怕多条命中）一律 `fired=False`、`ids=()`，调用方**原样走今日路径**。门计的是**非空路数**，不是命中总数。dense 未就绪时只有 BM25 → 门恒关 → 默认零行为变化。
+**点火门（反表演规则）**：仅当 **≥2 路非空** 才把 fuse 结果交给调用方（`fired=True`）；单路（哪怕多条命中）一律 `fired=False`、`ids=()`，调用方**原样走今日路径**。门计的是**非空路数**，不是命中总数。dense 未就绪时只有 BM25 → 门恒关 → 默认零行为变化。
 
 ## 接口冻结
 
@@ -46,5 +46,4 @@ async def fused_asset_hits(client, tenant_id, query, *,
 ## 验收锚点
 
 - `pytest test/backend/services/knowevo/test_asset_fusion.py -v`：15 用例离线全绿（点火门矩阵 0/1/2 路 / 单路不表演 / 两路手算 RRF 与 ranks / 跨路重复求和 / None 视空 / 异常传播 / client None ValueError / k 转发 / 线程化调用参数 / 双跑确定 / id 空间为 str / 跨空间 ValueError）；
-- 全量回归：`pytest ../test/backend/services/knowevo/ -q` 基线不降 + `ruff check backend/services/knowevo mcp_servers` 0 新违例；
-- 契约双副本 IDENTICAL（根 `knowevo/` + 仓内副本）。
+- 全量回归：`pytest ../test/backend/services/knowevo/ -q` 基线不降 + `ruff check backend/services/knowevo mcp_servers` 0 新违例。
