@@ -51,7 +51,7 @@ async def graph_route_cards(store, tenant_id, query, *,
 
 - 本模块不做相关性打分，只做结构序；融合语义（跨路共识）归 `rrf_fusion`。
 - PG ilike 兜底行序非契约（`graph_store.py` `_entity_lookup_ilike` 无 ORDER BY）——本模块的排序**不依赖** lookup 内序，只消费其成员与 ES-first 序。
-- 生产写路径/索引属后续接线；本契约不冻结任何调用点（调用点 = `kg_fusion.fused_entity_cards`，见其契约）。
+- 生产写路径/索引不在本契约范围；本契约不冻结任何调用点（调用点 = `kg_fusion.fused_entity_cards`，见其契约）。
 
 ## 验收锚点
 

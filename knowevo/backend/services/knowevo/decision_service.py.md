@@ -40,7 +40,7 @@ class DecisionService:
         → early termination on answerable. Failed paths kept for counterfactual."""
     async def calibrate_hops(self, questions: list[str]) -> HopCurve:
         """depth∈{1,2,3,4} grid on 30 multi-hop questions → acc/token/latency
-        curve. Fixes KW_MULTIHOP_MAX_DEPTH (L5). PPT material."""
+        curve. Fixes KW_MULTIHOP_MAX_DEPTH (L5)."""
 
     # ── 证据链组装与融合 (双路并发时) ─────────────────────────
     async def assemble_evidence(self, paths: list[Path] | PathSet,

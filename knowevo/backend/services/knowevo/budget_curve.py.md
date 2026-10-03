@@ -9,7 +9,7 @@ A2 空白 / E3 的算法内核：给定 L7 规划器的 `per_item_voi`（键序=
 
 与 L7 的复用接缝：`update_planner.plan_minimal_update.per_item_voi`（含 skipped、键序=贪心序）直接作为本模块 VOI 臂的排序输入，**只读 import，本模块不改 update_planner**。证据门（2×2 门×序）由 `gate_filter` 露出：门在排序**之前**滤掉不合格项，被门滤掉的项不消耗确认预算。
 
-数据装配（p_change/impact/confidence 的估计、真实人审分钟数）归调用方；**生产接线不在本模块**（与 update_planner / asset_search 同款诚实分层）。
+数据装配（p_change/impact/confidence 的估计、真实人审分钟数）归调用方；**生产接线同样由调用方完成**（与 update_planner / asset_search 同一分层方式）。
 
 ## 接口冻结
 

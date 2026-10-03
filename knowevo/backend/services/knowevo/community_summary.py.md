@@ -3,15 +3,15 @@
 
 ## 职责
 
-把 KnowEvo 图视图聚成**社区**，为每社区产出**确定性骨架摘要**（无 LLM），并暴露一条 **global 检索 seam**：把聚合类问题排成社区命中，再展开成**有序 entity id 列表**（L6 图路形状）。纯函数、stdlib-only、零 DB、零 LLM、零 ES。与 `rrf_fusion` / `update_planner` / `budget_curve` 同款诚实分层。
+把 KnowEvo 图视图聚成**社区**，为每社区产出**确定性骨架摘要**（无 LLM），并暴露一条 **global 检索 seam**：把聚合类问题排成社区命中，再展开成**有序 entity id 列表**（L6 图路形状）。纯函数、stdlib-only、零 DB、零 LLM、零 ES。与 `rrf_fusion` / `update_planner` / `budget_curve` 采用同一分层方式。
 
-**生产接线不在本模块**（属后续接线工作）：内核与 `schemas` / `kg_service` / `ingest_service` 无任何 import 关系，接线前默认检索/路由行为零变化。`cluster_fn` 是注入式 seam（聚类 callable 由调用方提供），不是生产挂点。
+**生产接线由调用方完成**：内核与 `schemas` / `kg_service` / `ingest_service` 无任何 import 关系，本模块不改变默认检索/路由行为。`cluster_fn` 是注入式 seam（聚类 callable 由调用方提供），不是生产挂点。
 
 **反向证据约束（契约级）**：Zeng et al. 2025（**arXiv:2506.06331**）指出 GraphRAG 评测存在 unrelated questions + evaluation biases 两缺陷，无偏复测后增益远比先前报告温和。故本模块**不宣称**摘要涨点；任何增益主张必须走设计 §5 的 E2 式消融，无增益如实报 null。
 
 ## 接口冻结
 
-> **裁决注记（2026-09-30）**：`cluster_greedy_modularity` 的优化目标是**简单图**（无向边 `(src,dst)` 去重）；`modularity()` 的报告值按**多重图**计边（与赛前对外 Q=0.6237 数字墙一致）。同 pair 多关系图上二者不等。赛后拟统一为简单图。`bridge_claims` = canonical edge key 去重后字典序前 `max_claims` 条的 claim 文本——**不同 edge key 可共享同一 claim 文本**（允许重复）；fingerprint 含 `bridge_claims` 列表，改文本去重会改指纹。
+> **设计注记（2026-09-30）**：`cluster_greedy_modularity` 的优化目标是**简单图**（无向边 `(src,dst)` 去重）；`modularity()` 的报告值按**多重图**计边（对外报告 Q=0.6237 即此口径）。同 pair 多关系图上二者不等；后续版本拟统一为简单图。`bridge_claims` = canonical edge key 去重后字典序前 `max_claims` 条的 claim 文本——**不同 edge key 可共享同一 claim 文本**（允许重复）；fingerprint 含 `bridge_claims` 列表，改文本去重会改指纹。
 
 
 ```python
@@ -126,16 +126,16 @@ ROUTE_GLOBAL = "G"   # additive only; R/M/RM 与默认 Route.route=ROUTE_BOTH �
 
 ## `kg_summary_t` 草案
 
-见 `kg_summary_t` 落地迁移 `deploy/sql/migrations/v2.5.5_kw_012_kg_summary.sql`。**本契约不冻结任何 SQL**；落库属后续工作。
+见 `kg_summary_t` 落地迁移 `deploy/sql/migrations/v2.5.5_kw_012_kg_summary.sql`。**本契约不冻结任何 SQL**；落库由 `summary_store` 承担。
 
 ## 诚实边界
 
 - 本模块不拉检索、不调模型、不写库；社区/摘要质量完全由调用方与消融实验保证。
 - LLM 摘要质量 = `insufficient_data`（协议 stub 未跑模型）；真实聚合题增益 = `insufficient_data`，必须走 E2 式消融并遵守 Zeng null 路径。
-- 生产调用点接线属后续工作；本契约不冻结任何调用点。
+- 生产调用点接线由调用方完成；本契约不冻结任何调用点。
 
 ## 验收锚点
 
 - `pytest test/backend/services/knowevo/test_community_summary.py -v`：38 用例离线全绿（确定性双跑/边序置换 / 模块度手算 0.5·0.0·5/14 / LPA 塌缩限制 / 骨架指纹稳定与敏感 / global 破平 / entities beam 语义 / prompt 协议 / tokenize / 校验异常）；
 - 冻结探针：`python3 competition/experiments/probe_l5_community.py` → `competition/deliverables/probe_l5_community.json`（`content_sha256` 自校验配方见该 JSON；无时间戳字段，双跑逐字节一致；`llm_summary_quality=insufficient_data`）；
-- 全量回归收据：`pytest ../test/backend/services/knowevo/ -q` 基线不降 + `ruff check backend/services/knowevo` 0 违例。
+- 全量回归：`pytest ../test/backend/services/knowevo/ -q` 基线不降 + `ruff check backend/services/knowevo` 0 违例。

@@ -1,7 +1,7 @@
 # es_raw_list.py —— L6-M2 实体 ES 原始列表适配器（BM25 路 + store seam + dense 槽）
 **新建**: 2026-09-30（L6-M2 生产接线）· 依据: L6 ES+RRF 检索设计（详见正文职责节）
 
-> **2026-09-30 双轴审查 P1-1 更正注记（加法；冻结签名块不动）**：本文原写「只调 `accurate_search`」已过时——实现**自建 `multi_match` DSL**（`name` + `aliases.alias`，`operator=and`）经 **`core.client.search`** 执行，**不走** `accurate_search`。原因（实现 docstring + 2026-09-30 真 ES 验收）：`accurate_search` 的 `build_weighted_query` 按 KB 字段 `title`/`content` 建权，实体索引（strict mapping：`name`/`aliases.alias`/`class_ref`）上**静默 0 命中**（bm25_count=0）。duck-type 面自此 = `core.client.search`（+未来 dense 的 `semantic_search`）；dense 路**诚实空表**不变。冻结签名块、塑形语义、租户过滤、dense 空表理由常量均零变化。
+> **2026-09-30 双轴审查更正注记（加法；冻结签名块不动）**：本文原写「只调 `accurate_search`」已过时——实现**自建 `multi_match` DSL**（`name` + `aliases.alias`，`operator=and`）经 **`core.client.search`** 执行，**不走** `accurate_search`。原因（实现 docstring + 2026-09-30 真 ES 验收）：`accurate_search` 的 `build_weighted_query` 按 KB 字段 `title`/`content` 建权，实体索引（strict mapping：`name`/`aliases.alias`/`class_ref`）上**静默 0 命中**（bm25_count=0）。duck-type 面自此 = `core.client.search`（+未来 dense 的 `semantic_search`）；dense 路**诚实空表**不变。冻结签名块、塑形语义、租户过滤、dense 空表理由常量均零变化。
 
 ## 职责
 
@@ -9,9 +9,9 @@
 
 1. `entity_bm25_hits` —— kg_search 融合的 BM25 原始名次列表；
 2. `entity_search` —— `PgJsonbGraphStore` 的 `es_client` seam（`async entity_search(tenant_id, query, top_k)`，store 的 `_maybe_await` 对协程直接 await）：生产 `_store()` 注入后 `entity_lookup` 的 ES-first 分支真正生效。**2026-09-30 Standards 审查后由 sync 改 async**（「先契约后改码」）：ES 查询经 `asyncio.to_thread` 下放线程池，避免同步 ES 调用（超时 20s×3 重试）阻塞 handler 事件循环——与融合路径 bm25 路的线程化同理由；`entity_bm25_hits` 保持 sync（kg_fusion 在调用点 to_thread），两个公开面的并发语义自此不对称、各自注明；
-3. `dense_entity_hits` —— dense 槽位，**本回合诚实返回 `[]`**（见诚实边界）。
+3. `dense_entity_hits` —— dense 槽位，**当前诚实返回 `[]`**（见诚实边界）。
 
-环境变量在本模块读取（**不改 `backend/consts/const.py`**，该文件是共享接线文件）：`ELASTICSEARCH_HOST` / `ELASTICSEARCH_API_KEY`（平台既有名）+ `KW_ENTITY_ES_INDEX`（实体索引名，默认 `knowevo_entities_m2`——探针自建自灌的验收用最小索引，生产写路径属后续接线）。
+环境变量在本模块读取（**不改 `backend/consts/const.py`**，该文件是共享接线文件）：`ELASTICSEARCH_HOST` / `ELASTICSEARCH_API_KEY`（平台既有名）+ `KW_ENTITY_ES_INDEX`（实体索引名，默认 `knowevo_entities_m2`——探针自建自灌的验收用最小索引，不含生产写路径）。
 
 ## 接口冻结
 
@@ -32,7 +32,7 @@ class EsRawListClient:
 def build_es_raw_client(core=None) -> EsRawListClient | None: ...
 ```
 
-`core` 是 duck-typed：只调 **`core.client.search`**（自建 `multi_match` DSL；**不走** `accurate_search`——见头部 P1-1 更正注记）。未来 dense 才会用 `semantic_search`；离线测试注入 fake 即可。
+`core` 是 duck-typed：只调 **`core.client.search`**（自建 `multi_match` DSL；**不走** `accurate_search`——见头部更正注记）。未来 dense 才会用 `semantic_search`；离线测试注入 fake 即可。
 
 ## 语义（冻结）
 
@@ -59,7 +59,7 @@ def build_es_raw_client(core=None) -> EsRawListClient | None: ...
 
 - **不走 `accurate_search`**（2026-09-30 真 ES 验收）：其加权查询打 KB 字段 `title`/`content`，实体索引静默 0 命中；本模块自建 `multi_match` DSL 经 `core.client.search` 执行。不得写成「复用平台 accurate_search」。
 - **dense 槽空**：实体索引无 `embedding` 字段（`KgEntity.embedding` 是 PG JSONB，无写路径回填向量到 ES），发 knn 查询会在缺字段上报错——返回 `[]` 而不是伪造检索；空表理由 = 冻结常量 `DENSE_ENTITY_DISABLED_REASON`，由 `kg_fusion.FusionOutcome.dense_reason` 记入审计。
-- `knowevo_entities_m2` 是验收用最小索引（BM25 standard analyzer，无 IK 中文分词、无 dense），索引生命周期与写路径属后续接线；本模块不得写成「生产实体检索已全部接通 ES」。
+- `knowevo_entities_m2` 是验收用最小索引（BM25 standard analyzer，无 IK 中文分词、无 dense），索引生命周期与写路径不在本模块；本模块不得写成「生产实体检索已全部接通 ES」。
 - 本模块不做任何跨 id 空间映射（`fuse` 同款纪律）；`document.id` 与 `stable_id` 不得同 fuse。
 
 ## 验收锚点

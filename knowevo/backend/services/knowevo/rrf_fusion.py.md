@@ -5,11 +5,11 @@
 
 BM25 + dense + 图召回三路有序列表的 **RRF（Reciprocal Rank Fusion, Cormack et al. SIGIR 2009）** 秩融合内核。纯函数、stdlib-only、零 DB、零 LLM、零 ES。只吃名次不吃分数——这是选 RRF 替代平台加权归一分（`elasticsearch_core.hybrid_search` 的 `w*norm_acc+(1-w)*norm_sem`）的根本理由：分数跨路不可比、max-归一对离群分敏感、w 是拍脑袋常数、且平台无第三路图召回。
 
-**生产接线不在本模块**（属后续接线；与 `update_planner.py` 同款诚实分层）：内核与 `ingest_service`/`vectordatabase_app` 无任何 import 关系，接线前默认检索行为零变化。`retrieve_three_way` 是注入式 seam（三路 callable 由调用方提供），不是生产挂点。
+**生产接线由调用方完成**（与 `update_planner.py` 同一分层方式）：内核与 `ingest_service`/`vectordatabase_app` 无任何 import 关系，本模块不改变默认检索行为。`retrieve_three_way` 是注入式 seam（三路 callable 由调用方提供），不是生产挂点。
 
 ## 接口冻结
 
-> **裁决注记（2026-09-30）**：id 抽取中 **`id is None` 视为未设置**，回落 `stable_id`（Mapping 与对象路径一致）；**非 str 且非 None** 的 id → `TypeError`，不静默回落。空串仍 `ValueError`。
+> **设计注记（2026-09-30）**：id 抽取中 **`id is None` 视为未设置**，回落 `stable_id`（Mapping 与对象路径一致）；**非 str 且非 None** 的 id → `TypeError`，不静默回落。空串仍 `ValueError`。
 
 
 ```python
@@ -67,7 +67,7 @@ def retrieve_three_way(
 
 - 本模块不拉任何检索、不估任何分数；三路列表质量完全由调用方保证。
 - 与平台加权归一分的对照只在合成探针里做机制验证（`competition/experiments/probe_l6_rrf.py`），不构成真实库检索质量结论。
-- 生产调用点接线属后续工作；本契约不冻结任何调用点。
+- 生产调用点接线由调用方完成；本契约不冻结任何调用点。
 
 ## 验收锚点
 

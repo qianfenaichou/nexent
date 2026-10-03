@@ -3,7 +3,7 @@
 
 ## 职责
 
-演进闭环的算法内核：对一轮变更的受影响面（本体提案 P_aff ∪ 决策卡 D_aff），选**最小**人工确认/重算集合 U，使「未纳入 U 的项保持旧结论」的期望质量损失 ≤ ε。纯函数、stdlib-only、零 DB、零 LLM。与 L8 人审预算曲线共用同一 VOI 框架（一次设计两处空白 E1+A2）：本模块的 `per_item_voi` 完整暴露每项 VOI（含未选）供 L8 直接复用。数据装配（ΔS/E_aff/D_aff/P_aff → `UpdateCandidate`，含每个 p_change 的估计）归调用方；**生产接线不在本模块**（属后续接线；与 asset_search 同款诚实分层——本内核与 `evolution_service.py` 无任何 import 关系，接线前不影响任何现有行为）。
+演进闭环的算法内核：对一轮变更的受影响面（本体提案 P_aff ∪ 决策卡 D_aff），选**最小**人工确认/重算集合 U，使「未纳入 U 的项保持旧结论」的期望质量损失 ≤ ε。纯函数、stdlib-only、零 DB、零 LLM。与 L8 人审预算曲线共用同一 VOI 框架：本模块的 `per_item_voi` 完整暴露每项 VOI（含未选）供 L8 直接复用。数据装配（ΔS/E_aff/D_aff/P_aff → `UpdateCandidate`，含每个 p_change 的估计）归调用方；**生产接线由调用方完成**——本内核与 `evolution_service.py` 无任何 import 关系，不改变任何现有行为。
 
 ## 接口冻结
 
@@ -70,10 +70,10 @@ def plan_minimal_update(
 
 - 本模块**不估计任何概率**：p_change 由调用方从变更重叠/对齐冲突等信号估出，impact 由调用方从引用计数取得；本模块只做规划。
 - cost 单位任意但全表须一致（人时或 token 二选一），`total_rebuild_cost` 同单位；跨单位混算是调用方错误，本模块不折算。
-- 生产调用点接线属后续工作；本契约不冻结任何调用点。
+- 生产调用点接线由调用方完成；本契约不冻结任何调用点。
 
 ## 验收锚点
 
 - `pytest test/backend/services/knowevo/test_update_planner.py -v`：28 用例离线全绿（贪心序与等号选入 / ε 提前停与空计划 / 边际停即停不复扫 / 两种 stop_reason 区分 / (kind,id) 破平 / 输入序无关确定性 / 空输入与 ΣVOI=0 退化 / 校验异常 / cost_saving_rate 数学 / per_item_voi 全暴露）；
 - 冻结探针：`python3 competition/experiments/probe_voi_minimal_update.py` → `competition/deliverables/algorithm-probes/probe-voi-minimal-update.json`（`content_sha256` 自校验配方见该 JSON；无时间戳字段，双跑逐字节一致）；
-- 全量回归收据：`competition/deliverables/pytest-2026-09-29-r3-voi.txt`。
+- 全量回归证据：`competition/deliverables/pytest-2026-09-29-r3-voi.txt`。

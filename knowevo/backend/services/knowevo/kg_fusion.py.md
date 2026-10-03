@@ -6,7 +6,7 @@
 组织 kg_search 三路（**统一在图实体 id 空间 `stable_id`**——融合 id 空间冻结裁决，`rrf_fusion.py.md` §融合 id 空间），调冻结内核 `rrf_fusion.fuse(lists, k=60)`，返回融合种子序 + FusedHit 审计：
 
 - **bm25** = `EsRawListClient.entity_bm25_hits`：平台 SDK 是**同步**调用，经 `asyncio.to_thread` 下放工作线程，不阻塞事件循环（handler 在 asyncio loop 里）；
-- **dense** = `EsRawListClient.dense_entity_hits`：本回合诚实空表，冻结理由常量随 `FusionOutcome.dense_reason` 入审计；
+- **dense** = `EsRawListClient.dense_entity_hits`：当前诚实空表，冻结理由常量随 `FusionOutcome.dense_reason` 入审计；
 - **graph** = `graph_route_cards`：种子 → 逐跳 BFS → `(hop, -degree, stable_id)` 确定性序。
 
 `retrieve_three_way` 内部是同步拉取（`_pull(fn(query))`），生产 handler 不能直接用（会阻塞 loop）；本工厂用「先 await 三路列表再 `fuse()`」的组合等价实现，`retrieve_three_way` 保持不动（M1 冻结零改动）。
@@ -43,11 +43,11 @@ async def fused_entity_cards(client, store, tenant_id, query, *,
 
 ## 诚实边界
 
-- **未来 dense 实现的并发语义（预告）**：本回合 `dense_entity_hits` 恒 `[]`（同步、零 I/O），在事件循环内直接调用无害；当 dense 未来真实现时**必须**像 bm25 路一样经 `asyncio.to_thread` 下放线程池——本契约的冻结签名不覆盖未来实现的并发语义。
+- **未来 dense 实现的并发语义（预告）**：当前 `dense_entity_hits` 恒 `[]`（同步、零 I/O），在事件循环内直接调用无害；当 dense 未来真实现时**必须**像 bm25 路一样经 `asyncio.to_thread` 下放线程池——本契约的冻结签名不覆盖未来实现的并发语义。
 
 - 本模块不保证检索质量：三路列表质量由各路（ES 索引 / 图数据）负责；dense 槽空使 kg_search 融合**实际是 bm25+graph 两路**，`dense_count=0` 与 `dense_reason` 让这件事在审计面可见，不写成「三路已满员」。
 - BM25 standard analyzer 无 IK 中文分词的召回缺口原样继承（对外不得写「中文分词已解决」）。
-- 权威先验（`e1_retrieval.DEFAULT_AUTHORITY_WEIGHTS`）本回合**未应用**于任何一路（实体卡无统一 authority 字段，侦察风险 R8）；若未来应用，只允许路内重排（进 fuse 前），RRF 层禁止再乘。
+- 权威先验（`e1_retrieval.DEFAULT_AUTHORITY_WEIGHTS`）当前**未应用**于任何一路（实体卡无统一 authority 字段，侦察风险 R8）；若未来应用，只允许路内重排（进 fuse 前），RRF 层禁止再乘。
 - `FusedHit.first_seen` 与 `ranks` 是唯一审计面；本模块不向 MCP 输出卡添加 score/why 字段（EntityCard 冻结形状不动）。
 
 ## 验收锚点

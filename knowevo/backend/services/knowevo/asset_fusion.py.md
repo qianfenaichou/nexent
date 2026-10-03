@@ -6,7 +6,7 @@
 组织 asset_search 两路（**统一在 `AssetHit.id` 空间**），调冻结内核 `rrf_fusion.fuse(lists, k=60)`，在**点火门**后返回融合序 + 审计：
 
 - **bm25** = `AssetRawListClient.asset_bm25_hits`：同步 SDK 调用经 `asyncio.to_thread` 下放工作线程；
-- **dense** = `AssetRawListClient.asset_dense_hits`：本回合诚实空表，冻结理由常量随 `AssetFusionOutcome.dense_reason` 入审计。
+- **dense** = `AssetRawListClient.asset_dense_hits`：当前诚实空表，冻结理由常量随 `AssetFusionOutcome.dense_reason` 入审计。
 
 **点火门（反表演规则）**：仅当 **≥2 路非空** 才把 fuse 结果交给调用方（`fired=True`）；单路（哪怕多条命中）一律 `fired=False`、`ids=()`，调用方**原样走今日路径**。门计的是**非空路数**，不是命中总数。dense 未就绪时只有 BM25 → 门恒关 → 默认零行为变化。
 

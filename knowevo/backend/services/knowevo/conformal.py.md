@@ -45,7 +45,7 @@ def conformal_accept_line(bad_scores: Iterable[float],
 
 ## 诚实边界
 
-- **接线债（登记，本契约不改 `auto_accept` 行为）**：保证以 **strict `>`** 陈述；`ontology_service.auto_accept` 现用 `confidence >= threshold`（`ontology_service.py:621`）。校准线一旦直接喂给现有 `auto_accept`，**tie 会使保证偏乐观**。`resolve_auto_accept_line` docstring 自陈「adjust it before ever feeding this line through」——这是**已知未修的接线债**，不是本模块内核缺陷。修法二选一（归接线任务）：`auto_accept` 改 strict `>`，或加 strict 模式。**本回合只登记，不改 `auto_accept`**（那是接线债）。
+- **接线债（在此记录，本契约不改 `auto_accept` 行为）**：保证以 **strict `>`** 陈述；`ontology_service.auto_accept` 现用 `confidence >= threshold`（`ontology_service.py:621`）。校准线一旦直接喂给现有 `auto_accept`，**tie 会使保证偏乐观**。`resolve_auto_accept_line` docstring 自陈「adjust it before ever feeding this line through」——这是**已知未修的接线债**，不是本模块内核缺陷。修法二选一（接线时处理）：`auto_accept` 改 strict `>`，或加 strict 模式。**本契约只记录此债，不改 `auto_accept`**（那是接线债）。
 - 校准类太小诚实返回 `None`（不装精确）；alpha=0.05 时 n<19 无有限线。
 - 边际保证：不承诺 auto-accepted 集合里 bad 的占比（还取决于 base rate）；不承诺 good 类通过率。
 - 可交换性是前提，不是结论——校准集分布漂移时保证失效，本模块无漂移检测。

@@ -4,13 +4,13 @@
 
 ## 职责
 
-把 L5 内核（`community_summary.py`）产出的每社区摘要持久化到 `nexent.kg_summary_t`，并按 (tenant, ontology version) 读回。**只做持久化**：不聚类、不调模型、不做检索接线；`schemas.Route` 分支与 `global_route` 的生产调用点属后续接线——当前没有任何运行路径 import 本模块，默认检索/路由行为零变化。
+把 L5 内核（`community_summary.py`）产出的每社区摘要持久化到 `nexent.kg_summary_t`，并按 (tenant, ontology version) 读回。**只做持久化**：不聚类、不调模型、不做检索接线；`schemas.Route` 分支与 `global_route` 的生产调用点由调用方接线——当前没有任何运行路径 import 本模块，默认检索/路由行为零变化。
 
 session 纪律对齐 `graph_store` / `doc_asset_service`：每次调用一个 session（context manager 退出即一次 commit），**异常不吞**。`session_factory` 可注入（离线测试用），默认解析共享 `_get_db_session`。
 
 ## 接口冻结
 
-> **裁决注记（2026-09-30）**：重建时 `skeleton_json["size"]` 与 `len(member_stable_ids)` **交叉校验**，不一致 = 改坏的行 → `ValueError`（仍不重算 fingerprint）。结构 size 事实源 = `len(member_ids)`。
+> **设计注记（2026-09-30）**：重建时 `skeleton_json["size"]` 与 `len(member_stable_ids)` **交叉校验**，不一致 = 改坏的行 → `ValueError`（仍不重算 fingerprint）。结构 size 事实源 = `len(member_ids)`。
 
 
 ```python

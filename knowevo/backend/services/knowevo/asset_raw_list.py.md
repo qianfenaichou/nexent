@@ -8,7 +8,7 @@
 两个面：
 
 1. `asset_bm25_hits` —— asset 融合的 BM25 原始名次列表；
-2. `asset_dense_hits` —— dense 槽位，**本回合诚实返回 `[]`**（资产索引无 `embedding` 字段；`es_index_writer` 冻结 dense 写回理由）。
+2. `asset_dense_hits` —— dense 槽位，**当前诚实返回 `[]`**（资产索引无 `embedding` 字段；`es_index_writer` 冻结 dense 写回理由）。
 
 **查询构造禁走 `accurate_search`**：其加权查询打 KB 的 `title`/`content`，资产索引无 `content` 会静默零命中。本模块自建 `multi_match` over `title`（`operator=and`）+ 强制 tenant filter，走 raw `client.search`。
 
