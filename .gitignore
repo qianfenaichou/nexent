@@ -118,3 +118,5 @@ competition/deliverables/submission-package/04-MCP与知识库文件实体/*.tar
 
 # 本地工作区数据（不随开源仓分发）
 /competition/
+/competition
+/competition
