@@ -24,7 +24,7 @@ LlmRouter plugs in unchanged. Persistence goes to decision_card_t (
 schema - no migration, no ALTER).
 
 Interface contract: knowevo/backend/services/knowevo/decision_service.py.md;
-algorithm source: memo 04-(02-technical-plan 3.1-3.4).
+the algorithm design is frozen in that contract.
 Design inspired by: Adaptive-RAG's rule-then-classify routing (2403.14403)
 and HippoRAG's graph-informed path ranking (2409.14866), both reimplemented
 against this repo's own graph seam - attribution per 03-development-plan 4.2.

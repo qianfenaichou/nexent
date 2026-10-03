@@ -8,7 +8,7 @@ lets concurrent tasks (/b/c) code against a single contract without
 importing each other's unfinished files.
 
 Contract source: knowevo/backend/services/knowevo/kg_service.py.md
-(interface frozen) and memo 02-tech-plan §2.3 (extraction/alignment).
+(interface frozen), which also fixes the extraction/alignment payloads.
 
 Two Pydantic models also live here : ``DecisionCardContract`` is the
 *wire-format* validator for the decision-card JSON that writes and
@@ -214,7 +214,7 @@ class PendingSummary:
 
 # ---------------------------------------------------------------------------
 # Geometry helper (no numpy dependency; 20k-scale cosine stays in the
-# service layer per memo 11 #8: pgvector absent, JSONB float arrays).
+# service layer: pgvector absent, JSONB float arrays).
 # ---------------------------------------------------------------------------
 
 def cosine(a: list[float], b: list[float]) -> float:
@@ -250,7 +250,7 @@ def normalize_name_key(name: str) -> str:
 
 # ---------------------------------------------------------------------------
 # Decision layer : routes, evidence chains, decision cards.
-# Field names follow the frozen card JSON in memo 04-section 3, so the
+# Field names follow the frozen decision-card JSON schema, so the
 # payload persisted to decision_card_t is the schema itself.
 # ---------------------------------------------------------------------------
 
@@ -462,7 +462,7 @@ class KnowledgeStamp:
 
 @dataclass
 class DecisionCard:
-    """The user-facing output (memo 04-section 3 JSON, as a dataclass).
+    """The user-facing decision-card JSON schema, as a dataclass.
 
     ``calibration_applied`` is deliberately explicit: when no calibration
     table exists in eval_run_t the confidences pass through unchanged, and

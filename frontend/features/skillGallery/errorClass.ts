@@ -1,7 +1,6 @@
-// Classify skill-gallery apply fallbacks. The honesty contract (workorder
-// red line #6 / PENDING_WIRING table) is: a failed server apply must fall
-// back to local render WITHOUT claiming reuse_count was bumped. The reason
-// string is what the UI shows - never a silent success.
+// Classify skill-gallery apply fallbacks. The honesty contract is: a failed
+// server apply must fall back to local render WITHOUT claiming reuse_count
+// was bumped. The reason string is what the UI shows - never a silent success.
 export type ApplyFallbackReason =
   "route_pending" | "template_missing" | "forbidden" | "server" | "network";
 

@@ -1,6 +1,6 @@
 """
 Synthetic graph generator (PoC) - deterministic 20k-entity / 30k-edge
-graph for the A1 benchmark probes (memo 09 3.1/3.2):
+graph for the A1 benchmark probes:
 
     P1  multi-hop p95 < 1.5s @ 20k entities / 30k edges
     P2  batch supersede p95 < 200ms

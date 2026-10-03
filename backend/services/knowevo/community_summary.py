@@ -55,7 +55,7 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
-# Multi-hop caps match graph_store.multi_hop / KW_MULTIHOP_* (memo 10).
+# Multi-hop caps match graph_store.multi_hop / KW_MULTIHOP_*.
 DEFAULT_DEPTH = 3
 DEFAULT_BEAM = 3
 

@@ -10,8 +10,8 @@ dataclasses in schemas.py. HTTP parsing/auth lives in the future
 knowledge_graph_app.py (+); GraphStore and the MCP surface are.
 
 Interface contract frozen in knowevo/backend/services/knowevo/
-kg_service.py.md; algorithm source: memo 03-(02-technical-plan 2.3/2.4)
-and the P0 fixes: external primary-key blocking and ontology
+kg_service.py.md; key design decisions carried by that contract:
+external primary-key blocking and ontology
 subgraph retrieval replacing the 15k full-injection bomb.
 Design inspired by: graphiti's bi-temporal merge model (supersede +
 invalid_at stamping), graphify's deterministic parsing (schema.py).

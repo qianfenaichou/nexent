@@ -13,9 +13,8 @@ decision_card_render / skill_template_apply / asset_search - single
 source of truth: KG_MCP_TOOL_NAMES in backend/tool_collection/mcp/
 kg_tools.py). asset_search closed the last frozen-vocabulary gap on
 2026-09-29 (asset-search charter M1/M3: DocAssetService.search_assets +
-this wrapper; the I/O follows the landed capability, deviation from the
-memo-10 §1 sketch registered in competition/docs/verification-reports/
-asset-search-shape-deviation-2026-09-29.md).
+this wrapper; the I/O follows the landed capability rather than the
+original sketch in the frozen vocabulary contract).
 
 Every tool returns used_tokens / elapsed_ms so the cost ledger can collect
 from the outermost boundary (SPEC discipline 2).

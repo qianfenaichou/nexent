@@ -801,7 +801,7 @@ STREAM_STATUS_EVENT = "event: stream_status\n"
 # External Memory Provider Configuration
 MEMORY_PROVIDER_PLUGINS_DIR = os.getenv("MEMORY_PROVIDER_PLUGINS_DIR", "")
 
-# Knowevo knowledge-model configuration (memo 10 section 3; env list frozen,
+# Knowevo knowledge-model configuration (env list frozen,
 # per-task inventions are forbidden - new variables require a new brief).
 # Three-tier model routing plan (model ids as registered in the platform).
 KW_LLM_SMALL_MODEL_ID = os.getenv("KW_LLM_SMALL_MODEL_ID", "")

@@ -437,7 +437,7 @@ async def list_evolution_rounds(
     Newest-first RoundSummary rows. The frontend accepts either a bare
     list or {rounds: []}; we return the wrapped shape to match
     /skill-template/list and /alignment/diff/list. A store failure is a
-    502, never a fake empty timeline (PENDING_WIRING honesty rule).
+    502, never a fake empty timeline (honesty rule).
     """
     _, tenant_id, _ = _require_workbench_context(authorization)
     since_dt = None
@@ -493,7 +493,7 @@ async def get_evolution_round(
 class SkillTemplateApplyRequest(BaseModel):
     """Body of POST /skill-template/apply (L10 skillGallery).
 
-    Field name is ``name`` (frontend contract, PENDING_WIRING W5), not
+    Field name is ``name`` (frontend contract), not
     the MCP tool's ``template_name``. Values are stringified by the
     service and merged over the template defaults; unknown {placeholders}
     survive untouched.
@@ -510,7 +510,7 @@ async def apply_skill_template(
     """Instantiate a mined SKILL.md template (write path: reuse_count+1).
 
     This is the HTTP twin of the MCP skill_template_apply tool. Honesty
-    contract (PENDING_WIRING): a failure here must surface as HTTP error
+    contract: a failure here must surface as HTTP error
     so the gallery falls back to local render WITHOUT claiming a server
     apply; this route never fabricates a reuse_count on the error path
     and never calls record_reuse_outcome (outcome is unknown at apply).

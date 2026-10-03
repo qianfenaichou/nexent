@@ -4,8 +4,8 @@ Knowevo knowledge model database layer (12 domain tables + 1 run ledger).
 Self-contained module following the upstream per-domain ``*_db.py`` pattern
 (see ``backend/database/a2a_agent_db.py``): models live in their own
 ``DeclarativeBase`` so importing this module never touches the upstream
-``db_models`` registry. DDL source of truth: memo 10-A2/A3 section 2
-(deploy/sql/migrations/v2.5.5_kw_001_knowevo_core.sql).
+``db_models`` registry. DDL source of truth:
+deploy/sql/migrations/v2.5.5_kw_001_knowevo_core.sql.
 
 All service-layer queries MUST filter by ``tenant_id`` (multi-tenant
 isolation, aligned with upstream database modules).
@@ -32,7 +32,7 @@ from sqlalchemy.orm import DeclarativeBase
 
 SCHEMA = "nexent"
 
-# UUID primary keys (memo 10: "id UUID PK" across all 12 tables).
+# UUID primary keys ("id UUID PK" across all 12 tables).
 _TENANT_ID_DOC = "Tenant ID for multi-tenancy isolation"
 
 
@@ -114,7 +114,7 @@ class KgEntity(KnowevoTableBase):
     props = Column(JSONB, server_default=text("'{}'::jsonb"),
                    doc="{prop_name: {value, valid_at, invalid_at, source}}")
     # JSONB float array; cosine similarity computed in service layer
-    # (upstream Postgres image ships no pgvector extension - memo 11 #8).
+    # (the upstream Postgres image ships no pgvector extension).
     embedding = Column(JSONB, doc="Float array embedding of name+summary")
     status = Column(String(16), nullable=False, server_default=text("'active'"),
                     doc="active | deprecated | split")

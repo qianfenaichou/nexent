@@ -10,7 +10,7 @@ the knowevo layer), and every current-view query reuses ``valid_now`` so
 the bi-temporal semantics live in one place.
 
 Contract: knowevo/backend/services/knowevo/graph_store.py.md (frozen);
-algorithm source: memo 09-A1 (02-technical-plan 2.6). The PoC benchmark
+the algorithm design is frozen in that contract. The PoC benchmark
 probes (P1 multi-hop p95 < 1.5s @ 20k/30k, P2 supersede p95 < 200ms) run
 against the synthetic graph in pipeline/gen_synthetic_graph.py.
 
@@ -202,7 +202,7 @@ class Path:
 
 
 # ---------------------------------------------------------------------------
-# The seam (contract frozen, do not add methods without a memo update)
+# The seam (contract frozen, do not add methods without updating the contract)
 # ---------------------------------------------------------------------------
 
 class GraphStore(ABC):
@@ -600,7 +600,7 @@ class PgJsonbGraphStore(GraphStore):
         """
         if not seeds:
             return []
-        depth = min(depth, 3)  # guardrail: 3 is the max hop (memo 10)
+        depth = min(depth, 3)  # guardrail: 3 is the max hop
         beam = max(1, min(beam, 5))
         paths: list[Path] = [Path(entities=[s]) for s in seeds]
         for _ in range(depth):

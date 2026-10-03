@@ -21,7 +21,7 @@ so retrieval alone is structurally wrong for version-sensitive questions.
 Constraining the walk itself is the honest fix.
 
 Contract: knowevo/backend/services/knowevo/decision_service.py.md;
-memo 04-; algorithm source 02-technical-plan 3.2.
+the algorithm design is frozen in that contract.
 Design inspired by: graphiti's bi-temporal validity windows (attribution
 per 03-development-plan 4.2).
 """
