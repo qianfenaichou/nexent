@@ -67,7 +67,7 @@ bash deploy/knowevo/up.sh
 .\deploy\knowevo\up.ps1
 ```
 
-Then open `http://localhost:3000`, create a tenant and administrator, register your models, and create the KnowEvo agent. The full walkthrough — tenant initialization, model registration, agent/Skill/MCP configuration — is in **[`competition/docs/reproduce-README.md`](competition/docs/reproduce-README.md)**.
+Then open `http://localhost:3000`, create a tenant and administrator, register your models, and create the KnowEvo agent. The full walkthrough — tenant initialization, model registration, agent/Skill/MCP configuration — is in `competition/docs/reproduce-README.md` (shipped with the evaluation workspace, not in the git tree).
 
 ### Reproduce the evaluation
 
@@ -126,7 +126,7 @@ cd nexent
 bash deploy/knowevo/up.sh        # Windows: .\deploy\knowevo\up.ps1
 ```
 
-评测复现入口链见 **[`competition/docs/reproduce-README.md`](competition/docs/reproduce-README.md)**（部署 → 租户/模型 → 测试套件 → 消融管线 → 离线探针 → 快照核对；代码与机制层无需任何密钥即可复现）。
+评测复现入口链见 `competition/docs/reproduce-README.md`（随评测工作区分发，不在 git 树内）：部署 → 租户/模型 → 测试套件 → 消融管线 → 离线探针 → 快照核对；代码与机制层无需任何密钥即可复现。
 
 **可核验数字**：测试基线 1327 passed / 33 skipped；医疗域 58 份语料 → 112 合格段 → 1,019 实体 / 1,337 关系 / 136 证据 → 33 张可溯源决策卡；五臂消融 A1 纯 RAG 0.7069 → A2 +图检索 0.7500；多跳查询 p95 = 12.5 ms（2 万实体/3 万边 PoC）。
 
