@@ -81,11 +81,11 @@ Real platform captures; the chat and decision-card shots are interlocked with ro
 
 | Chat QA with live tool calls | Decision card with evidence chain |
 |---|---|
-| ![Chat QA on the running platform](competition/deliverables/T-27-chat-qa-1.png) | ![Decision card with version stamp and expandable evidence chain](competition/deliverables/T-23-decision-card.png) |
+| ![Chat QA on the running platform](docs/assets/chat-qa-with-tool-calls.png) | ![Decision card with version stamp and expandable evidence chain](docs/assets/decision-card-evidence-chain.png) |
 
 | Same question, knowledge clock 2021 → honest refusal | Same question, knowledge clock 2025 → recommendation with evidence |
 |---|---|
-| ![Version pinned to 2021 clock: insufficient evidence](competition/deliverables/T-23-version-compare-2021clock.png) | ![Version pinned to 2025 clock: recommendation with evidence chain](competition/deliverables/T-23-version-compare-2025clock.png) |
+| ![Version pinned to 2021 clock: insufficient evidence](docs/assets/version-pinned-2021-refusal.png) | ![Version pinned to 2025 clock: recommendation with evidence chain](docs/assets/version-pinned-2025-answer.png) |
 
 ## 🧩 What changed vs upstream
 
