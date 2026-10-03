@@ -71,7 +71,7 @@ class TestTableMetadata:
 
     def test_own_base_isolated_from_upstream(self):
         # Own declarative base: must not share the upstream TableBase registry
-        # (memo 11 #3: per-domain Base, a2a_agent_db pattern).
+        # (per-domain declarative base, mirroring the a2a_agent_db pattern).
         from database.db_models import TableBase as UpstreamTableBase
         assert KnowevoTableBase is not UpstreamTableBase
         assert not issubclass(KgEntity, UpstreamTableBase)
@@ -152,7 +152,7 @@ class TestBiTemporalPredicate:
 
 
 class TestConstEnvVars:
-    """Frozen env list from memo 10 section 3 must be present in const.py."""
+    """The frozen KnowEvo env list must be present in const.py."""
 
     def test_const_module_has_kw_section(self):
         backend_dir = os.path.abspath(os.path.join(

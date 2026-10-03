@@ -193,7 +193,7 @@ class TestRouting:
         assert route.level == "L1" and route.confidence == 1.0
 
     def test_every_lookup_rule_has_a_pattern_and_a_name(self):
-        assert len(LOOKUP_RULES) == 6, "memo 04-freezes six rules"
+        assert len(LOOKUP_RULES) == 6, "the contract freezes six lookup rules"
         for rule in LOOKUP_RULES:
             assert rule["name"] and rule["pattern"]
 
@@ -1456,7 +1456,7 @@ class TestPayloadSerialization:
         assert default_entry["evidence_id"] is None
 
     def test_entry_shape_is_frozen_keys_plus_evidence_id(self):
-        """Pin the payload entry shape: the memo 04-frozen keys plus
+        """Pin the payload entry shape: the contract-frozen keys plus
         the additive extensions the implementation grew (contested first,
         then evidence_id - 2026-09-29 L4 prerequisite, contract backfilled
         in decision_service.py.md). Removing or renaming a key fails here

@@ -5,12 +5,11 @@ Closes the last frozen-vocabulary gap: the tool surface is now 9/9
 same dual-registration assertions as the earlier tools (
 the two registration surfaces must never drift) plus the handler
 behaviour over a single-seam fake service (RelationStore style, no
-internal mocking) and the memo-10 shape-deviation pin.
+internal mocking) and the frozen shape-deviation pin.
 
 Layer 1 (always runs): schema source, guardrails, handler behaviour,
 tenant resolution priority, structured errors on failure, and the
-memo-10 deviation pin (see competition/docs/verification-reports/
-asset-search-shape-deviation-2026-09-29.md).
+frozen shape-deviation pin for asset_search.
 """
 import sys
 from pathlib import Path
@@ -318,12 +317,11 @@ class TestAssetSearchGuardrails:
 
 
 # ---------------------------------------------------------------------------
-# memo-10 shape-deviation pin (2026-09-29)
+# frozen shape-deviation pin (2026-09-29)
 # ---------------------------------------------------------------------------
 
-class TestMemo10ShapeDeviationPin:
-    """The frozen memo-10 §1 asset_search row (archive/04-算法与架构决策
-    备忘录/10-A2-MCP工具面与A3版本模型.md:16) sketches
+class TestAssetSearchShapeDeviationPin:
+    """The frozen vocabulary-contract sketch for asset_search
     ``{query, modality?: list, authority_level?} ->
     {assets: [{doc_id, modality, version, anchor_span}]}``. The implemented
     I/O follows the landed DocAssetService capability instead (asset-search
@@ -338,14 +336,14 @@ class TestMemo10ShapeDeviationPin:
         props = AssetSearchInput.model_json_schema()["properties"]
         assert set(props) == {"query", "modality", "doc_type",
                               "authority_min", "include_superseded", "limit"}
-        # deviation vs memo-10: single-value modality filter (not a list)
+        # deviation from the original sketch: single-value modality filter (not a list)
         # and an authority floor (authority_min), not an exact level.
         assert "authority_level" not in props
         modality_types = {v.get("type")
                           for v in props["modality"]["anyOf"]}
         assert modality_types == {"string", "null"}, (
             "modality is one optional string (exact filter), not the "
-            "memo-10 sketch's [text, table, image] list")
+            "the original sketch's [text, table, image] list")
 
     def test_output_card_shape_is_the_landed_capability(self):
         from mcp_servers.knowevo_mcp.schemas import AssetCard
@@ -354,7 +352,7 @@ class TestMemo10ShapeDeviationPin:
         assert set(props) == {"id", "asset_no", "title", "modality",
                               "doc_type", "authority_level", "score", "why",
                               "parse_status", "parse_quality", "superseded"}
-        # deviation vs memo-10 sketch: no doc_id/version/anchor_span; the
+        # deviation from the original sketch: no doc_id/version/anchor_span; the
         # audit channel is why (+ parse_status/parse_quality/superseded).
         assert "doc_id" not in props and "anchor_span" not in props
         assert props["why"]["type"] == "object"
