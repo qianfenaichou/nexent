@@ -1,4 +1,4 @@
-"""Evolution-round orchestration and version ledger (L4).
+"""Evolution-round orchestration and version ledger.
 
 Contract (frozen, authoritative): ``knowevo/backend/services/knowevo/
 evolution_service.py.md``. This module is the missing implementation of
@@ -190,7 +190,7 @@ class RoundReport:
 
 @dataclass
 class RoundSummary:
-    """Timeline row (L5 dashboard / ``kg_evolution_trace`` share this)."""
+    """Timeline row (evolution board and ``kg_evolution_trace`` share this)."""
 
     round_id: str
     at: str | None
@@ -652,7 +652,7 @@ class EvolutionService:
         record.status = STATUS_ROLLED_BACK
         return new_id
 
-    # ── timeline surface (L5 dashboard + kg_evolution_trace share this) ──
+    # ── timeline surface (evolution board + kg_evolution_trace share this) ──
 
     async def timeline(self, tenant_id: str,
                        since: datetime | None = None) -> list[RoundSummary]:

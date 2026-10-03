@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 # Fallback tenant for local CLI runs; real callers pass --tenant.
 DEFAULT_TENANT = "00000000-0000-0000-0000-000000000001"
 
-# Cost-ledger row target (competition/docs/cost-ledger.md). Appended, one
+# Cost-ledger row target. Appended, one
 # JSON line per run; the ledger stays grep-able and conflict-free.
 COST_LEDGER_PATH = Path(__file__).resolve().parents[4] / "competition" / "docs" / "cost-ledger.md"
 

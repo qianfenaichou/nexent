@@ -15,7 +15,7 @@ function statusCodeOf(err: unknown): number | null {
 /**
  * Map a failed POST /skill-template/apply to a fallback reason.
  *
- * After W10 lands, HTTP 404 is "template not found" (the route's KeyError
+ * Once the apply route lands, HTTP 404 is "template not found" (the route's
  * mapping), NOT "route not wired" - copy must not claim pending wiring.
  * 405 is still the unwired/disabled-method signal.
  *

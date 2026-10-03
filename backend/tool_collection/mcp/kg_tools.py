@@ -2,7 +2,7 @@
 KnowEvo Local-MCP inner registration - kg_search + kg_stats,
 kg_multi_hop, decision_card_render, skill_template_apply
 the L2 completion kg_evolution_trace / ontology_diff /
-evidence_verify (2026-09-28) and asset_search (asset-search charter M3,
+evidence_verify (2026-09-28) and asset_search (2026-09-29,
 2026-09-29 - the frozen-vocabulary surface is now 9/9 registered).
 
 This is the second registration surface of the same tool handlers: the

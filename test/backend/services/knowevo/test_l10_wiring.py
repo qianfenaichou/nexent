@@ -1,12 +1,12 @@
-"""L10 wiring routes in apps/knowledge_graph_app.py (W5 evolution + W10 apply).
+"""Evolution-board and skill-gallery wiring in apps/knowledge_graph_app.py.
 
 Layer 1 (always runs): endpoint behavior with the auth seam and the service
 seam monkeypatched - no database, no HTTP server. Endpoints are called as
 plain async functions (same style as test_knowledge_graph_app.py).
 
-P0 (verify report #1): round_detail has no tenant filter in the store, so
+Tenant gate: round_detail has no tenant filter in the store, so
 the HTTP route must refuse another tenant's round (403 by default).
-W10 body field is ``name`` (frontend), not the MCP tool's ``template_name``.
+The apply body field is ``name`` (frontend), not the MCP tool's
 """
 import asyncio
 import sys
@@ -141,7 +141,7 @@ def _report(tenant_id=TENANT_A, **over):
     return RoundReport(**base)
 
 
-# ── W5: evolution timeline ───────────────────────────────────────────
+# ── evolution timeline ───────────────────────────────────────────────────
 
 
 def test_w5_timeline_wraps_rounds_and_count(monkeypatch):
@@ -184,7 +184,7 @@ def test_w5_timeline_store_down_is_502(monkeypatch):
     assert exc.value.status_code == 502
 
 
-# ── W5 P0: round_detail tenant gate ──────────────────────────────────
+# ── round_detail tenant gate ─────────────────────────────────────────────
 
 
 def test_w5_round_detail_same_tenant_ok(monkeypatch):
@@ -201,7 +201,7 @@ def test_w5_round_detail_same_tenant_ok(monkeypatch):
 
 
 def test_w5_round_detail_cross_tenant_rejected(monkeypatch):
-    """P0 (verify report #1): store.get_round filters by id only; the HTTP
+    """Tenant gate: store.get_round filters by id only; the HTTP
     layer must refuse another tenant's round. Workorder default is 403;
     if leadership switches to 404, flip the expected status here too.
     """
@@ -241,7 +241,7 @@ def test_w5_round_detail_store_down_is_502(monkeypatch):
     assert exc.value.status_code == 502
 
 
-# ── W10: skill-template apply ────────────────────────────────────────
+# ── skill-template apply ─────────────────────────────────────────────────
 
 
 def test_w10_apply_happy_path_returns_server_payload(monkeypatch):

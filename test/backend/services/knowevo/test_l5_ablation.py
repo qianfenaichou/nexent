@@ -1,4 +1,4 @@
-"""Tests for the L5 zero-LLM ablation probe (probe_l5_ablation).
+"""Tests for the zero-LLM ablation probe (probe_l5_ablation).
 
 Spec anchors:
 - design doc ``competition/docs/tech-optimization-2026-09-28/

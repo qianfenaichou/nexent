@@ -185,7 +185,7 @@ export function InstantiateModal({
             result.reason === "route_pending"
               ? t("skillGallery.clientPreview.body", {
                   defaultValue:
-                    "POST /api/knowevo/skill-template/apply 尚未接线（工单 L10-W10），本次仅做确定性占位替换；reuse_count 未增加。服务端实例化可用 MCP skill_template_apply。",
+                    "POST /api/knowevo/skill-template/apply 尚未接入后端路由，本次仅做确定性占位替换；reuse_count 未增加。服务端实例化可用 MCP skill_template_apply。",
                 })
               : result.reason === "forbidden"
                 ? t("skillGallery.clientPreview.forbiddenBody", {

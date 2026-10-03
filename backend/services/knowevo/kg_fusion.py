@@ -1,4 +1,4 @@
-"""kg_search three-way fusion factory (L6-M2 wiring, 2026-09-30).
+"""kg_search three-way fusion factory (wiring, 2026-09-30).
 
 The first production consumer of the frozen RRF kernel
 (``rrf_fusion.fuse``). One async entry point organises the three kg_search

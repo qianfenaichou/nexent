@@ -1,7 +1,7 @@
 """Semantic topic alignment with statistical false-positive control.
 
-Why this module exists (2026-09-23, session B · algorithm-optimization work order
-§3.2 / review-feedback §5.3 C-1..C-4)
+Why this module exists (2026-09-23, on the review feedback for the topic
+calibrator)
 --------------------------------------------------------------------------
 The topic-level calibrator (:func:`alignment_service.calibrate_topic`)
 matches a gold topic to a machine group when they share at least
@@ -10,8 +10,8 @@ matches a gold topic to a machine group when they share at least
 turned out to sit on a cliff: recall is 9/9 at ``min_shared_tokens=2`` and
 collapses to 3/9 at ``min_shared_tokens=3``.
 
-Measured root cause (this session, zero-LLM inspection of
-``competition/deliverables/alignment-diff.json``)
+Measured root cause (zero-LLM inspection of
+the alignment diff report this module was written against)
 --------------------------------------------------------------------
 * 682 of 691 change items carry exactly one ``points`` entry, and for the 684
   ``source == "deterministic"`` items that entry is a *structural placeholder*:
@@ -55,10 +55,10 @@ What this module does instead
    where R is the group set declared for the real topics and S the group set
    declared for the decoys. ``|R ∩ S|`` is the false-positive count.
 
-Estimand discipline (work order §3.2, mandatory)
+Estimand discipline (mandatory)
 ------------------------------------------------
-``alignment_precision_pooled`` is **not** the same quantity as 's
-``64/517``. That number is a *relatedness rate* whose denominator is every
+``alignment_precision_pooled`` is **not** the same quantity as the
+``64/517`` figure quoted earlier. That number is a *relatedness rate* whose denominator is every
 machine group and which carries no false-positive count. These two must never be
 placed side by side as if they measured the same thing.
 

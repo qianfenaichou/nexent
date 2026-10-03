@@ -1,4 +1,4 @@
-"""L6 three-way RRF rank fusion kernel (2026-09-29).
+"""Three-way RRF rank fusion kernel (2026-09-29).
 
 Reciprocal Rank Fusion (Cormack et al., SIGIR 2009) over N ranked lists
 (production use is three: BM25 + dense + graph):
@@ -9,7 +9,7 @@ with 1-based ranks and the classic default k = 60. RRF consumes *ranks*
 only - it never reads relevance scores - so it can fuse heterogeneous
 retrievers (BM25, dense, graph) whose scores are not on a common scale.
 That is exactly why it replaces the platform's weighted-normalised hybrid
-score for the L6 three-way route (see the L6 design doc).
+score for the three-way route (BM25, dense, graph).
 
 Why not the platform formula: ``ElasticSearchCore.hybrid_search`` combines
 two routes as ``w * norm_accurate + (1-w) * norm_semantic`` (max-normalised

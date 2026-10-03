@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-// Regression test for pitfalls #48 (fixed in commit 0c4f613e3): direct URL
+// Regression test: direct URL
 // navigation to camelCase routes (/knowledgeGraph, /decisionCard,
 // /skillTemplate) was redirected to home because the route guard compared the
 // URL path (which keeps its casing) against accessibleRoutes (which authService
@@ -23,8 +23,8 @@ import test from "node:test";
 //   tests/agentSelectorSwitchOrder.test.ts reads the real source file and pins
 //   its behavior contract with regex, no React required.
 //
-// This test therefore (1) pins the three normalization sites to the exact
-// formulas shipped in 0c4f613e3 so a revert is caught, and (2) re-evaluates
+// This test therefore (1) pins the three normalization sites to their exact
+// shipped formulas so a revert is caught, and (2) re-evaluates
 // the review-mandated scenarios against those very formulas transcribed below,
 // locking the fixed semantics.
 
@@ -37,7 +37,7 @@ const sideNavigationPath = new URL(
   import.meta.url
 );
 
-test("route guard pins the three 0c4f613e3 normalization sites in useAuthorization.ts", async () => {
+test("route guard pins the three normalization sites in useAuthorization.ts", async () => {
   const source = await readFile(useAuthorizationPath, "utf8");
 
   // Site 1: the guard normalizes the URL-cased cleanPath once and reuses it in
@@ -63,11 +63,11 @@ test("side navigation menu filter lowercases route.path (site 3)", async () => {
   );
 });
 
-// Behavioral lock: transcribe the exact formulas above (identical token-per-
-// token to the source) and run the scenarios the r18 review mandated. These
-// reference predicates are kept inline and asserted against the source in the
-// two tests above, so a regression in the source (e.g. dropping a toLowerCase)
-// also trips these assertions.
+// Behavioral lock: transcribe the exact formulas above (token-for-token
+// identical to the source) and run the scenarios the lowercase-normalization
+// contract requires. These reference predicates are kept inline and asserted
+// against the source in the two tests above, so a regression in the source
+// (e.g. dropping a toLowerCase) also trips these assertions.
 
 function evalCanAccessRoute(
   accessibleRoutes: string[],

@@ -14,7 +14,7 @@ Routes this round (mirroring the kg_search factory shape):
   round (the asset index carries no embedding field); the frozen audit
   reason rides on the outcome instead of a fabricated score.
 
-Ignition gate (the anti-theatre rule from L6-M2 verify §6-③): fuse output
+Ignition gate (the anti-theatre rule): fuse output
 is handed to the caller only when **at least two routes are non-empty**.
 A single-route ranked list is not fusion; it is that route's own order
 with a RRF costume. The gate therefore stays closed while dense is empty

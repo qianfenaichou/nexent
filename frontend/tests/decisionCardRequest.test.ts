@@ -6,13 +6,13 @@ import {
   // @ts-ignore -- Node's built-in TypeScript runner needs the extension.
 } from "../types/decisionCard.ts";
 
-// T-25 pins the POST /knowevo/decision/card body builder. The contract is:
+// Tests for the POST /knowevo/decision/card body builder. The contract is:
 //  - as_of (business/fact time) and ontology_version are separate optional
 //    pins, each carried only when non-empty;
 //  - with neither set the body must stay key-for-key identical to the
-//    pre-T-25 payload (question, mode) so existing callers are unaffected.
+//    legacy payload (question, mode) so existing callers are unaffected.
 
-test("default request keeps the pre-T-25 body: question + mode only", () => {
+test("default request keeps the legacy body: question + mode only", () => {
   const body = buildDecisionCardRequest({ question: "eGFR 45?", mode: "full" });
 
   assert.deepEqual(body, { question: "eGFR 45?", mode: "full" });
@@ -41,7 +41,7 @@ test("as_of alone is carried without ontology_version", () => {
   assert.equal("ontology_version" in body, false);
 });
 
-test("version + as_of are both carried (the T-23 version-compare recipe)", () => {
+test("version + as_of are both carried (version-compare recipe)", () => {
   const body = buildDecisionCardRequest({
     question: "q",
     ontologyVersion: "v1.0.0",

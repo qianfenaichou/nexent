@@ -414,7 +414,7 @@ async def list_skill_templates(
 
 
 def _evolution_service(tenant_id: str):
-    """Read-only EvolutionService for the L10 evolution-board routes.
+    """Read-only EvolutionService for the evolution-board routes.
 
     Same lazy-import discipline as _skill_template_service: the service
     opens a DB session pool on first use, which must not happen at
@@ -432,7 +432,7 @@ async def list_evolution_rounds(
     since: str | None = Query(None),
     authorization: str | None = Header(None),
 ):
-    """Read-only evolution-round timeline for the L10 board.
+    """Read-only evolution-round timeline for the evolution board.
 
     Newest-first RoundSummary rows. The frontend accepts either a bare
     list or {rounds: []}; we return the wrapped shape to match
@@ -467,7 +467,7 @@ async def get_evolution_round(
 ):
     """Full report of one evolution round (read-only).
 
-    Tenant gate (P0): round_detail loads by id alone, so the route must
+    Tenant gate: round_detail loads by id alone, so the route must
     refuse a round that belongs to another tenant (defence in depth on
     top of the workbench permission check).
     """
@@ -491,7 +491,7 @@ async def get_evolution_round(
 
 
 class SkillTemplateApplyRequest(BaseModel):
-    """Body of POST /skill-template/apply (L10 skillGallery).
+    """Body of POST /skill-template/apply (skill gallery).
 
     Field name is ``name`` (frontend contract), not
     the MCP tool's ``template_name``. Values are stringified by the

@@ -1,8 +1,8 @@
-"""Tests for the L7 minimal-sufficient-update planner (update_planner).
+"""Tests for the minimal-sufficient-update planner (update_planner).
 
 Spec anchors: workspace archive doc
 ``archive/旧计划书/05-项目综合评估与优化路线-独立评审.md`` §3.3 and
-``competition/docs/tech-optimization-2026-09-28/KnowEvo提分总纲.md`` §L7.
+the minimal-review-set design (see the service docstring).
 
 Semantics pinned here (every asserted float literal was verified by actually
 running the implementation first - : never back-fill expected
@@ -323,7 +323,7 @@ class TestCostSavingRate:
 
 
 # ---------------------------------------------------------------------------
-# 8. per_item_voi fully exposed (L8 reuse point)
+# 8. per_item_voi fully exposed (budget-curve reuse point)
 # ---------------------------------------------------------------------------
 
 
@@ -341,7 +341,7 @@ class TestPerItemVoiExposure:
         assert list(plan.per_item_voi) == ["p1", "d1", "d4"]  # greedy order
         assert [x.id for x in plan.selected] == ["p1", "d1"]
         assert [x.id for x in plan.skipped] == ["d4"]
-        # L8 reuse: the ranking can be rebuilt from the plan alone
+        # Budget-curve reuse: the ranking can be rebuilt from the plan alone
         ranked = sorted(plan.per_item_voi.items(), key=lambda kv: -kv[1])
         assert [k for k, _ in ranked] == ["p1", "d1", "d4"]
 

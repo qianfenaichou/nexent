@@ -58,7 +58,7 @@ class Entity:
     values (None after the LLM tried) route to the pending pool.
     ``ext_id`` carries an external identity primary key when the source
     text mentions one (ATC code, NMPA approval number, insurance code);
-    P0 fix: alignment blocking prefers ext_id/alias-table over similarity.
+    Alignment blocking prefers ext_id/alias-table over similarity.
     """
     name: str
     class_ref: str | None = None
@@ -279,7 +279,7 @@ class Route:
     """Routing verdict plus how it was reached.
 
     ``level`` records which layer decided (L1 rule / L2 few-shot / L3
-    default-safe), because the E6 experiment measures route hit rate per
+    default-safe), because route hit rate is measured per
     layer and the escalation rule (>=2 signature failures) needs to know
     whether a decision was a confident classification or a fallback.
     """
@@ -311,7 +311,7 @@ class AssetHit:
     ``score`` is the ES hybrid relevance normalized to 0-1 against the
     returned set (top hit = 1.0); the PG ilike fallback has no relevance
     signal and scores 0.0. ``why`` keeps every hit auditable (the
-    "every bundle auditable" ruling, asset-search charter §7-3):
+    "every bundle auditable" ruling):
 
     - ES path: ``{"es_score_raw": <raw>, "matched": "title+metadata",
       "filters_applied": {...}, "parse_gate": "processed"}`` - the raw
@@ -322,7 +322,7 @@ class AssetHit:
       "filters_applied": {...}}``.
 
     ``parse_quality`` is surfaced for audit only - no quality threshold is
-    invented (the charter defines none); the single parse gate is
+    invented (none is defined); the single parse gate is
     ``parse_status == "processed"``.
     """
     id: str
@@ -514,7 +514,7 @@ class DecisionCard:
 
 @dataclass
 class HopCurve:
-    """Output of calibrate_hops: one row per depth (L5 calibration).
+    """Output of calibrate_hops: one row per depth.
 
     Each row is {depth, accuracy, tokens, latency_ms, n_questions}; the
     curve is what fixes KW_MULTIHOP_MAX_DEPTH with evidence instead of a

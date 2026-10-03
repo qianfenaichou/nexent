@@ -35,7 +35,7 @@ ALLOWED_PROP_TYPES = {"string", "float", "int", "bool", "enum[]", "date", "ref"}
 # auto-accept line, three-condition AND gate.
 AUTO_ACCEPT_LINE = KW_AUTO_ACCEPT_LINE
 
-# 15k token injection cap for ontology summaries (L4 carried value).
+# 15k token injection cap for ontology summaries (carried-over value).
 ONTOLOGY_SUMMARY_TOKEN_LIMIT = 15000
 
 # proposal batch ceiling per expert session (30-minute constraint).
@@ -144,7 +144,7 @@ def estimate_tokens_cjk(obj: Any) -> int:
 def truncate_ontology_summary(classes: list[dict[str, Any]],
                               token_limit: int = ONTOLOGY_SUMMARY_TOKEN_LIMIT
                               ) -> list[dict[str, Any]]:
-    """L4 guard: when the serialized ontology exceeds the injection budget,
+    """Injection-budget guard: when the serialized ontology exceeds the budget,
     keep active classes first (by 'freq'), then trim their property lists
     until the estimate fits."""
     def cls_tokens(c: dict[str, Any]) -> int:

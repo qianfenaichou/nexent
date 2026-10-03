@@ -1,6 +1,6 @@
-"""L5 community-summary persistence store (follow-up, 2026-09-30).
+"""Community-summary persistence store (follow-up, 2026-09-30).
 
-The knowevo-layer persistence for the L5 kernel (``community_summary.py``):
+The knowevo-layer persistence for the kernel in ``community_summary.py``:
 one row per (tenant_id, ontology_version, community_id, level) in
 ``nexent.kg_summary_t`` (migration ``v2.5.5_kw_012_kg_summary.sql`` - the
 DDL source of truth; this module never creates tables). ``save_summaries``
@@ -31,8 +31,7 @@ silently yields zero communities and zero rows; callers must answer
 "which published version does this tenant have" BEFORE saving or loading.
 
 Contract: knowevo/backend/services/knowevo/summary_store.py.md (frozen);
-design source: competition/docs/tech-optimization-2026-09-28/
-l5-community-summary-design-2026-09-29.md section 6.
+design source: the community-summary contract, section 6.
 """
 from __future__ import annotations
 
@@ -94,7 +93,7 @@ def _require_int_min(value: Any, what: str, minimum: int) -> int:
 
 
 class KgSummary(KnowevoTableBase):
-    """L5 community-summary row (kw_012).
+    """Community-summary row (``kg_summary_t``, migration kw_012).
 
     Defined here rather than in knowevo_db so the summary persistence
     layer stays one self-owned file (the migration remains the DDL source
@@ -222,7 +221,7 @@ class SummaryRecord:
 
 
 class SummaryStore:
-    """Persistence for L5 community summaries (kg_summary_t).
+    """Persistence for community summaries (kg_summary_t).
 
     ``session_factory`` is injectable for offline tests (mirrors
     DocAssetService); the default resolves the shared session context

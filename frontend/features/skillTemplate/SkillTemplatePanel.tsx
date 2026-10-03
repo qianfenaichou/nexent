@@ -213,7 +213,7 @@ export default function SkillTemplatePanel() {
           })}
           description={t("skillTemplate.pendingWiring.body", {
             defaultValue:
-              "模板列表的只读 HTTP 路由（GET /api/knowevo/skill-template/list）尚未接线：T-20 轮次的后端暴露仅有 skill_template_apply MCP 工具（模板实例化已可用），为不越权改动 T-19 领地（knowledge_graph_app.py），本页暂以真实状态示人而非编造数据。模板清单当前可用 psql 查询 nexent.skill_template_t 核实。",
+              "模板列表的只读 HTTP 路由（GET /api/knowevo/skill-template/list）尚未接线：后端目前仅暴露 skill_template_apply MCP 工具，模板实例化已可用，但列表数据源未接入，因此本页如实展示待接线状态而非占位数据。模板清单也可用 psql 查询 nexent.skill_template_t 核实。",
           })}
         />
       ) : null}

@@ -12,7 +12,7 @@ kg_evolution_trace / ontology_diff / evidence_verify /
 decision_card_render / skill_template_apply / asset_search - single
 source of truth: KG_MCP_TOOL_NAMES in backend/tool_collection/mcp/
 kg_tools.py). asset_search closed the last frozen-vocabulary gap on
-2026-09-29 (asset-search charter M1/M3: DocAssetService.search_assets +
+2026-09-29 (wraps DocAssetService.search_assets +
 this wrapper; the I/O follows the landed capability rather than the
 original sketch in the frozen vocabulary contract).
 
@@ -206,7 +206,7 @@ class SkillTemplateApplyInput(BaseModel):
 
 # ---------------------------------------------------------------------------
 # asset_search (frozen vocabulary; closed 2026-09-29 by the asset-search
-# charter M1/M3) - the registered-asset retrieval tool, a wrapper over
+# frozen vocabulary) - the registered-asset retrieval tool, a wrapper over
 # DocAssetService.search_assets (services/knowevo/doc_asset_service.py)
 # ---------------------------------------------------------------------------
 

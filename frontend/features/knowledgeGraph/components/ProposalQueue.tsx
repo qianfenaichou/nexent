@@ -38,7 +38,7 @@ interface Props {
   onSessionCommitted?: (row: OntologyVersionRow) => void;
 }
 
-const PAGE_DEFAULT = 40; // K1 ss3: batch ceiling per expert session
+const PAGE_DEFAULT = 40;  // batch ceiling per expert review session
 
 export function ProposalQueue({
   pageSize = PAGE_DEFAULT,

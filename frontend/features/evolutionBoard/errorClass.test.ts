@@ -1,5 +1,6 @@
 // Unit tests for load-failure classification (honest empty vs pending-wiring).
-// After W5/α lands: list 404 = still unwired; single-round 404 = not_found.
+// Once the board route is wired: list 404 = still unwired; single-round 404 =
+// not_found.
 import assert from "node:assert/strict";
 import test from "node:test";
 

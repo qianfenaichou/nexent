@@ -1,4 +1,4 @@
-"""Raw-list ES adapter for the kg_search three-way RRF fusion (L6-M2).
+"""Raw-list ES adapter for the kg_search three-way RRF fusion.
 
 The fusion kernel (``rrf_fusion.fuse``) consumes ranked hit lists whose
 items expose a string id in ONE shared id space. This adapter is the
@@ -39,7 +39,7 @@ platform's existing ES env names):
 - ``ELASTICSEARCH_HOST`` / ``ELASTICSEARCH_API_KEY``: ES credentials;
 - ``KW_ENTITY_ES_INDEX``: entity index name, default
   ``ENTITY_INDEX_DEFAULT`` (the minimal verification index filled by the
-  L6-M2 probes; the production write path stays upstream-owned).
+  offline probes; the production write path stays upstream-owned).
 
 ``build_es_raw_client`` returns ``None`` when the host env is absent -
 every caller then keeps today's behaviour bit for bit. Exceptions from

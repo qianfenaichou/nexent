@@ -1,7 +1,7 @@
 """
-KnowEvo version-pinned traversal - the algorithm core of B2.
+KnowEvo version-pinned traversal - the algorithm core of the pinned walk.
 
-Literature gap B2 (02-technical-plan 3.2): no prior work constrains a
+The gap this closes: nothing in the prior art constrains a
 multi-hop graph walk to the facts that were valid *as of a named knowledge
 version*. This module is where that definition lives in code, on purpose:
 the pinned-walk predicate is a pure function over edge time windows so it

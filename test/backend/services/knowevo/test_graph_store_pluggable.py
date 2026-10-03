@@ -1,4 +1,4 @@
-"""Contract tests for the pluggable GraphStore seam (A1 second backend).
+"""Contract tests for the pluggable GraphStore seam (second backend).
 
 Run the same frozen surface against PgJsonbGraphStore and MemoryGraphStore
 so ``KW_GRAPH_STORE_BACKEND`` is a live switch, not a dead declaration.

@@ -1,12 +1,10 @@
-"""L7 evolution-loop kernel: minimal sufficient update set (VOI greedy planner).
+"""Evolution-loop kernel: minimal sufficient update set (VOI greedy planner).
 
-Pure-function planner for the "minimal sufficient update set" algorithm
-(spec: workspace archive doc ``05-项目综合评估与优化路线-独立评审.md`` §3.3,
-lines 126-141; mirrored in ``competition/docs/tech-optimization-2026-09-28/
-KnowEvo提分总纲.md`` §L7). Given the affected surface of one change wave
-(ontology proposals P_aff and decision cards D_aff), select the smallest
-human-confirmation / recompute set U such that the expected quality loss of
-keeping the OLD conclusion for everything outside U stays within epsilon.
+Pure-function planner for the "minimal sufficient update set" algorithm:
+given the affected surface of one change wave (ontology proposals P_aff and
+decision cards D_aff), select the smallest human-confirmation / recompute
+set U such that the expected quality loss of keeping the OLD conclusion for
+everything outside U stays within epsilon.
 
 Each item carries three caller-supplied signals:
 
@@ -58,7 +56,7 @@ Honest layering: this kernel is stdlib-only, DB-free and LLM-free. Turning
 deltaS / E_aff / D_aff / P_aff into UpdateCandidate rows - including every
 p_change estimate - belongs to the caller; wiring a production call site is
 out of scope here (/ follow-up). ``per_item_voi`` exposes EVERY
-candidate's VOI (selected and skipped alike) so the L8 human-review budget
+candidate's VOI (selected and skipped alike) so the human-review budget
 curve can reuse the same ranking without re-deriving it.
 """
 
@@ -151,7 +149,7 @@ def plan_minimal_update(
         - ``selected``: U, in greedy (VOI-descending) order;
         - ``skipped``: everything not in U, in the same deterministic order;
         - ``per_item_voi``: id -> VOI for EVERY candidate (selected and
-          skipped), in greedy order - the L8 reuse point;
+          skipped), in greedy order - the reuse point for the budget curve;
         - ``residual_expected_loss``: running sum of VOI left unselected
           (mathematically the total VOI minus the selected VOI); after an
           epsilon stop it is guaranteed <= epsilon;

@@ -1581,7 +1581,7 @@ const AssistantMessage: FC<{
                     />
                   );
                 }
-                // KnowEvo decision card (T-19). Pure-additive branch: fires
+                // KnowEvo decision card. Pure-additive branch: fires
                 // only for a data part named "decision-card"; until the chat
                 // adapter emits one it falls through untouched.
                 if (

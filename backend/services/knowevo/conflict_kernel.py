@@ -1,4 +1,4 @@
-"""A4 knowledge-conflict reconciliation kernel (spec 05 §3.4 three-layer).
+"""Knowledge-conflict reconciliation kernel: detect, classify, resolve.
 
 Pure function, stdlib-only: no DB, no LLM, no third-party imports. The
 three frozen layers are:

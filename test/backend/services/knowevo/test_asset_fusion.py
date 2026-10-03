@@ -2,7 +2,7 @@
 
 ``fused_asset_hits`` is the asset-context consumer of the frozen RRF
 kernel. Id space is strictly ``AssetHit.id``. The ignition gate is the
-anti-theatre rule from L6-M2: **at least two non-empty routes** before
+anti-theatre rule: **at least two non-empty routes** before
 fuse output is handed to the caller; a single-route list must not be
 dressed up as fusion. Dense is honestly empty this round, so with only
 BM25 the gate stays closed and the handler keeps today's path bit for bit.

@@ -5,7 +5,7 @@ Runs the three-stage change detector over two documents registered in
 affected-surface analysis and the VOI minimal update set, writing a JSON
 report to ``--out``.
 
-Acceptance-command shapes from competition/tasks/-brief.md:
+Acceptance-command shapes:
 
     python -m services.knowevo.pipeline.diff_guidelines \
         --old guide-2020 --new guide-2024 \
@@ -58,7 +58,7 @@ from services.knowevo import alignment_service as als
 DEFAULT_CORPUS = _REPO_ROOT / "competition" / "corpus"
 DEFAULT_CACHE = _REPO_ROOT / "competition" / ".alignment-cache"
 
-# The gold seed uses the abbreviated change-type vocabulary of the L9 seed
+# The gold seed uses the abbreviated change-type vocabulary of the seed
 # table; the detector uses the full names.
 _GOLD_TYPE_MAP = {
     "ADD": "ADD",
@@ -121,7 +121,7 @@ def document_text(asset_no: str, corpus_root: Path, cache_root: Path) -> str:
 
 
 def parse_gold(path: Path) -> list[dict]:
-    """Parse a gold seed: JSON list, or the markdown table used by the L9 seed.
+    """Parse a gold seed: JSON list, or the markdown table used by the seed.
 
     A row without an explicit verification verdict becomes ``unverified`` so
     it can never inflate precision/recall. A row typed ``UNC`` (unchanged
@@ -221,7 +221,7 @@ def _match_anchor(item: als.ChangeItem, gold_rows: list[dict]) -> str:
 def calibrate_loose(machine: list[als.ChangeItem], gold: list[dict]) -> als.Calibration:
     """P/R where only *evaluable* gold rows count, using loose matching.
 
-    ``calibrate_pr`` matches anchors exactly; the L9 seed's anchors are
+    ``calibrate_pr`` matches anchors exactly; the seed's anchors are
     section titles while the detector emits numbered paths, so this wrapper
     matches on the gold row's domain label as well. The honesty rule is
     unchanged: unverified rows are excluded from both sides, and so are
@@ -435,7 +435,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--tenant", help="tenant UUID; enables impact analysis + persistence")
     parser.add_argument("--corpus", default=str(DEFAULT_CORPUS))
     parser.add_argument("--cache", default=str(DEFAULT_CACHE))
-    parser.add_argument("--gold", help="gold seed (.json or the L9 markdown table)")
+    parser.add_argument("--gold", help="gold seed (.json or the markdown table)")
     parser.add_argument("--out", required=True, help="report JSON output path")
     parser.add_argument("--impact-only", action="store_true",
                         help="skip gold calibration and persistence, report impact only")

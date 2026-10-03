@@ -6,11 +6,11 @@ GraphStore.reachable_decisions).
 
 The tool surface has two registration forms - the standalone FastMCP
 server (mcp_servers/knowevo_mcp/server.py) and the Local-MCP inner
-registration (backend/tool_collection/mcp/kg_tools.py). Pitfall #27 was
+registration (backend/tool_collection/mcp/kg_tools.py). An earlier drift had
 exactly this pair drifting apart, so the same dual-registration
 assertions as the earlier tools apply here, plus the frozen-vocabulary
 accounting: the SPEC.md 8-tool list is fully covered since 2026-09-29,
-when asset_search closed the last gap (asset-search charter M1/M3; the
+when asset_search closed the last gap (the
 2026-09-28 gap pin retired into the closure assertion below).
 
 Layer 1 (always runs): schema source, guardrails, handler behaviour over
@@ -169,10 +169,10 @@ class TestL2Registration:
 
     def test_frozen_vocabulary_gap_closed(self):
         # 2026-09-29 M3 closure: the asset_search backend capability
-        # (DocAssetService, asset-search charter M1) and its MCP wrapper (M3)
+        # (DocAssetService) and its MCP wrapper
         # landed; the former gap pin
         # test_frozen_vocabulary_gap_is_exactly_asset_search (2026-09-28)
-        # retires into this closure assertion (charter M3).
+        # retires into this closure assertion.
         from tool_collection.mcp.kg_tools import KG_MCP_TOOL_NAMES
 
         assert FROZEN_EIGHT - set(KG_MCP_TOOL_NAMES) == set()

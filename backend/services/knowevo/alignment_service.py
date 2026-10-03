@@ -1244,7 +1244,7 @@ def topic_tokens(text: str | None) -> set[str]:
 
     ASCII words of length >= 2 are kept as written. CJK has no delimiter, so
     a run is shingled into character trigrams: tokenising a CJK run as one
-    token made a whole clause a single un-matchable unit (the r14 calibration
+    token made a whole clause a single un-matchable unit (the calibration
     bug), while a segmenter would add a dependency. Trigrams are the smallest
     shingle that still discriminates topics ("控制目" vs "代谢手") without
     one. Nothing here reads the gold seed, so the same text always yields the

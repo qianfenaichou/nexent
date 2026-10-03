@@ -1,4 +1,4 @@
-"""Split-conformal acceptance line for proposal auto-accept (L3, 2026-09-28).
+"""Split-conformal acceptance line for proposal auto-accept (2026-09-28).
 
 The fixed ``KW_AUTO_ACCEPT_LINE`` (0.85) is a picked number: nothing ties it
 to how often the gate is wrong. This module replaces the picked line with a
@@ -23,8 +23,7 @@ returns None and the caller must fall back to the fixed line instead of
 pretending precision the data cannot support.
 
 Method source: Vovk et al., Algorithmic Learning in a Random World
-(split/conformal prediction); applied to human-review gating per the L3 item
-in competition/docs/tech-optimization-2026-09-28/KnowEvo提分总纲.md §二.
+(split/conformal prediction); applied to human-review gating.
 """
 from __future__ import annotations
 

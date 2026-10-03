@@ -1,4 +1,4 @@
-"""L6-M2 wiring: deterministic graph-route composition (offline fakes).
+"""Wiring: deterministic graph-route composition (offline fakes).
 
 The graph route of the kg_search fusion is query -> entity_lookup seeds ->
 per-hop BFS over the frozen ``neighbors`` seam -> deterministically ordered

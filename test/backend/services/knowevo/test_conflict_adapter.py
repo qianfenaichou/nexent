@@ -1,4 +1,4 @@
-"""Offline tests for the A4 production seam (conflict_adapter).
+"""Offline tests for the conflict production seam (conflict_adapter).
 
 Pins the additive-wiring contract:
 - row -> Fact mapping (claim-as-value, lineage/version from title, authority

@@ -321,7 +321,7 @@ def _append_cost_ledger_row(report: dict) -> None:
     row = report.get("cost_ledger") or {}
     line = (
         f"| {row.get('run_id', '')} | {time.strftime('%Y-%m-%d %H:%M')} "
-        f"| 图谱抽取 | - (tier routing T-08) | {row.get('tokens', 0)} | 0 | 0 "
+        f"| 图谱抽取 | - | {row.get('tokens', 0)} | 0 | 0 "
         f"| {row.get('wall_seconds', '')} | "
         f"spans={report.get('spans_total')} extracted={report.get('extracted')} "
         f"skipped={report.get('skipped')} llm_calls={row.get('llm_calls', 0)} "

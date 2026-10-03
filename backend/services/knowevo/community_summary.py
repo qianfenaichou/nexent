@@ -1,9 +1,9 @@
-"""L5 community summary kernel (2026-09-29).
+"""Community summary kernel (2026-09-29).
 
 Cluster a KnowEvo graph view into communities, build a deterministic
 skeleton summary per community (no LLM), and expose a ``global`` retrieval
 seam that ranks communities for aggregate questions and expands them into
-an ordered entity-id list (the L6 graph-route shape).
+an ordered entity-id list (the graph-route shape).
 
 Scope of this module (honest layering, same rule as rrf_fusion /
 update_planner / budget_curve):
@@ -59,7 +59,7 @@ from typing import Any
 DEFAULT_DEPTH = 3
 DEFAULT_BEAM = 3
 
-# Recommended additive Route vocabulary value (design doc L5; schemas.py
+# Recommended additive Route vocabulary value (schemas.py
 # itself is a wiring-adjacent module and is NOT edited by this kernel).
 GLOBAL_ROUTE = "G"
 
@@ -170,7 +170,7 @@ class GlobalHit:
 
 @dataclass(frozen=True)
 class GlobalRouteResult:
-    """Full global-route verdict: hits + expanded entity ids (L6 shape)."""
+    """Full global-route verdict: hits + expanded entity ids."""
 
     route: str
     hits: tuple[GlobalHit, ...]

@@ -1,6 +1,6 @@
 """E1 pure-RAG retrieval base : corpus parsing + BM25 index.
 
-This is the "A1 pure RAG" ablation arm from 02-technical-plan 3.5: the
+This is the "A1 pure RAG" ablation arm: the
 agent gets knowledge_base_search only - no graph, no multi-hop, no version
 pinning. E1 therefore needs a document retriever that works over the raw
 corpus (58+ PDF/HTML files under competition/corpus/) because the project

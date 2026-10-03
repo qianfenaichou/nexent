@@ -1,4 +1,4 @@
-"""L6-M2 wiring: EsRawListClient + env-gated factory (offline, fake core).
+"""Wiring: EsRawListClient + env-gated factory (offline, fake core).
 
 Layer 1 (always runs): the adapter must reshape raw ``exec_query`` hits
 (top-level ``{score, document, index}``, id inside ``document``) into

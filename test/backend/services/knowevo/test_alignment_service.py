@@ -948,7 +948,7 @@ class TestTopicTokens:
         assert "hba1c" in als.topic_tokens("HbA1c 控制目标")
 
     def test_cjk_run_becomes_trigrams_not_one_token(self):
-        # The r14 bug: a whole CJK clause became a single token, so two
+        # The bug this locks: a whole CJK clause became a single token, so two
         # different texts could never share one. Trigrams must overlap.
         a = als.topic_tokens("血糖控制目标")
         b = als.topic_tokens("制定个体化的血糖控制目标")

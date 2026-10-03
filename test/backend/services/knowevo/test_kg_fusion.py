@@ -1,4 +1,4 @@
-"""L6-M2 wiring: the kg_search fusion factory (offline fakes).
+"""Wiring: the kg_search fusion factory (offline fakes).
 
 ``fused_entity_cards`` is the first production consumer of the frozen
 ``rrf_fusion.fuse`` kernel: it pulls the BM25 raw list (sync SDK call, so

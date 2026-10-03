@@ -1,4 +1,4 @@
-"""Tests for DocAssetService.search_assets (asset-search charter M1, 2026-09-29).
+"""Tests for DocAssetService.search_assets (added 2026-09-29).
 
 The service is ES-first (injected ``es_client.asset_search`` seam, sync or
 async, mirroring GraphStore.entity_lookup / L1 step 3) with a deterministic
@@ -13,7 +13,7 @@ actually running: over-fetch fetch_n = min(limit*3, 30), ES score
 normalized to 0-1 against the filtered set with the raw score kept in
 ``why.es_score_raw``, PG path scoring 0.0 with the documented
 ``ranked_by`` rule, parse gate = parse_status == "processed" (no quality
-threshold is invented - the charter defines none), supersede folding by
+threshold is invented - none is defined), supersede folding by
 default.
 """
 import asyncio
@@ -224,7 +224,7 @@ class TestSearchAssetsESFirst:
         svc = _Harness(es_client=es_sup, pg_hits=[])
         res = asyncio.run(svc.search_assets(TENANT, "说明书", limit=5))
         assert [h.id for h in res] == ["B"], (
-            "superseded rows are folded by default (charter §3 lineage rule)")
+            "superseded rows are folded by default (lineage rule)")
         assert len(svc.pg_calls) == 1  # short page was topped up from PG
         assert svc.pg_calls[0]["include_superseded"] is False
 

@@ -19,7 +19,7 @@ changes are documented in one place): ``neighbors`` and ``multi_hop`` take
 an optional ``as_of`` keyword, and ``EdgeCard`` carries ``valid_at`` /
 ``invalid_at``. Together they are what version-pinned traversal walks on -
 every hop is evaluated at a knowledge version's cutoff t_v instead of
-now() (02-tech-plan 3.2, literature gap B2). Both extensions are additive:
+now(). Both extensions are additive:
 the parameters default to None and reproduce the previous behaviour
 exactly, so no existing caller changes, and the suite passing
 unchanged is the compatibility evidence. An adapter that cannot honour a
@@ -591,7 +591,7 @@ class PgJsonbGraphStore(GraphStore):
         cutoff, so the walk only ever traverses facts valid under that
         version (02-tech-plan 3.2).
 
-        ``rank`` (L1, tech-optimization 2026-09-28 §L1) is an optional
+        ``rank`` (a lexical prefilter ahead of the graph walk) is an optional
         path -> score retention scorer, higher kept first; the store stays
         domain-blind because the caller closes the question into it. None
         keeps the v0 longest-first retention, which is what the service
@@ -781,7 +781,7 @@ class PgJsonbGraphStore(GraphStore):
         return out
 
 # ---------------------------------------------------------------------------
-# In-memory adapter + factory (A1 pluggable backend evidence)
+# In-memory adapter + factory (pluggable backend evidence)
 # ---------------------------------------------------------------------------
 
 def _window_contains(valid_at: datetime | None, invalid_at: datetime | None,

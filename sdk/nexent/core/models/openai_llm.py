@@ -516,7 +516,7 @@ class OpenAIModel(OpenAIServerModel):
                         token_tracker.record_completion(
                             input_tokens, output_tokens)
 
-                    # Pure-additive observability (pitfalls #52): surface the
+                    # Pure-additive observability: surface the
                     # provider's reasoning/output split when it reports one.
                     # Providers that omit it stay at None - never estimated.
                     reasoning_tokens = None

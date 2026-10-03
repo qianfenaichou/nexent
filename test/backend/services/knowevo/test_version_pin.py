@@ -1,5 +1,5 @@
 """
-Unit and integration tests for services/knowevo/version_pin.py (B2).
+Unit and integration tests for services/knowevo/version_pin.py.
 
 This is the single most important test file of the version-pinning claim:
 the definition from 02-tech-plan 3.2 is transcribed in version_pin.py, and
@@ -59,7 +59,7 @@ def edge(valid_at=None, invalid_at=None, rel_type="indicated_for",
 
 class TestEdgeInVersion:
     def test_edge_that_starts_after_cutoff_is_out(self):
-        # The whole point of B2: a fact that only became true after the
+        # The whole point of the pin: a fact that only became true after the
         # version's cutoff was not part of that version.
         assert edge_in_version(AFTER, None, CLOCK) is False
 
@@ -315,7 +315,7 @@ pg_gate = pytest.mark.skipif(
 class TestPinnedWalkInPostgres:
     """The ablation pair: the same graph, the same question, pinned and not.
 
-    This is the reproducible evidence behind the B2 claim, run against the
+    This is the reproducible evidence behind the pinned-walk claim, run against
     real adapter rather than a fake - a store that ignores ``as_of`` would
     pass every Layer 1 test and fail here.
     """

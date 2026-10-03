@@ -1,7 +1,7 @@
-"""E2 ablation runner : A1-A4 four-level x question-type matrix plus
-the E8 version-pin on/off arms.
+"""Ablation runner : A1-A4 four-level x question-type matrix plus
+the version-pin on/off arms.
 
-02-technical-plan 3.5: the same testset, the same generation model and
+The same testset, the same generation model and
 prompt, four escalating configurations -
 
     A1_pure_rag document retrieval only (the baseline, reused
@@ -12,7 +12,7 @@ prompt, four escalating configurations -
                   two-channel fusion, disagreements marked contested) -
                   no ad-hoc fusion is written here
     A3_multihop   + multi-hop beam walk, direct
-                  ``DecisionService.multi_hop`` call (B3: no MCP round
+                  ``DecisionService.multi_hop`` call (no MCP round
                   trip; the MCP kg_search handler is a current-view tool
                   without version semantics, so the pinned arms cannot go
                   through it)
@@ -27,12 +27,12 @@ acc always alongside n_judged, zero-judged types reported as
 ``insufficient_data``) and adds the by_type x by_level cross table and
 Wilson 95% CIs (eval_v1).
 
-E8 version pin on/off (the "evolvable" hard evidence): A4 runs twice,
+Version pin on/off (the "evolvable" hard evidence): A4 runs twice,
 ``pin on`` walks the graph as of an explicit cutoff (resolved through
 ``version_pin.resolve_version_clock`` - the single pin entry point) and
 ``pin off`` runs the identical pipeline with the predicate off. In an
-explicit E8 invocation (``--pin on,off``) the judge gold follows the arm
-(readiness section IV): the pin-on arm is graded against ``answer_old``
+explicit ``--pin on,off`` invocation the judge gold follows the arm: the
+pin-on arm is graded against ``answer_old``,
 and the pin-off arm against ``answer_new`` for V questions (the rubric is
 narrowed to the key facts carried by the arm's gold); F/M/X golds are
 edition-free and pass through unchanged. Headline A4 runs (single pin)
@@ -152,7 +152,7 @@ QTYPES = ("F", "M", "V", "X")
 E8_CAVEAT = (
     "数据现实一律以 report['data_reality'] 为准——它每次运行实测（判别性"
     "计数 + 构建租户图谱规模），本字段因此**不复述任何会过期的快照数字**"
-    "（r21 修正：此前这里硬编码了 2026-09-19 的\u201c图谱为空\u201d快照，"
+    "（已修正：此前这里硬编码了 2026-09-19 的\u201c图谱为空\u201d快照，"
     "与同一份 JSON 里 data_reality 的实测值自相矛盾）。\n"
     "历史观察（2026-09-19 真库勘察，当时构建租户 6756b0ab 图谱为空、"
     "0 实体 / 0 关系）：此时两臂收到完全相同的证据（仅文档通道），E8 的 Δ "
@@ -167,7 +167,7 @@ E8_CAVEAT = (
 
 
 # ---------------------------------------------------------------------------
-# Seed extraction + graph channel (B1/B2: wire the existing capabilities)
+# Seed extraction + graph channel (wire the existing capabilities)
 # ---------------------------------------------------------------------------
 
 # ``extract_seed_terms`` / ``MAX_SEED_LOOKUPS`` are imported from
@@ -1217,7 +1217,7 @@ def main(argv=None) -> int:
                                       task_ref=TASK_REF)
             _append_cost_ledger_row(
                 metrics, run_id,
-                f"T-22 {level} pin={pin or 'n/a'} "
+                f"{level} pin={pin or 'n/a'} "
                 f"{metrics['n_questions_run']}题×{args.runs}runs"
                 f"{'(部分)' if not complete else ''}; "
                 f"acc={metrics['acc']} pass2={metrics['pass2']} "

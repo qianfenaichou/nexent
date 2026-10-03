@@ -36,26 +36,26 @@ TIER_LARGE = "large"
 
 # JSON-object kinds ask for one machine-readable object; a hidden reasoning
 # chain buys nothing and on reasoning-heavy providers it consumes the whole
-# output cap, so the JSON never appears (r19 evidence for kind='extract':
+# output cap, so the JSON never appears. Measured on kind='extract':
 # finish_reason=length with reasoning_tokens == completion_tokens ==
-# max_output_tokens and content_len == 0 - see). The same burn
-# hit the decision-card chain in the E8 paired run (e8-paired.log: 24x
+# max_output_tokens and content_len == 0. The same burn
+# hit the decision-card chain in the paired version-pin run (24x
 # event=llm_empty_content kind=ablation_decision_card / ablation_hop_plan,
 # finish_reason=length rt=8192 AND finish_reason=stop rt=3921, content empty
 # every time) while judge / route / answer kinds never went empty - so the
-# disabled set grows to exactly the card-chain JSON kinds and nothing else
-#. Judge/align/route/route_llm keep the provider default
-# nothing observed is broken there, and the judge's quality must not be
-# quietly changed by this fix.
+# disabled set grows to exactly the card-chain JSON kinds and nothing else.
+# Judge/align/route/route_llm keep the provider default
+# because nothing observed is broken there, and the judge's quality must not
+# be quietly changed by this fix.
 _THINKING_DISABLED_KINDS = frozenset({"extract", "decision_card", "hop_plan"})
 _ABLATION_KIND_PREFIX = "ablation_"
 _NO_THINKING_EXTRA_BODY = {
     "thinking": {"type": "disabled"},
-    # r24 field evidence (kw-cardfix, 1 real call): the sensenova gateway
-    # rejects a bare thinking:disabled with HTTP 400 "invalid thinking type,
+    # Field evidence (one real call through the gateway): sensenova rejects a
+    # bare thinking:disabled with HTTP 400 "invalid thinking type,
     # only be disabled when reasoning effort is none..." - the pair must
     # travel together on every no-thinking call. This constant feeds ALL
-    # disabled kinds, so the r19 extract path gains the same correction.
+    # disabled kinds, so the extract path gains the same correction.
     "reasoning_effort": "none",
 }
 
@@ -75,14 +75,14 @@ def _thinking_disabled(kind: str | None) -> bool:
 
 
 # Thinking-disabled kinds leave the client-level output cap unset. Honest
-# attribution (r20 review): the causal lever is the per-call `thinking`
+# attribution: the causal lever is the per-call `thinking`
 # flag above. The generate() path assembles its request body from
 # self.kwargs, so this client attribute never reached the wire for any kind
-# (r19 wire probe: max_tokens_on_wire=null); the 8192 that truncated the JSON
+# (wire probe: max_tokens_on_wire=null); the 8192 that truncated the JSON
 # was the provider's own default. Leaving it unset is kept as a deliberate
 # cleanup: with thinking disabled the provider default measured comfortable
-# (r19 probe: 956 content chars / 333 completion tokens / finish_reason=stop),
-# and raising it to 32768 trips the gateway tpm/rpm budget (HTTP 429, r19
+# (probe: 956 content chars / 333 completion tokens / finish_reason=stop),
+# and raising it to 32768 trips the gateway tpm/rpm budget (HTTP 429 on the
 # streaming probe). All other kinds keep the previously configured value.
 
 # Read live (not frozen at import) so env overrides and tests can patch
@@ -100,7 +100,8 @@ def _tier_model_id(tier: str) -> str:
     return globals()[_TIER_TO_MODEL_ID_ATTR[tier]]
 
 
-# Pitfalls #52/#55 observability: a process-level, thread-safe tally of how
+# Observability counters so silent truncation and empty-tool paths are
+# measurable: a process-level, thread-safe tally of how
 # often each call ``kind`` returns empty content, plus the per-call
 # ``finish_reason``/``reasoning_tokens`` that keep "no content" separable from
 # "no entities". ``call_with_usage`` runs inside ``asyncio.to_thread`` workers
@@ -115,9 +116,9 @@ def _record_call_outcome(
 ) -> None:
     """Tally one call; log a structured event when the body is empty.
 
-    Empty means ``str(text).strip() == ""`` - the symptom behind both #52 (a
-    reasoning chain consumed the whole output budget) and #55 (transient empty
-    generation). ``finish_reason``/``reasoning_tokens`` are this call's
+    Empty means ``str(text).strip() == ""`` - the symptom behind two distinct
+    failures: a reasoning chain that consumed the whole output budget, and a
+    transient empty generation. ``finish_reason``/``reasoning_tokens`` are this call's
     measured values, so a "no content" line stays distinguishable from a
     parsed-but-empty "no entities" body.
     """
@@ -149,7 +150,7 @@ def _observe_call(model: Any, result: Any) -> tuple[str | None, int]:
     ``OpenAIModel.generate`` (non-streaming), so the returned
     ``ChatMessage.raw`` is the provider ``ChatCompletion`` and this call's
     ``finish_reason`` / ``usage.completion_tokens_details.reasoning_tokens``
-    live there (r21 probe on the generate path:
+    live there (probe on the generate path:
     ``raw.choices[0].finish_reason == "length"``,
     ``raw.usage.completion_tokens_details.reasoning_tokens == 8192``; the
     adapter's ``last_response_diagnostics`` stays None because the streaming
@@ -191,8 +192,10 @@ class LlmRouter:
 
     One OpenAIModel instance is cached per ``(tier, temperature,
     disable_thinking)`` triple so repeated extraction/adjudication calls
-    reuse the client instead of re-resolving configs (r20 review the
-    key grew a boolean when the extract path started disabling thinking).
+    reuse the client instead of re-resolving configs; the cache key grew the
+    ``disable_thinking`` member when the extract path started disabling
+    thinking, otherwise two kinds with opposite thinking settings would share
+    one client.
     The ``__call__`` signature matches the injected ``llm`` contract
     exactly; ``kind`` is carried for logging and the cost ledger.
     """
@@ -329,8 +332,8 @@ class LlmRouter:
         # The no-thinking extras must ride on the call, not on the client.
         # `generate()` (smolagents' OpenAIModel) assembles its request body
         # from `self.kwargs`, and a named constructor argument never lands
-        # there, so an instance-level extra_body is silently dropped: the
-        # r19 wire probe showed completion_kwargs == ['messages', 'model']
+        # there, so an instance-level extra_body is silently dropped: a wire
+        # probe showed completion_kwargs == ['messages', 'model']
         # and no `thinking` key in the outgoing body, which is why the
         # empty-content burn survived the client-level "fix". Passing it to
         # `generate(**kwargs)` reaches `_prepare_completion_kwargs`'s

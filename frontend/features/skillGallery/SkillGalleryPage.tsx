@@ -1,8 +1,8 @@
 "use client";
 
-// Skill gallery page (L10): card gallery + one-click instantiate.
+// Skill gallery page: card gallery + one-click instantiate.
 // Route (pending wiring): /skillGallery. Does NOT replace skillTemplate
-// panel - that file is left untouched; this is the L10 gallery surface.
+// panel - that file is left untouched; this is the gallery surface.
 import { useTranslation } from "react-i18next";
 import { Typography } from "antd";
 import { SkillGallery } from "./components/SkillGallery";

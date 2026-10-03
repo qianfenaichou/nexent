@@ -1,6 +1,6 @@
 // Unit tests for skill-gallery apply fallback classification.
 // Honesty contract: every non-OK path is client_preview + a reason.
-// After W10/α lands: HTTP 404 = template not found (not "route pending").
+// Once apply is wired: HTTP 404 = template not found (not "route pending").
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -19,7 +19,7 @@ class FakeApiError extends Error {
   }
 }
 
-test("404 after W10 is template_missing, not route_pending", () => {
+test("404 once apply is wired is template_missing, not route_pending", () => {
   assert.equal(classifyApplyStatus(404), "template_missing");
   assert.equal(
     classifyApplyFallback(new FakeApiError(404)),

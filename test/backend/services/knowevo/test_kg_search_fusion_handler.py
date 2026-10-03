@@ -1,4 +1,4 @@
-"""L6-M2 wiring: kg_search_handler fusion + bit-for-bit fallback (offline).
+"""Wiring: kg_search_handler fusion + bit-for-bit fallback (offline).
 
 The handler tries the three-way RRF fusion only when the ES raw-list
 adapter is configured (env-gated factory, monkeypatched here); every

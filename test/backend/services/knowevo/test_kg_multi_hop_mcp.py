@@ -4,7 +4,7 @@ guardrails, version-pinned output shape and structured errors.
 
 The tool surface has two registration forms - the standalone FastMCP server
 (mcp_servers/knowevo_mcp/server.py) and the Local-MCP inner registration
-(backend/tool_collection/mcp/kg_tools.py). Pitfall #27 was exactly this
+(backend/tool_collection/mcp/kg_tools.py). An earlier drift was exactly this
 pair drifting apart (a criterion ticked while the code had no
 implementation), so the tests here assert the same schema object is
 reachable from both surfaces and that the guardrails live in the Pydantic

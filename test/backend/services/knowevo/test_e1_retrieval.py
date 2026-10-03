@@ -1,4 +1,4 @@
-"""Unit tests for services/knowevo/e1_retrieval.py (E1 baseline).
+"""Unit tests for services/knowevo/e1_retrieval.py (pure-RAG baseline).
 
 Layer 1: pure functions (tokenizer, chunking, BM25 scoring, context
 rendering). No network, no LLM, no real corpus: fixture documents are tiny

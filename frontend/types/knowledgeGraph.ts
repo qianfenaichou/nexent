@@ -1,4 +1,4 @@
-// KnowEvo ontology workbench types (T-05b). Mirrors the frozen
+// KnowEvo ontology workbench types. Mirrors the frozen
 // /api/knowevo/ontology endpoints in backend/apps/knowledge_graph_app.py.
 
 export interface OntologyEvidenceSpan {

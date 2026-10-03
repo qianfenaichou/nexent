@@ -1,8 +1,8 @@
-"""Tests for the L8 human-review budget-quality curve kernel (budget_curve).
+"""Tests for the human-review budget-quality curve kernel (budget_curve).
 
 Spec anchors: ``competition/docs/tech-optimization-2026-09-28/
 l8-budget-quality-protocol-2026-09-29.md`` and
-``competition/docs/tech-optimization-2026-09-28/KnowEvo提分总纲.md`` §L8.
+the human-review budget curve design (see the service docstring).
 Reuse seam: ``update_planner.plan_minimal_update`` exposes ``per_item_voi``
 (key order = greedy order) which is the primary ordering input here.
 
@@ -82,7 +82,7 @@ class TestBudgetCurvePrefixAdmission:
     def test_unequal_costs_stop_at_first_overflow_no_resume(self):
         # costs a=3, b=3, c=1. budget 4: a fits (3<=4), b would make 6>4 ->
         # stop; the cheaper c is NOT taken (prefix semantics, matches the
-        # L7 planner "stop at first deficit, never resume" rule).
+        # planner's "stop at first deficit, never resume" rule).
         voi = {"a": 5.0, "b": 3.0, "c": 1.0}
         costs = {"a": 3.0, "b": 3.0, "c": 1.0}
         curve = budget_curve(voi, costs, [4.0], q_len)

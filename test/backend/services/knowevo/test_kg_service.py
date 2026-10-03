@@ -1567,7 +1567,7 @@ class TestSpanDiagnosticsAggregation:
 
     @pytest.mark.asyncio
     async def test_empty_dict_is_blank_but_parsed_empty_is_not(self):
-        """The dict path keeps "no content" apart from "no entities" (#52)."""
+        """The dict path keeps "no content" apart from "no entities"."""
         from services.knowevo.pipeline.ingest_graph import _SpanDiagnostics
 
         diag = _SpanDiagnostics(_DictLLM([{}, {"entities": [], "edges": []}]))

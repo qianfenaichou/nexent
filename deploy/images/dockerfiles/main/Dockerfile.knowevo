@@ -1,5 +1,5 @@
 # =============================================================================
-# Dockerfile.knowevo —— KnowEvo fork 专属主镜像（asset_search 立项 M4 phase A）
+# Dockerfile.knowevo —— KnowEvo fork 专属主镜像
 #
 # 用途：在官方 main 镜像基础上带上仓根 mcp_servers/ 包，闭合 knowevo MCP 工具链
 #       的容器内导入链。原因：backend/tool_collection/mcp/kg_tools.py:28 以
@@ -19,7 +19,7 @@
 #     backend/pyproject.toml 依赖内（fastmcp>=2.14.2,<3.0），无需额外安装步骤。
 #   - backend/services/knowevo/pipeline/*（eval_e1/eval_v1/diff_guidelines/
 #     build_ontology/mine_skill_templates 等离线评测脚本）引用仓根 competition/
-#     语料与台账，属离线工具链、不在容器服务路径上，本镜像不 COPY competition/。
+#     下的本地语料与运行记录，属离线工具链、不在容器服务路径上，本镜像不 COPY competition/。
 #   - knowevo 运行期其余资源均在 backend/ 内（prompts → backend/prompts、
 #     services → backend/services/knowevo），随既有 COPY backend 自带。
 #
@@ -30,9 +30,8 @@
 #     -t nexent/nexent:knowevo-20260929 .
 #
 # 日期：2026-09-29
-# 依据：competition/docs/tech-optimization-2026-09-28/asset-search-立项-2026-09-28.md
-#       §7-4（用户拍板 2026-09-29：fork 构建专属镜像，卷挂载否——可复现性红线⑦友好）
-#       + §5/M4 镜像接线验收
+# 决策：fork 自建专属镜像，而非向上游镜像卷挂载 mcp_servers/——容器内
+#       导入链开箱即用，且镜像本身可复现
 # =============================================================================
 
 FROM python:3.11-slim AS base

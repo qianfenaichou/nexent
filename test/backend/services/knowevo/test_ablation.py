@@ -215,7 +215,7 @@ class TestArmItem:
 
 
 # ---------------------------------------------------------------------------
-# Graph channel (A2) + pin switch (B4)
+# Graph channel (A2) + pin switch
 # ---------------------------------------------------------------------------
 
 class TestA2Channel:
@@ -247,7 +247,7 @@ class TestA2Channel:
 
 
 class TestPinSwitch:
-    """B4: the pin flows through the version_pin single entry only."""
+    """The pin flows through the version_pin single entry only."""
 
     def test_pin_on_uses_explicit_as_of(self):
         store = make_graph()

@@ -1,4 +1,4 @@
-"""Tests for the L6 three-way RRF fusion kernel (services/knowevo/rrf_fusion.py).
+"""Tests for the three-way RRF fusion kernel (services/knowevo/rrf_fusion.py).
 
 Spec anchors: competition/docs/tech-optimization-2026-09-28/
 l6-es-rrf-design-2026-09-29.md and knowevo/backend/services/knowevo/

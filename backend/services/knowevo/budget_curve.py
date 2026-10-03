@@ -1,29 +1,29 @@
-"""L8 human-review budget-quality curve kernel.
+"""Human-review budget-quality curve kernel.
 
-Given the L7 planner's ``per_item_voi`` (key order = greedy order, see
+Given the update planner's ``per_item_voi`` (key order = greedy order, see
 ``update_planner.plan_minimal_update``), a per-item cost table, and a budget
 sequence, produce quality-curve points: for each budget, the set of items an
 expert can confirm and the ontology quality at that point.
 
-The scientific claim this kernel supports is deliberately narrow (KnowEvo
-提分总纲 §L8): "under a fixed expert-confirmation budget, the four ontology
+The scientific claim this kernel supports is deliberately narrow:
+"under a fixed expert-confirmation budget, the four ontology
 quality metrics (Cov / Red / Dep / Align) as a function of how many items
 were confirmed" - NOT "semi-automatic is X times faster than a human" (that
 would need an expert baseline we do not have).
 
 Review-order semantics (frozen): items are walked in the caller-supplied
-review order (default = ``per_item_voi`` key order = the L7 greedy order);
+review order (default = ``per_item_voi`` key order = the greedy order);
 an item is confirmed iff its cost fits in the remaining budget. Admission
 is PREFIX: the first item that does not fit halts the walk and no later,
 cheaper item is taken - the same "stop at first deficit, never resume"
-rule as the L7 planner. The x-axis "confirmation count" is the special
+rule as the update planner. The x-axis "confirmation count" is the special
 case where every cost is 1.0 and budgets are 1..n.
 
 Quality is an injectable callable ``quality_fn(confirmed_ids) -> mapping``
 over the confirmed-id prefix in review order. The recommended default is
 the production metric implementation
-``ontology_service._k0_metrics_from_snapshot`` (Cov/Red/Dep/Align, 05-计划书
-§3.4); :func:`k0_quality_fn` builds such a callable and falls back to that
+``ontology_service._k0_metrics_from_snapshot`` (Cov/Red/Dep/Align);
+:func:`k0_quality_fn` builds such a callable and falls back to that
 implementation when no ``metrics_fn`` is injected.
 
 Honest layering: this kernel is stdlib-only at import time, DB-free and
@@ -168,7 +168,7 @@ def budget_curve(
 
     Args:
         per_item_voi: id -> VOI for EVERY candidate, key order = greedy
-            order (the L8 reuse point of
+            order (the reuse point of
             ``update_planner.plan_minimal_update.per_item_voi``). Defines
             the candidate id set and, when ``order`` is None, the review
             order. For a confidence/random arm pass the real VOI map and

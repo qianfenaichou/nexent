@@ -1,5 +1,5 @@
 """
-KnowEvo asset-domain retrieval service (project-charter M1, 2026-09-29):
+KnowEvo asset-domain retrieval service:
 text search over doc_asset_t - the capability the frozen MCP tool
 ``asset_search`` wraps.
 
@@ -8,15 +8,14 @@ serving ingest/kg/decision); the 2026-09-28 audit found no retrieval
 capability, which is why ``asset_search`` was the one frozen tool that
 stayed unregistered (pinned by a test). This service closes that gap: it
 adds ``search_assets`` and deliberately does NOT migrate the existing
-point reads (charter §7-1 ruling - migrating them would touch three
+point reads (a settled design ruling - migrating them would touch three
 production call sites and re-open their verification).
 
-Contract: knowevo/backend/services/knowevo/doc_asset_service.py.md;
-spec source: the asset-search project charter (see
-``competition/docs/tech-optimization-2026-09-28/``) §4.1/§7.
+Contract and spec source: the frozen asset-search interface notes in
+``knowevo/backend/services/knowevo/doc_asset_service.py.md``.
 
 Implementation principles are the same as GraphStore.entity_lookup
-(L1 step 3): ES-first with a deterministic PG fallback, stable signature,
+(same ES-first ordering, deterministic PG fallback, stable signature):
 ES scores participate in ranking but stay explainable (the raw score is
 kept in ``why``), and never any PPR / random-walk score.
 """
@@ -32,10 +31,10 @@ from sqlalchemy.orm import aliased
 
 logger = logging.getLogger(__name__)
 
-# The single parse gate (charter §3 "return parse-complete rows only";
+# The single parse gate (return parse-complete rows only;
 # 2026-09-29 real-data audit: parse_status takes exactly two values,
 # "processed" and "no_index_chunk", so "parse complete" = processed). No
-# quality threshold: the charter defines none, so parse_quality is
+# no quality threshold is defined, so parse_quality is
 # surfaced for audit only.
 PARSE_GATE = "processed"
 
@@ -221,7 +220,7 @@ class DocAssetService:
                 # Over-fetch min(limit*3, 30): the uniform post-filter runs
                 # AFTER ES ranking and may drop rows, so the seam must fetch
                 # more than ``limit`` candidates for the filtered page to
-                # still reach the requested size (charter §4.1).
+                # still reach the requested size.
                 fetch_n = min(limit * 3, 30)
                 raw = await _maybe_await(
                     self.es_client.asset_search(tenant_id, q, fetch_n))

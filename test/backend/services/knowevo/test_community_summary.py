@@ -1,4 +1,4 @@
-"""Tests for the L5 community-summary kernel (community_summary).
+"""Tests for the community-summary kernel (community_summary).
 
 Spec anchors: workspace design doc
 ``competition/docs/tech-optimization-2026-09-28/l5-community-summary-design-2026-09-29.md``
@@ -280,7 +280,7 @@ class TestSkeletonAndFingerprint:
 
 
 # ---------------------------------------------------------------------------
-# 4. Global route ranking + entity expansion (L6 graph-route shape)
+# 4. Global route ranking + entity expansion (graph-route shape)
 # ---------------------------------------------------------------------------
 
 

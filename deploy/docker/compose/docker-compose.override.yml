@@ -1,12 +1,15 @@
-# KnowEvo fork 专属 compose 覆盖（2026-09-29；2026-09-30 升 knowevo-20260930 = L6-M2 接线代码）
+# KnowEvo fork 专属 compose 覆盖（2026-09-29；2026-09-30 升 knowevo-20260930）
 # 用途：给 nexent-mcp 钉服务级租户（KW_MCP_TENANT_ID）。
 # 背景：平台内置本地 MCP server 调用不转发 Authorization 头（kg_tools.py 头注
 # 文档化的 v0 行为），无此变量时 knowevo 工具的 tenant 解析为空串 → SQL
-# `tenant_id = ''::UUID` DataError（2026-09-29 Agent 真实调用 asset_search 时
-# 实测暴露，见 pitfalls #158）。单租户 demo 部署按 kg_tools.wire() 文档钉主租户。
-# 生效：docker compose（v2 双 env-file，见 pitfalls #155 沉淀姿势）up -d --no-deps nexent-mcp
-# ⚠️ image 钉在服务级（坑 #154 复发教训：compose 的 ${NEXENT_IMAGE} 是上游镜像，
-# 不带 shell 覆盖的任何 recreate 都会把 mcp 悄悄换回 v2.5.1 → knowevo 工具消失）。
+# `tenant_id = ''::UUID` DataError，工具调用直接报错。单租户 demo 部署按
+# kg_tools.wire() 文档钉主租户。
+# 生效：docker compose（用 v2，两份 env 文件都要 --env-file 显式传入——镜像
+# 变量集中在 deploy/docker/.env.generated，少传一份会缺变量；加 --no-deps
+# 只重建本服务，否则依赖链上的 ES 会被连带 recreate）
+#   up -d --no-deps nexent-mcp
+# ⚠️ image 钉在服务级：compose 默认的 ${NEXENT_IMAGE} 指向上游镜像，不带
+# shell 覆盖的任何 recreate 都会把 mcp 悄悄换回上游 tag → knowevo 工具消失。
 # 该 tag 为本地构建（fork Dockerfile.knowevo），不推 registry。
 services:
   nexent-mcp:

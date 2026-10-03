@@ -1,4 +1,4 @@
-// KnowEvo decision-card types (T-19). Mirrors the wire contract
+// KnowEvo decision-card types. Mirrors the wire contract
 // (services/knowevo/schemas.py DecisionCardContract, extra="allow") as
 // served by POST /api/knowevo/decision/card and the decision_card_render
 // MCP tool - one card shape for the panel and the chat renderer.
@@ -111,7 +111,7 @@ export interface DecisionCardPayload {
 
 export type DecisionCardMode = "full" | "lite";
 
-// T-25: the request body is part of the same wire contract, so the builder
+// The request body is part of the same wire contract, so the builder
 // lives here. This module stays dependency-free (no `@/` imports), which lets
 // node:test import and exercise the builder without the Next runtime.
 export interface DecisionCardRequestInput {
@@ -126,7 +126,7 @@ export interface DecisionCardRequestInput {
  *
  * `as_of` (business/fact time) and `ontology_version` are optional pins and
  * are only carried when non-empty. Key order and the default `mode` match the
- * pre-T-25 payload exactly, so omitting `asOf` yields a body that is key-for-key
+ * legacy payload exactly, so omitting `asOf` yields a body that is key-for-key
  * identical to the old one (asserted in tests/decisionCardRequest.test.ts).
  */
 export function buildDecisionCardRequest(

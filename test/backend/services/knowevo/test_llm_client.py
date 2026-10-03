@@ -21,7 +21,7 @@ import pytest
 TENANT_A = "11111111-1111-1111-1111-111111111111"
 TENANT_B = "22222222-2222-2222-2222-222222222222"
 
-# The exact no-thinking wire body (r24): sensenova rejects a bare
+# The exact no-thinking wire body: sensenova rejects a bare
 # thinking:disabled with HTTP 400 unless reasoning_effort is "none", so the
 # assertions below compare against this pair, not the bare dict.
 _NO_THINK = {"thinking": {"type": "disabled"}, "reasoning_effort": "none"}
@@ -96,7 +96,7 @@ class FakeOpenAIModel:
     `generate` mirrors the real signature: smolagents' OpenAIModel.generate
     takes **kwargs and merges them into the request body, so a stub that
     accepted only `messages` would hide the fact that a client-level
-    extra_body never reaches the wire (r19 root cause).
+    extra_body never reaches the wire (the root cause this test locks).
     """
 
     last_generate_messages = None
@@ -181,7 +181,7 @@ def test_model_cached_per_tier_temperature(monkeypatch):
 
 
 def test_extract_kind_disables_thinking(monkeypatch):
-    """r19: extraction must not spend the output cap on a reasoning chain."""
+    """Extraction must not spend the output cap on a reasoning chain."""
     import asyncio
 
     from services.knowevo import llm_client
@@ -191,15 +191,15 @@ def test_extract_kind_disables_thinking(monkeypatch):
     model = router._get_model(
         llm_client.TIER_MID, temperature=0.0, kind="extract")
     assert model.kwargs["extra_body"] == _NO_THINK
-    # No client-level cap for extraction. Fixture model 222 declares 8192
-    # (r20 review), so this assertion is discriminating - and cleanup
+    # No client-level cap for extraction. Fixture model 222 declares 8192, so
+    # this assertion is discriminating - and cleanup
     # only: the generate() path never forwarded this attribute, the wire cap
     # that truncated the JSON was the provider default (see llm_client note).
     assert model.kwargs["max_output_tokens"] is None
     # The assertion above is about the CLIENT and is not enough: smolagents'
     # generate() builds its body from `self.kwargs`, which stays empty for a
     # named constructor argument, so only the per-call kwarg reaches the
-    # wire (r19 wire probe: completion_kwargs == ['messages', 'model']).
+    # wire (a wire probe showed completion_kwargs == ['messages', 'model']).
     FakeOpenAIModel.last_generate_kwargs = None
     asyncio.run(router.call_with_usage("prompt", kind="extract"))
     assert FakeOpenAIModel.last_generate_kwargs == {
@@ -227,7 +227,7 @@ def test_other_kinds_send_no_provider_extras(monkeypatch):
             llm_client.TIER_MID, temperature=0.0, kind=kind)
         assert model.kwargs["extra_body"] is None, kind
         # Fixture model 222 declares 8192, so this pins the non-card branch
-        # to the configured cap (r20 review): only the thinking-disabled
+        # to the configured cap: only the thinking-disabled
         # branch may blank it.
         assert model.kwargs["max_output_tokens"] == 8192, kind
         FakeOpenAIModel.last_generate_kwargs = None
@@ -236,14 +236,14 @@ def test_other_kinds_send_no_provider_extras(monkeypatch):
 
 
 def test_card_chain_kinds_disable_thinking(monkeypatch):
-    """: the card chain burned the output cap into reasoning.
+    """The card chain burned the output cap into reasoning.
 
-    e8-paired.log recorded 24x empty content for the ablation card/hop kinds
-    (finish_reason=length rt=8192, and stop rt=3921 with empty content)
-    while the identical burn had already been fixed for extract (r19). The
-    JSON-object card kinds therefore join the disabled set - including the
-    ``ablation_`` prefixed forms the harness sends - while judge-like kinds
-    stay untouched (previous test).
+    The paired version-pin run recorded 24x empty content for the ablation
+    card/hop kinds (finish_reason=length rt=8192, and stop rt=3921 with
+    empty content) while the identical burn had already been fixed for
+    extract. The JSON-object card kinds therefore join the disabled set -
+    including the ``ablation_`` prefixed forms the harness sends - while
+    judge-like kinds stay untouched (previous test).
     """
     import asyncio
 

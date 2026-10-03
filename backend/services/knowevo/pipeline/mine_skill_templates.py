@@ -274,7 +274,7 @@ def _append_cost_ledger_row(tenant_id: str, model_report: dict, llm,
         f"large={tier_desc.get('large', '?')} "
         f"| {llm.input_tokens if llm else 0} "
         f"| {llm.output_tokens if llm else 0} | 0 | {wall}s | "
-        f"T-20 mine_skill_templates tenant={tenant_id} min_support="
+        f"mine_skill_templates tenant={tenant_id} min_support="
         f"{args.min_support} limit={args.limit} no_llm={args.no_llm} "
         f"cross_tenant={args.cross_tenant} "
         f"dry_run={args.dry_run} lang={args.lang} llm_calls="

@@ -4,7 +4,7 @@ input guardrails, the apply/reuse honesty contract and structured errors.
 
 The tool surface has two registration forms - the standalone FastMCP server
 (mcp_servers/knowevo_mcp/server.py) and the Local-MCP inner registration
-(backend/tool_collection/mcp/kg_tools.py). Pitfall #27 was exactly this
+(backend/tool_collection/mcp/kg_tools.py). An earlier drift was exactly this
 pair drifting apart, so the same assertions apply to the 5th tool: one
 schema object, one handler, both surfaces.
 

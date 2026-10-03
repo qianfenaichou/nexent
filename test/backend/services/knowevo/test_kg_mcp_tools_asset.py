@@ -1,4 +1,4 @@
-"""Tests for the asset_search MCP tool (asset-search charter M3, 2026-09-29).
+"""Tests for the asset_search MCP tool (added 2026-09-29).
 
 Closes the last frozen-vocabulary gap: the tool surface is now 9/9
 (FROZEN_EIGHT + 's skill_template_apply), so this file carries the
@@ -325,7 +325,7 @@ class TestAssetSearchShapeDeviationPin:
     ``{query, modality?: list, authority_level?} ->
     {assets: [{doc_id, modality, version, anchor_span}]}``. The implemented
     I/O follows the landed DocAssetService capability instead (asset-search
-    charter §4.2); the deviation is registered in
+    the frozen shape sketch); the deviation is registered in
     competition/docs/verification-reports/asset-search-shape-deviation-
     2026-09-29.md and pinned here so it can neither drift back to the
     memo sketch nor wander further."""

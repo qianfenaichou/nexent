@@ -10,7 +10,7 @@ honours ``as_of`` the way PgJsonbGraphStore does - which is what lets the
 pinned/unpinned ablation be tested without Postgres.
 
 Layer 2 (RUN_POSTGRES_INTEGRATION=1): persist to decision_card_t, and
-rerun_marked recording the old-vs-new conclusion diff (Q2 ledger material).
+rerun_marked recording the old-vs-new conclusion diff.
 """
 import json
 import os
@@ -296,7 +296,7 @@ class TestRouting:
 
 
 # ---------------------------------------------------------------------------
-# Version-pinned beam search (B2)
+# Version-pinned beam search
 # ---------------------------------------------------------------------------
 
 def _pinned_store():

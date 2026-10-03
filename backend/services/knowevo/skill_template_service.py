@@ -3,8 +3,8 @@ templates from real decision-card history, store them in skill_template_t
 (zero-ALTER: INSERT/UPDATE DML only), instantiate (apply) them back into
 concrete SKILL.md text, and keep the reuse loop honest with counters.
 
-Layering per 02-tech-plan 3.4: the entry/sub-task SKILL.md files under
-competition/skills/ are the reusable workflow surface; a mined template is
+Layering: the entry/sub-task SKILL.md files shipped with the
+skill packages are the reusable workflow surface; a mined template is
 the *parameterized* memory of "this (domain, task_type) question pattern
 has a workflow that already worked N times". ``variables`` carries the
 injection points ({domain, task_type, relation_template, domain_rules});
@@ -22,9 +22,10 @@ honest but less eloquent. Persistence goes through a store seam
 tests) following the kg_service.py pattern; decision_card_t is read-only
 for this service.
 
-Interface contract: competition/tasks/-brief.md; mechanism notes
-competition/docs/skill-mechanism.md (frontmatter contract - ``version`` is
-NOT a valid SKILL.md frontmatter key, it lives in the ``version`` column).
+Interface contract:
+``knowevo/backend/services/knowevo/skill_template_service.py.md``: the
+frontmatter contract says ``version`` is NOT a valid SKILL.md frontmatter key;
+it lives in the ``version`` column instead.
 """
 from __future__ import annotations
 

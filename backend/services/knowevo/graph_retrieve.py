@@ -1,4 +1,4 @@
-"""Deterministic graph-route composition for the kg_search fusion (L6-M2).
+"""Deterministic graph-route composition for the kg_search fusion.
 
 The third fusion route has no ES analogue: it must answer "which graph
 entities relate to this query" as ONE ordered candidate list. The frozen

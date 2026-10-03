@@ -1,4 +1,4 @@
-// KnowEvo skill-template types (T-20). Mirrors the skill_template_t row
+// KnowEvo skill-template types. Mirrors the skill_template_t row
 // (backend/database/knowevo_db.py SkillTemplate) as returned by
 // SkillTemplateService.list_templates / get_template - the same shape the
 // skill_template_apply MCP tool instantiates. No re-modeling of the

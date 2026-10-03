@@ -817,8 +817,8 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="E1 pure-RAG baseline runner")
     parser.add_argument("--testset", default=str(
         CORPUS_ROOT / "testset-v1-seed.json"))
-    # 加性参数（Q2 迁移实测）：指定其他语料根目录（如 competition/corpus-gov）；
-    # 缺省保持 CORPUS_ROOT 不变，不影响既有口径。
+    # Additive option: point BM25 at another corpus root (the cross-domain
+    # corpora live beside this one). The default stays CORPUS_ROOT.
     parser.add_argument("--corpus-root", default=None,
                         help="corpus directory for BM25 retrieval (default: competition/corpus)")
     parser.add_argument("--runs", type=int, default=3)

@@ -96,22 +96,25 @@ agent_repository_frontend
 # Added by code-review-graph
 .code-review-graph/
 .agents/
-# T-21 pdftotext cache (regenerated on demand, never committed)
+# pdftotext cache (regenerated on demand, never committed)
 competition/.alignment-cache/
 
-# KnowEvo docx build scratch — 提交件 .docx 由 content.py + generate.js 复现，依赖不入库
+# KnowEvo docx build scratch — the deliverable .docx is reproduced from
+# content.py + generate.js, so its dependencies stay out of the tree
 competition/deliverables/build-docx/node_modules/
 competition/deliverables/build-docx/package-lock.json
 
-# 提交打包产物（2026-09-24 永续窗口新增）—— 05-代码附件 是本仓自身的 `git archive HEAD` 快照
-# （自引用：内容随每次 commit 变化，入库即等于把仓库复制进仓库，且必然过期）；
-# 06-截图 与 01-开发设计文档/*.docx 是 deliverables/ 下既有文件的**副本**；04 的 tarball 同理。
-# 这些文件**保留在本地磁盘**供用户打包提交，只是不入版本库；可复现方式见
-# competition/deliverables/submission-package/打包核验记录-流C.md 与 MANIFEST.sha256。
+# Locally generated packaging output. 05-代码附件 is a `git archive HEAD` snapshot of
+# this repository itself: self-referential, its content changes with every
+# commit, so tracking it would copy the repository into the repository and it
+# would always be stale. 06-截图 and 01-开发设计文档/*.docx are copies of files that
+# already live under competition/deliverables/, and the 04 tarball likewise.
+# They stay on local disk for packaging only; the reproduction record is the
+# MANIFEST.sha256 in competition/deliverables/submission-package/.
 competition/deliverables/submission-package/05-代码附件/
 competition/deliverables/submission-package/06-截图/
 competition/deliverables/submission-package/*/*.docx
 competition/deliverables/submission-package/04-MCP与知识库文件实体/*.tar.gz
 
-# 本地竞赛工作区（不随开源仓分发）
+# 本地工作区数据（不随开源仓分发）
 /competition/

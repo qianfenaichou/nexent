@@ -1,4 +1,4 @@
-"""Tests for services/knowevo/summary_store.py (L5 persistence, kw_012).
+"""Tests for services/knowevo/summary_store.py (persistence, kw_012).
 
 Layer 0 (always runs): static assertions on migration
 ``deploy/sql/migrations/v2.5.5_kw_012_kg_summary.sql`` - the file exists
@@ -6,7 +6,7 @@ under its frozen name, carries every required column / the version-scoped
 UNIQUE / the two CHECKs / the fingerprint index, is idempotent, and stays
 self-contained (no ALTER/DROP of upstream tables). The expected strings
 come from the design doc section 6 (l5-community-summary-design) and the
-kw_012 task, not from reading the implementation.
+kw_012 migration contract, not from reading the implementation.
 
 Layer 1 (always runs): offline behavior against a fake session - kernel
 records round-trip through save/load, the same (tenant, version,
@@ -186,7 +186,7 @@ def _fake_store() -> tuple[SummaryStore, _FakeSessionFactory]:
 
 
 # ---------------------------------------------------------------------------
-# Layer 0: migration file static assertions (design section 6 + kw_012).
+# Layer 0: migration file static assertions (kw_012 contract, section 6).
 # ---------------------------------------------------------------------------
 
 class TestKw012MigrationFile:

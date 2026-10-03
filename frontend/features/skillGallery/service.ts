@@ -1,9 +1,9 @@
-// Skill-gallery API client (L10). Listing reuses the WIRED
+// Skill-gallery API client. Listing reuses the WIRED
 // GET /api/knowevo/skill-template/list via skillTemplateService.
 //
 // Apply (instantiate):
 //   PENDING POST /api/knowevo/skill-template/apply  -> SkillTemplateService.apply_template
-//   Until that route lands (workorder L10-W10), apply() falls back to a
+//   Until that route lands, apply() falls back to a
 //   deterministic client render and returns via="client_preview" with an
 //   explicit reason so the UI never claims reuse_count was bumped.
 //   The MCP tool skill_template_apply is the real write path today.

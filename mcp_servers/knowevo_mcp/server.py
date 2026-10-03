@@ -1,20 +1,18 @@
 """
-KnowEvo FastMCP server (extended by, the L2
-tool-surface completion and the asset_search closure) - graph-query,
+KnowEvo FastMCP server - graph-query,
 decision-layer and asset-retrieval tool service.
 
-Tools delivered (SPEC.md freezes 8 + 's additive skill_template_apply;
-9/9 registered since 2026-09-29, when asset_search closed the last frozen
-gap per the asset-search charter M3 (competition/docs/
-tech-optimization-2026-09-28/, asset-search-立项-2026-09-28.md):
+Tools delivered (SPEC.md freezes 8 tools plus the additive
+skill_template_apply; all 9 are registered, asset_search having closed the
+last frozen gap):
 
     kg_search             lexical entity lookup + 1..2 hop neighborhood
     asset_search          registered-asset retrieval over doc_asset_t:
                           ES-first hybrid with a deterministic PG fallback,
                           uniform parse gate and an auditable why per hit
-                          (asset-search charter M1/M3, 2026-09-29)
+                          (added 2026-09-29)
     kg_stats              graph scale numbers
-    kg_multi_hop          version-pinned beam walk (B2: every hop constrained
+    kg_multi_hop          version-pinned beam walk (every hop constrained
                           to the facts valid at the requested knowledge version)
     kg_evolution_trace    bi-temporal timeline for an entity or a decision
                           card (KGService.evolution_trace)
@@ -99,7 +97,7 @@ _skill_template_service = None
 # alignment service owns the persisted diff ledger; same injection shape.
 _kg_service = None
 _alignment_service = None
-# asset-search charter M3 (2026-09-29): the doc-asset service owns the
+# asset_search (2026-09-29): the doc-asset service owns the
 # asset_search retrieval capability over doc_asset_t; same injection shape
 # so tests can supply an in-memory seam.
 _asset_service = None
@@ -138,7 +136,7 @@ def _store():
     from services.knowevo.es_raw_list import build_es_raw_client
     from services.knowevo.graph_store import PgJsonbGraphStore
 
-    # L6-M2 (2026-09-30): when the ES raw-list adapter is configured, it
+    # 2026-09-30: when the ES raw-list adapter is configured, it
     # doubles as the store's es_client, making entity_lookup's ES-first
     # branch real in production. Without the env the store is constructed
     # exactly as before (bit-for-bit PG behaviour).
@@ -288,7 +286,7 @@ def _alignment_service_for(tenant_id: str = ""):
 
 
 def _asset_service_for(tenant_id: str = ""):
-    """The doc-asset service backing asset_search (asset-search charter M1).
+    """The doc-asset service backing asset_search.
 
     Tenant-agnostic on purpose: ``DocAssetService.search_assets`` takes
     the tenant per call (the handler resolves it via ``_tenant``), so the
@@ -332,7 +330,7 @@ def _kg_output(sub, entities, t0: float) -> KGSearchOutput:
 
 async def _kg_search_fused(inputs: KGSearchInput, store, tenant: str,
                            t0: float):
-    """L6-M2 fusion attempt for kg_search; ``None`` means "fall back".
+    """Fusion attempt for kg_search; ``None`` means "fall back".
 
     When the ES raw-list adapter is configured, the three-way RRF fusion
     (rrf_fusion.fuse, k=60) ranks the seeds: the BM25 raw list over the
@@ -393,7 +391,7 @@ async def kg_search_handler(inputs: KGSearchInput,
                             tenant_id: str = "") -> KGSearchOutput | dict:
     """Entity lookup + neighborhood walk (current view).
 
-    L6-M2 (2026-09-30): when the ES raw-list adapter is configured, seeds
+    2026-09-30: when the ES raw-list adapter is configured, seeds
     are ranked by the three-way RRF fusion (BM25 over the entity index +
     honestly-empty dense slot + deterministic graph route; rrf_fusion
     k=60) before the usual 1..2 hop neighborhood expansion; output
@@ -463,7 +461,7 @@ async def kg_multi_hop_handler(inputs: KGMultiHopInput,
                                store=None,
                                tenant_id: str = "",
                                service=None) -> KGMultiHopOutput | dict:
-    """Version-pinned beam walk over the knowledge graph (B2).
+    """Version-pinned beam walk over the knowledge graph.
 
     Returns KGMultiHopOutput on success or a structured error dict on
     failure (never raises into the MCP runtime). ``version_valid=False``
@@ -763,7 +761,7 @@ async def _asset_search_fused(inputs: AssetSearchInput, svc, tenant: str,
                               raw_client) -> list | None:
     """asset fusion attempt; ``None`` means "fall back to today".
 
-    When the ignition gate is open (>= 2 non-empty routes - L6-M2
+    When the ignition gate is open (>= 2 non-empty routes -
     anti-theatre rule) the fused ``AssetHit.id`` order reorders the
     ``search_assets`` hits. Membership always comes from
     ``search_assets`` (parse gate / supersede fold / filters stay single
@@ -803,7 +801,7 @@ async def asset_search_handler(inputs: AssetSearchInput,
                                ) -> AssetSearchOutput | dict:
     """Search the tenant's registered assets over doc_asset_t (frozen
     vocabulary, wrapped over ``DocAssetService.search_assets`` - the
-    asset-search charter M1 capability, 2026-09-29: ES-first hybrid over
+    asset_search capability, 2026-09-29: ES-first hybrid over
     title+metadata with a deterministic PG fallback).
 
     Returns AssetSearchOutput on success or a structured error dict on
@@ -819,7 +817,7 @@ async def asset_search_handler(inputs: AssetSearchInput,
     ``search_assets`` hits. With only one route live (today's dense slot
     is honestly empty) the gate stays closed and this tool reproduces
     the ES-first + PG-fallback path bit for bit - single-route fuse is
-    theatre, not fusion (L6-M2 verify §6-③).
+    theatre, not fusion.
     """
     t0 = time.monotonic()
     try:

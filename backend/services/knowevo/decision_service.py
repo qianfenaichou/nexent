@@ -4,7 +4,7 @@ search, evidence-chain assembly and decision-card rendering.
 
 Two things make this file the centre of the project's originality claim:
 
-1. **Version pinning (B2).** Every expansion step of the beam walk runs
+1. **Version pinning.** Every expansion step of the beam walk runs
    inside G_v - the subgraph of facts valid at a named knowledge version's
    cutoff t_v (the predicate itself delegated to version_pin.py, which
    transcribes the definition from 02-tech-plan 3.2). Paths that leave G_v
@@ -209,7 +209,7 @@ def _signature(question: str) -> str:
     """Question signature for the route-hit ledger: entity-free skeleton.
 
     Digits are stripped so the same question shape with a different value
-    shares a signature: the E6 route hit rate is about question *shape*,
+    shares a signature: the route hit rate is about question *shape*,
     not about the particular number in it.
     """
     return re.sub(r"\s+", "", _DIGITS.sub("", question or ""))[:60]
@@ -263,14 +263,14 @@ class DecisionService:
         self.lang = lang
         self.max_depth = max(1, int(max_depth))
         self.beam = max(1, int(beam))
-        # Path-relevance seam (L1, tech-optimization 2026-09-28 §L1):
+        # Path-relevance seam:
         # score_path and _answerable score through this callable; the
         # lexical default keeps behaviour identical until a semantic
         # scorer is injected. _contradicts deliberately stays on the
         # module-level _overlap: proposition identity is a lexical
         # judgement, not a domain-similarity one.
         self.sim = sim or _overlap
-        # A4 H2 additive seam: optional (facts, clock) -> ReconcileResult.
+        # Additive reconciliation seam: optional (facts, clock) -> ReconcileResult.
         # Default None leaves card.conflict_adjudications LLM-only.
         self.conflict_reconciler = conflict_reconciler
         self._calibration = calibration
@@ -279,13 +279,13 @@ class DecisionService:
         # version's cutoff t_v. Injected when the caller already has them
         # (tests, batch runs); otherwise resolved from the DB on demand.
         self._version_rows = version_rows
-        # E6 route-hit ledger: signature -> {"hits": int, "misses": int}.
+        # Route-hit ledger: signature -> {"hits": int, "misses": int}.
         self._route_ledger: dict[str, dict[str, int]] = {}
         # Whether the store honours the as_of seam extension, resolved once
         # (see _expand).
         self._store_pins: bool | None = None
 
-    # ── routing (02-tech-plan 3.1) ─────────────────────────────────────
+    # ── routing ──────────────────────────────────────────────────────────────
 
     def route(self, question: str, ctx: str = "") -> Route:
         """Deterministic routing: L1 rules, then the safe default.
@@ -400,7 +400,7 @@ class DecisionService:
 
     def route_hit_feedback(self, question: str, route: Route,
                            correct: bool) -> None:
-        """Record whether the chosen route produced a correct answer (E6).
+        """Record whether the chosen route produced a correct answer.
 
         Session-level signal only: it exists to escalate a question shape
         that keeps failing, not to be a durable statistic (durable route
@@ -416,7 +416,7 @@ class DecisionService:
         total = hits + sum(e["misses"] for e in self._route_ledger.values())
         return hits / total if total else 0.0
 
-    # ── version-pinned beam search (B2 core) ───────────────────────────
+    # ── version-pinned beam search ───────────────────────────────────────────
 
     async def multi_hop(self, question: str, seeds: list[str] | None = None,
                         depth: int | None = None, beam: int | None = None,
@@ -448,7 +448,7 @@ class DecisionService:
         cutoff removed. Without that, ``failed`` would always be empty and
         the card could not tell the difference between "the knowledge does
         not exist" and "the knowledge exists in a version you did not ask
-        about" - which is exactly the distinction B2 is about.
+        about" - which is exactly the distinction version pinning is about.
         """
         depth = max(1, min(int(depth if depth is not None else self.max_depth),
                            self.max_depth))
@@ -794,7 +794,7 @@ class DecisionService:
         """Depth grid over multi-hop questions -> accuracy/token/latency curve.
 
         This is what fixes KW_MULTIHOP_MAX_DEPTH with evidence rather than
-        intuition (02-tech-plan 3.2, recovering the L5 leftover). The
+        intuition (this replaces a flat depth cap with a measured one). The
         recommendation filters by the latency budget first: the most
         accurate depth that cannot answer inside p95 is not a
         recommendation, it is a regression.
@@ -991,7 +991,7 @@ class DecisionService:
         A4 additive seams (default None = frozen behaviour untouched):
         - ``conflict_records``: precomputed kernel adjudications merged into
           ``card.conflict_adjudications`` before the LLM path runs.
-        - ``conflict_facts`` + ``self.conflict_reconciler`` (H2): when both
+        - ``conflict_facts`` + ``self.conflict_reconciler``: when both
           are set and ``conflict_records`` is None, call
           ``conflict_reconciler(facts, clock)`` and project each record via
           ``to_wire()``. Exceptions are logged and swallowed so a broken
@@ -1112,7 +1112,7 @@ class DecisionService:
             card.decision = DECISION_INSUFFICIENT
         card.uncertainty_notes.extend(
             str(n) for n in (data.get("uncertainty_notes") or []))
-        # A4 seam: pre-seeded kernel records win on conflict_id collision;
+        # Conflict-kernel seam: pre-seeded records win on conflict_id collision;
         # LLM echoes of the same adjudication must not double-count.
         _seen_adj = {a.conflict_id for a in card.conflict_adjudications}
         for adj in data.get("conflict_adjudications") or []:
@@ -1282,7 +1282,7 @@ class DecisionService:
         buckets = self._calibration.get("buckets")
         return buckets if isinstance(buckets, list) else None
 
-    # ── persistence and rerun (Q2 ledger material) ─────────────────────
+    # ── persistence and rerun ────────────────────────────────────────────────
 
     async def persist(self, card: DecisionCard,
                       session_id: Any | None = None) -> Any:
@@ -1312,9 +1312,9 @@ class DecisionService:
         "re-running" a card by copying it.
 
         The old-vs-new conclusion diff is recorded on the new card, which is
-        the Q2 ledger's raw material: the entire point of an evolving system
-        is showing that the same question now gets a different answer, and
-        by how much.
+        the raw material for the evolution record: the entire point of an evolving
+        system is showing that the same question now gets a different answer,
+        and by how much.
         """
         tenant = tenant_id or self.tenant_id
         if handler is None:
@@ -1373,8 +1373,8 @@ class DecisionService:
                                    ) -> tuple[str, dict[str, Any]]:
         """Like ``_call_llm`` but also returns the call's usage dict.
 
-        Prefers the additive ``call_with_usage`` seam (llm_client.LlmRouter,
-        r21) when the injected callable exposes it, so the measured token
+        seam (llm_client.LlmRouter)
+        when the injected callable exposes it, so the measured token
         counters travel alongside the reply. The frozen
         ``(prompt, *, kind, tier, temperature) -> str`` contract stays the
         fallback: for a plain async callable the usage dict is empty and the
@@ -1663,7 +1663,7 @@ def _card_notes_appender(card: DecisionCard) -> Callable[[str], None]:
 
 
 def _card_diff(old: dict[str, Any], new: dict[str, Any]) -> dict[str, Any]:
-    """Old-vs-new conclusion diff for a rerun (Q2 ledger material)."""
+    """Old-vs-new conclusion diff for a rerun."""
     old_opts = [c.get("option") for c in (old.get("candidates") or [])]
     new_opts = [c.get("option") for c in (new.get("candidates") or [])]
     return {

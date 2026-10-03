@@ -155,7 +155,7 @@ const ROUTE_CONFIG: RouteConfig[] = [
     parentKey: "/resource-space",
   },
   {
-    // KnowEvo ontology workbench (T-18a). Visible only when the role holds
+    // KnowEvo ontology workbench. Visible only when the role holds
     // VISIBILITY.LEFT_NAV_MENU /knowledgeGraph (seeded in
     // deploy/sql/migrations/v2.5.5_kw_004_workbench_nav.sql); the page
     // itself still requires RESOURCE.KNOWLEDGE_GRAPH.MANAGE.
@@ -166,7 +166,7 @@ const ROUTE_CONFIG: RouteConfig[] = [
     parentKey: "/resource-space",
   },
   {
-    // KnowEvo decision card (T-19). Visible only when the role holds
+    // KnowEvo decision card. Visible only when the role holds
     // VISIBILITY.LEFT_NAV_MENU /decisionCard (seeded in
     // deploy/sql/migrations/v2.5.5_kw_006_decision_card_rbac.sql); the
     // page's HTTP route shares the workbench permission gate.
@@ -177,7 +177,7 @@ const ROUTE_CONFIG: RouteConfig[] = [
     parentKey: "/resource-space",
   },
   {
-    // KnowEvo skill-template library (T-20). Visible only when the role
+    // KnowEvo skill-template library. Visible only when the role
     // holds VISIBILITY.LEFT_NAV_MENU /skillTemplate (seeded in
     // deploy/sql/migrations/v2.5.5_kw_007_skill_template_rbac.sql); the
     // list data source (read-only HTTP route) is a recorded pending-wiring
@@ -189,7 +189,7 @@ const ROUTE_CONFIG: RouteConfig[] = [
     parentKey: "/resource-space",
   },
   {
-    // KnowEvo evolution board (L10). Visible only when the role holds
+    // KnowEvo evolution board. Visible only when the role holds
     // VISIBILITY.LEFT_NAV_MENU /evolutionBoard (seeded in
     // deploy/sql/migrations/v2.5.5_kw_013_l10_nav_rbac.sql).
     // Read-only: timeline + three-color diff.
@@ -200,7 +200,7 @@ const ROUTE_CONFIG: RouteConfig[] = [
     parentKey: "/resource-space",
   },
   {
-    // KnowEvo skill gallery (L10). Visible only when the role holds
+    // KnowEvo skill gallery. Visible only when the role holds
     // VISIBILITY.LEFT_NAV_MENU /skillGallery (seeded in
     // deploy/sql/migrations/v2.5.5_kw_013_l10_nav_rbac.sql).
     // Does NOT replace /skillTemplate (table panel stays).

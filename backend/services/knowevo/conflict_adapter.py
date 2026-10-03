@@ -1,4 +1,4 @@
-"""Additive production seam for the A4 conflict kernel.
+"""Additive production seam for the conflict kernel.
 
 Maps graph rows (``kg_relation_t`` + document provenance) onto
 :class:`~services.knowevo.conflict_kernel.Fact`, runs the frozen
@@ -6,8 +6,8 @@ detect/classify/resolve pipeline, and projects each record onto the frozen
 ``schemas.ConflictAdjudication`` wire triple. Default callers that never
 import this module see zero behaviour change.
 
-Design: ``competition/docs/tech-optimization-2026-09-28/
-a4-wire-assessment-2026-09-30.md``. Contract:
+Design: the detect / classify / resolve pipeline in ``conflict_kernel``.
+Contract:
 ``knowevo/backend/services/knowevo/conflict_adapter.py.md``.
 
 Hard boundaries (unchanged from the kernel):

@@ -1,4 +1,4 @@
-"""Tests for the A4 conflict-reconciliation kernel (conflict_kernel).
+"""Tests for the conflict-reconciliation kernel (conflict_kernel).
 
 Spec anchors: workspace archive doc
 ``archive/旧计划书/05-项目综合评估与优化路线-独立评审.md`` §3.4 (three-layer
